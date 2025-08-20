@@ -28,6 +28,7 @@ struct JournalEvent {
         }
     }
 
+
     static std::optional<Event> fromString(const std::string& s) {
         #define GEN_IF(name) if (s == #name) return name;
                 JOURNAL_EVENTS(GEN_IF)
