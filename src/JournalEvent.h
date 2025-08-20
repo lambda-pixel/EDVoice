@@ -4,10 +4,10 @@
 #include <string>
 
 // List of logged events
-#define JOURNAL_EVENTS(X) \
-    X(DockingGranted)     \
-    X(DockingDenied)
-
+#define JOURNAL_EVENTS(X)   \
+    X(DockingGranted)       \
+    X(DockingDenied)        \
+    X(StartJump)
 
 struct JournalEvent {
     // Enum

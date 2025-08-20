@@ -36,7 +36,7 @@ struct StatusEvent {
     30  fsdJump
     31  srvHighBeam
     */
-
+    
     enum Event
     {
         Docked = 0,

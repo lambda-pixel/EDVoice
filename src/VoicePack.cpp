@@ -41,6 +41,7 @@ VoicePack::VoicePack(AudioPlayer& p)
 
     _voiceJournal[JournalEvent::DockingDenied] = L"DockingDenied.wav";
     _voiceJournal[JournalEvent::DockingGranted] = L"DockingGranted.wav";
+    _voiceJournal[JournalEvent::StartJump] = L"StartJump.wav";
 }
 
 

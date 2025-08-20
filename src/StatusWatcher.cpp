@@ -15,7 +15,7 @@ StatusWatcher::StatusWatcher(
 {
     _previousFlags = getFlags();
 
-    std::wcout << L"Monitoring: " << filename << std::endl;
+    std::wcout << L"[STATUS] Monitoring: " << filename << std::endl;
 }
 
 
@@ -31,7 +31,6 @@ uint32_t StatusWatcher::getFlags() const
     nlohmann::json j;
     std::string line;
     uint32_t currentFlags = 0;
-
 
     if (std::getline(file, line)) {
         try {
@@ -53,11 +52,14 @@ uint32_t StatusWatcher::getFlags() const
 void StatusWatcher::checkUpdatedBits(uint32_t flags)
 {
     // ignore 0
-    if (!flags) {
+    if (!flags || flags == _previousFlags) {
         return;
     }
 
-    /*
+    //*
+
+    std::cout << "[STATUS] Previous flags ";
+
     for (int i_bit = 0; i_bit < 32; i_bit++) {
         const bool prevStatusBit = _previousFlags & (1 << i_bit);
         if (prevStatusBit) {
@@ -68,6 +70,8 @@ void StatusWatcher::checkUpdatedBits(uint32_t flags)
         }
     }
     std::cout << std::endl;
+
+    std::cout << "[STATUS] Current flags  ";
 
     for (int i_bit = 0; i_bit < 32; i_bit++) {
         const bool currStatusBit = flags & (1 << i_bit);
@@ -80,10 +84,7 @@ void StatusWatcher::checkUpdatedBits(uint32_t flags)
     }
     std::cout << std::endl;
 
-    if (flags == _previousFlags) {
-        return;
-    }
-    */
+    std::cout << "[STATUS]                ";
 
     for (int i_bit = 0; i_bit < 32; i_bit++) {
         const bool prevStatusBit = _previousFlags & (1 << i_bit);
@@ -91,11 +92,23 @@ void StatusWatcher::checkUpdatedBits(uint32_t flags)
 
         // Skip it, we already know the status
         if (prevStatusBit != currStatusBit) {
-            //std::cout << "x";
-            _voicePack.triggerStatus((StatusEvent::Event)i_bit, currStatusBit);
+            std::cout << "x";
         }
         else {
-            //std::cout << " ";
+            std::cout << " ";
+        }
+    }
+    std::cout << std::endl;
+
+    //*/
+
+    for (int i_bit = 0; i_bit < 32; i_bit++) {
+        const bool prevStatusBit = _previousFlags & (1 << i_bit);
+        const bool currStatusBit = flags & (1 << i_bit);
+
+        // Skip it, we already know the status
+        if (prevStatusBit != currStatusBit) {
+            _voicePack.triggerStatus((StatusEvent::Event)i_bit, currStatusBit);
         }
     }
 
