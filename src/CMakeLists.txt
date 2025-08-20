@@ -3,6 +3,7 @@ add_executable(EDVoice
     StatusWatcher.cpp
     VoicePack.cpp
     JournalWatcher.cpp 
-    "EliteFileUtil.h" "JournalEvent.h" "StatusEvent.h" "EliteFileUtil.cpp")
+    EliteFileUtil.cpp
+)
 
 target_include_directories(EDVoice PRIVATE ../3rdparty)
