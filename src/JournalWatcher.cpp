@@ -1,5 +1,4 @@
 #include "JournalWatcher.h"
-#include "JournalEvent.h"
 
 #include <json.hpp>
 
@@ -35,11 +34,7 @@ void JournalWatcher::update(const std::filesystem::path& filename)
         auto j = nlohmann::json::parse(line);
         std::cout << "[EVENT ] Journal entry: " << j["event"] << std::endl;
 
-        std::optional<JournalEvent::Event> event = JournalEvent::fromString(j["event"]);
-
-        if (event) {
-            _voicePack.triggerJournal(event.value());
-        }
+        _voicePack.triggerJournal(j["event"]);
     }
 
     // Clear EOF flag

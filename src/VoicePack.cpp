@@ -39,9 +39,9 @@ VoicePack::VoicePack(AudioPlayer& p)
     //fsdJump,
     //srvHighBeam
 
-    _voiceJournal[JournalEvent::DockingDenied] = L"DockingDenied.wav";
-    _voiceJournal[JournalEvent::DockingGranted] = L"DockingGranted.wav";
-    _voiceJournal[JournalEvent::StartJump] = L"StartJump.wav";
+    _voiceJournal["DockingDenied"] = L"DockingDenied.wav";
+    _voiceJournal["DockingGranted"] = L"DockingGranted.wav";
+    _voiceJournal["StartJump"] = L"StartJump.wav";
 }
 
 
@@ -60,9 +60,10 @@ void VoicePack::triggerStatus(StatusEvent::Event event, bool status) const
 }
 
 
-void VoicePack::triggerJournal(JournalEvent::Event event) const
+void VoicePack::triggerJournal(const std::string& event) const
 {
-    if (!_voiceJournal[event].empty()) {
-        _player.addTrack(_basePath / _voiceJournal[event]);
+    auto it = _voiceJournal.find(event);
+    if (it != _voiceJournal.end()) {
+        _player.addTrack((_basePath / it->second).wstring());
     }
 }
