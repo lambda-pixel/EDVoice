@@ -45,7 +45,7 @@ VoicePack::VoicePack(AudioPlayer& p)
 }
 
 
-void VoicePack::triggerStatus(StatusEvent::Event event, bool status) const
+void VoicePack::onStatusChanged(StatusEvent::Event event, bool status)
 {
     if (event == StatusEvent::Fsd_Charging && !status) {
         return;
@@ -60,7 +60,7 @@ void VoicePack::triggerStatus(StatusEvent::Event event, bool status) const
 }
 
 
-void VoicePack::triggerJournal(const std::string& event) const
+void VoicePack::onJournalEvent(const std::string& event)
 {
     auto it = _voiceJournal.find(event);
     if (it != _voiceJournal.end()) {

@@ -7,15 +7,20 @@
 #include "AudioPlayer.h"
 #include "StatusEvent.h"
 
+#include "JournalWatcher.h"
+#include "StatusWatcher.h"
 
-class VoicePack
+
+class VoicePack : public StatusListener, public JournalListener
 {
 public:
     VoicePack(AudioPlayer& p);
 
-    void triggerStatus(StatusEvent::Event event, bool status) const;
+    void onStatusChanged(StatusEvent::Event event, bool status) override;
 
-    void triggerJournal(const std::string& event) const;
+    void onJournalEvent(const std::string& event) override;
+
+
 
 private:
     std::filesystem::path _basePath;

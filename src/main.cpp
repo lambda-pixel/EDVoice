@@ -8,7 +8,8 @@
 #include "EliteFileUtil.h"
 #include "StatusWatcher.h"
 #include "JournalWatcher.h"
-
+#include "VoicePack.h"
+#include "AudioPlayer.h"
 
 /*
 int WinMain(
@@ -23,8 +24,11 @@ int main(int argc, char* argv[])
 
     AudioPlayer player(nullptr);
     VoicePack voicePack(player);
-    StatusWatcher status(EliteFileUtil::getStatusFile(userProfile), voicePack);
-    JournalWatcher journal(EliteFileUtil::getLatestJournal(userProfile), voicePack);
+    StatusWatcher status(EliteFileUtil::getStatusFile(userProfile));
+    JournalWatcher journal(EliteFileUtil::getLatestJournal(userProfile));
+
+    status.addListener(&voicePack);
+    journal.addListener(&voicePack);
 
     // Monitor any file change in user profile folder
 

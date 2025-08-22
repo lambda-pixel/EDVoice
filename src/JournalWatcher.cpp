@@ -1,19 +1,22 @@
 #include "JournalWatcher.h"
 
+#include <iostream>
 #include <json.hpp>
 
 
-JournalWatcher::JournalWatcher(
-    const std::filesystem::path& filename,
-    const VoicePack& voices
-)
+JournalWatcher::JournalWatcher(const std::filesystem::path& filename)
     : _currJournalPath(filename)
     , _currJournalFile(filename)
-    , _voicePack(voices)
 {
-    _currJournalFile.seekg(0, std::ios::end);
-
     std::wcout << L"[STATUS] Monitoring: " << _currJournalPath << std::endl;
+    
+    _currJournalFile.seekg(0, std::ios::end);
+}
+
+
+void JournalWatcher::addListener(JournalListener* listener)
+{
+    _listeners.push_back(listener);
 }
 
 
@@ -34,7 +37,9 @@ void JournalWatcher::update(const std::filesystem::path& filename)
         auto j = nlohmann::json::parse(line);
         std::cout << "[EVENT ] Journal entry: " << j["event"] << std::endl;
 
-        _voicePack.triggerJournal(j["event"]);
+        for (JournalListener* listener : _listeners) {
+            listener->onJournalEvent(j["event"]);
+        }
     }
 
     // Clear EOF flag
