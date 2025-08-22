@@ -21,9 +21,10 @@ int WinMain(
 int main(int argc, char* argv[])
 {
     const std::filesystem::path userProfile = EliteFileUtil::getUserProfile();
+    const std::filesystem::path voicePackConfig = "C:\\Users\\Siegfried\\Desktop\\Bean\\Bean.json";
 
     AudioPlayer player(nullptr);
-    VoicePack voicePack(player);
+    VoicePack voicePack(voicePackConfig, player);
     StatusWatcher status(EliteFileUtil::getStatusFile(userProfile));
     JournalWatcher journal(EliteFileUtil::getLatestJournal(userProfile));
 

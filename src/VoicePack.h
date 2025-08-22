@@ -14,15 +14,14 @@
 class VoicePack : public StatusListener, public JournalListener
 {
 public:
-    VoicePack(AudioPlayer& p);
+    VoicePack(const std::filesystem::path& filepath, AudioPlayer& p);
 
     void onStatusChanged(StatusEvent::Event event, bool status) override;
 
     void onJournalEvent(const std::string& event) override;
 
 private:
-    std::filesystem::path _basePath;
-    std::array<std::filesystem::path, StatusEvent::N_StatusEvents> _voiceStatus;
+    std::array<std::filesystem::path, 2 * StatusEvent::N_StatusEvents> _voiceStatus;
     std::map<std::string, std::filesystem::path> _voiceJournal;
     AudioPlayer& _player;
 };
