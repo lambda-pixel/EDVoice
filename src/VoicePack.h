@@ -20,8 +20,6 @@ public:
 
     void onJournalEvent(const std::string& event) override;
 
-
-
 private:
     std::filesystem::path _basePath;
     std::array<std::filesystem::path, StatusEvent::N_StatusEvents> _voiceStatus;

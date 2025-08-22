@@ -2,6 +2,7 @@
 
 #include <filesystem>
 
+
 struct EliteFileUtil
 {
     static bool isJournalFile(const std::filesystem::path& path);

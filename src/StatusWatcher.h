@@ -25,6 +25,7 @@ public:
 
 private:
     uint32_t getFlags() const;
+
     void checkUpdatedBits(uint32_t flags);
 
     void printChangedBits(uint32_t flags);
