@@ -34,4 +34,6 @@ By default, the game logs are located in: `%USERPROFILE%\Saved Games\Frontier De
 ## 🛠 Roadmap
 - Add configuration file for custom audio mapping
 - GUI for event selection and testing alerts
-- More flexible trigger system to allow other type of actions (e.g., Philips Hue trigger)
+- Plugin system for community contributions
+- TTS playback support (e.g., ingame chat messages)
+- Sample plugin for custom actions (e.g., Philips Hue trigger)
