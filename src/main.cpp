@@ -139,14 +139,23 @@ int WinMain(
 */
 int main(int argc, char* argv[])
 {
+    std::filesystem::path voicePackFile;
+
+    if (argc < 2) {
+        std::cout << "Using default voicepack" << std::endl;
+        voicePackFile = std::filesystem::current_path() / "Bean.json";
+    }
+    else {
+        voicePackFile = argv[1];
+    }
+
     const std::filesystem::path userProfile = EliteFileUtil::getUserProfile();
-    const std::filesystem::path voicePackConfig = "C:\\Users\\Siegfried\\Desktop\\Bean\\Bean.json";
 
     StatusWatcher status(EliteFileUtil::getStatusFile(userProfile));
     JournalWatcher journal(EliteFileUtil::getLatestJournal(userProfile));
 
     AudioPlayer player(nullptr);
-    VoicePack voicePack(voicePackConfig, player);
+    VoicePack voicePack(voicePackFile, player);
     status.addListener(&voicePack);
     journal.addListener(&voicePack);
 

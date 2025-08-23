@@ -10,6 +10,8 @@ VoicePack::VoicePack(const std::filesystem::path& filepath, AudioPlayer& p)
         throw std::runtime_error("VoicePack: Cannot find configuration file: " + filepath.string());
     }
 
+    std::cout << "[INFO  ] Loading voicepack: " << filepath << std::endl;
+
     std::filesystem::path basePath;
 
     if (filepath.is_absolute()) {
