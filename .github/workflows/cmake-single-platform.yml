@@ -49,4 +49,4 @@ jobs:
       with:
         files: ${{github.workspace}}/build/*.zip
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.ACTION_UPDATE_RELEASE }}
