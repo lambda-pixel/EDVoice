@@ -1,0 +1,31 @@
+{
+    "status": {
+        "LandingGear_Down": {
+            "true" : "Bean/LandingGear_Down_1.wav",
+            "false": "Bean/LandingGear_Down_0.wav"
+        },
+        "Shields_Up": {
+            "true" : "Bean/Shields_Up_1.wav",
+            "false": "Bean/Shields_Up_0.wav"
+        },
+        "FlightAssist_Off": {
+            "true" : "Bean/FlightAssist_Off_1.wav",
+            "false": "Bean/FlightAssist_Off_0.wav"
+        },
+        "Cargo_Scoop_Deployed": {
+            "true" : "Bean/Cargo_Scoop_Deployed_1.wav",
+            "false": "Bean/Cargo_Scoop_Deployed_0.wav"
+        },
+        "Fsd_Charging": {
+            "true" : "Bean/Fsd_Charging_1.wav"
+        },
+        "Over_Heating": {
+            "true" : "Bean/Over_Heating_1.wav"
+        }
+    },
+    "event": {
+        "DockingGranted": "Bean/DockingGranted.wav",
+        "DockingDenied" : "Bean/DockingDenied.wav",
+        "StartJump"     : "Bean/StartJump.wav"
+    }
+}
