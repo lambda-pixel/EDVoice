@@ -14,7 +14,16 @@ A lightweight C++ tool that monitors both **Elite Dangerous journal logs** and t
 - Playback of custom audio alerts
 - Extensible design: add new events and alerts easily
 
-## 🚀 Getting Started
+## 📦 Download and Install
+
+1. Go to the [Releases page](https://github.com/lambda-pixel/EDVoice/releases/latest)
+2. Download the latest release zip file, e.g., `EDVoice-v0.1.0.zip`.
+3. Extract the zip file to a folder of your choice.
+4. Run EDVoice.exe from that folder.
+
+> Optional: you can drag & drop a custom voicepack JSON onto the executable, or pass the path to the JSON as the first argument.
+
+## 🚀 Building from sources
 1. Clone the repository:
 ```bash
 git clone https://github.com/<your-username>/<your-repo>.git
