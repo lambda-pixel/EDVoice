@@ -1,4 +1,4 @@
-#include <iostream>
+﻿#include <iostream>
 #include <string>
 #include <filesystem>
 
@@ -10,6 +10,125 @@
 #include "EventLogger.h"
 #include "VoicePack.h"
 #include "AudioPlayer.h"
+
+#include <thread>
+#include <conio.h>
+
+
+void fileWatcherThread(
+    HANDLE hStop,
+    const std::filesystem::path userProfile,
+    StatusWatcher& statusWatcher,
+    JournalWatcher& journalWatcher)
+{
+    HANDLE hDir = CreateFileW(
+        userProfile.c_str(),
+        FILE_LIST_DIRECTORY,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        nullptr,
+        OPEN_EXISTING,
+        FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
+        nullptr
+    );
+
+    if (hDir == INVALID_HANDLE_VALUE) {
+        std::cerr << "[ERR   ] Cannot open status folder." << std::endl;
+        return;
+    }
+
+    OVERLAPPED ov{};
+    ov.hEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
+    
+    if (ov.hEvent == NULL) {
+        std::cerr << "[ERR   ] CreateEvent failed: " << GetLastError() << std::endl;
+        CloseHandle(hDir);
+        return;
+    }
+
+    char buffer[1024] = { 0 };
+    DWORD bytesReturned = 0;
+
+    auto postRead = [&]() {
+        ResetEvent(ov.hEvent);
+
+        BOOL ok = ReadDirectoryChangesW(
+            hDir,
+            buffer,
+            sizeof(buffer),
+            FALSE,
+            FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_SIZE,
+            nullptr,
+            &ov,
+            nullptr
+        );
+
+        if (!ok && GetLastError() != ERROR_IO_PENDING) {
+            std::cerr << "[ERR   ] ReadDirectoryChangesW failed: " << GetLastError() << std::endl;
+        }
+    };
+
+    postRead();
+
+    HANDLE handles[2] = { ov.hEvent, hStop };
+
+    while (true) {
+        DWORD w = WaitForMultipleObjects(2, handles, FALSE, INFINITE);
+
+        if (w == WAIT_OBJECT_0) {
+            // Read completed
+            DWORD bytes = 0;
+            if (!GetOverlappedResult(hDir, &ov, &bytes, FALSE)) {
+                DWORD err = GetLastError();
+
+                if (err == ERROR_OPERATION_ABORTED) {
+                    // CancelIoEx called
+                    break;
+                }
+                else {
+                    // Try restarting the observer
+                    std::cerr << "[ERR   ] GetOverlappedResult failed. err=" << err << std::endl;
+                    postRead();
+                    continue;
+                }
+            }
+
+            // Check which files changed
+            BYTE* ptr = reinterpret_cast<BYTE*>(buffer);
+
+            while (true) {
+                auto* fni = reinterpret_cast<FILE_NOTIFY_INFORMATION*>(ptr);
+                std::wstring filename(fni->FileName, fni->FileNameLength / sizeof(WCHAR));
+
+                if (EliteFileUtil::isStatusFile(filename)) {
+                    statusWatcher.update();
+                }
+                else if (EliteFileUtil::isJournalFile(filename)) {
+                    journalWatcher.update(userProfile / filename);
+                }
+
+                if (fni->NextEntryOffset == 0) break;
+                ptr += fni->NextEntryOffset;
+            }
+
+            // Restart the observer
+            postRead();
+        }
+        else if (w == WAIT_OBJECT_0 + 1) {
+            // Request to stop
+            CancelIoEx(hDir, &ov);
+            WaitForSingleObject(ov.hEvent, INFINITE);
+            break;
+        }
+        else {
+            std::cerr << "[ERR   ] WaitForMultipleObjects failed. err=" << GetLastError() << std::endl;
+            break;
+        }
+    }
+
+    CloseHandle(ov.hEvent);
+    CloseHandle(hDir);
+}
+
 
 /*
 int WinMain(
@@ -36,54 +155,31 @@ int main(int argc, char* argv[])
     journal.addListener(&logger);
 
     // Monitor any file change in user profile folder
+    HANDLE hStop = CreateEvent(nullptr, TRUE, FALSE, nullptr);
 
-    HANDLE hDir = CreateFileW(
-        userProfile.c_str(),
-        FILE_LIST_DIRECTORY,
-        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-        NULL,
-        OPEN_EXISTING,
-        FILE_FLAG_BACKUP_SEMANTICS,
-        NULL
+    std::thread watcherThread(
+        fileWatcherThread,
+        hStop,
+        userProfile,
+        std::ref(status),
+        std::ref(journal)
     );
 
-    if (hDir == INVALID_HANDLE_VALUE) {
-        std::cerr << "[ERR   ] Cannot open status folder." << std::endl;
-        return 1;
-    }
+    std::cout << "Press any key to exit" << std::endl;
 
-    char buffer[1024];
-    DWORD bytesReturned;
-
-    //MSG msg;
-    //while (GetMessage(&msg, NULL, 0, 0)) {
     while (true) {
-        if (ReadDirectoryChangesW(
-            hDir,
-            buffer,
-            sizeof(buffer),
-            FALSE,
-            FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_SIZE,
-            &bytesReturned,
-            NULL,
-            NULL
-        )) {
-            FILE_NOTIFY_INFORMATION* fni = (FILE_NOTIFY_INFORMATION*)buffer;
-            std::wstring filename(fni->FileName, fni->FileNameLength / sizeof(WCHAR));
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-            if (EliteFileUtil::isStatusFile(filename)) {
-                status.update();
-            }
-            else if (EliteFileUtil::isJournalFile(filename)) {
-                journal.update(userProfile / filename);
-            }
+        if (_kbhit()) {
+            SetEvent(hStop);
+            std::cout << "Exiting..." << std::endl;
+            break;
         }
-
-        //TranslateMessage(&msg);
-        //DispatchMessage(&msg);
     }
 
-    CloseHandle(hDir);
+    watcherThread.join();
+
+    std::cout << "Goodbye!" << std::endl;
 
     // DestroyWindow(hwnd);
     
