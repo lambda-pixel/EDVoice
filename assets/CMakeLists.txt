@@ -9,3 +9,7 @@ add_custom_target(copy_assets ALL
     DEPENDS ${ASSETS_FILES}
     COMMENT "Copying assets to ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
 )
+
+install(DIRECTORY ${VOICEPACK_DIR}/
+        DESTINATION .
+        FILES_MATCHING PATTERN "*")

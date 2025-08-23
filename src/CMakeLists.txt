@@ -9,3 +9,6 @@ add_executable(EDVoice
 )
 
 target_include_directories(EDVoice PRIVATE ../3rdparty)
+
+install(TARGETS EDVoice
+        RUNTIME DESTINATION .)
