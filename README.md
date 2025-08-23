@@ -37,3 +37,4 @@ By default, the game logs are located in: `%USERPROFILE%\Saved Games\Frontier De
 - Plugin system for community contributions
 - TTS playback support (e.g., ingame chat messages)
 - Sample plugin for custom actions (e.g., Philips Hue trigger)
+- Improve the audio playback system: allow for queuing multiple messages
