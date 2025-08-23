@@ -53,7 +53,6 @@ To create your own voice pack, follow the detailed instructions on our [dedicate
 This page explains how to define custom voice actions using a JSON file, with concrete examples for status changes and journal events.
 
 ## 🛠 Roadmap
-- Add configuration file for custom audio mapping
 - GUI for event selection and testing alerts
 - Plugin system for community contributions
 - TTS playback support (e.g., ingame chat messages)
