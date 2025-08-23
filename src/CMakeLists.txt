@@ -4,6 +4,7 @@ add_executable(EDVoice
     VoicePack.cpp
     JournalWatcher.cpp 
     EliteFileUtil.cpp
+    ../assets/edvoice.rc
 )
 
 target_include_directories(EDVoice PRIVATE ../3rdparty)
