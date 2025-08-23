@@ -8,7 +8,7 @@ JournalWatcher::JournalWatcher(const std::filesystem::path& filename)
     : _currJournalPath(filename)
     , _currJournalFile(filename)
 {
-    std::wcout << L"[STATUS] Monitoring: " << _currJournalPath << std::endl;
+    std::wcout << L"[INFO  ] Monitoring: " << _currJournalPath << std::endl;
     
     _currJournalFile.seekg(0, std::ios::end);
 }
@@ -28,14 +28,13 @@ void JournalWatcher::update(const std::filesystem::path& filename)
         _currJournalFile = std::ifstream(filename);
         _currJournalPath = filename;
 
-        std::wcout << L"[STATUS] Monitoring: " << _currJournalPath << std::endl;
+        std::wcout << L"[INFO  ] Monitoring: " << _currJournalPath << std::endl;
     }
 
     std::string line;
 
     while (std::getline(_currJournalFile, line)) {
         auto j = nlohmann::json::parse(line);
-        std::cout << "[EVENT ] Journal entry: " << j["event"] << std::endl;
 
         for (JournalListener* listener : _listeners) {
             listener->onJournalEvent(j["event"], line);

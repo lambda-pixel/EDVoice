@@ -9,7 +9,7 @@ StatusWatcher::StatusWatcher(
     const std::filesystem::path& filename)
     : _statusFile(filename)
 {
-    std::wcout << L"[STATUS] Monitoring: " << filename << std::endl;
+    std::wcout << L"[INFO  ] Monitoring: " << filename << std::endl;
 
     _previousFlags = getFlags();
 }

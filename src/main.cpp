@@ -1,4 +1,3 @@
-
 #include <iostream>
 #include <string>
 #include <filesystem>
@@ -8,6 +7,7 @@
 #include "EliteFileUtil.h"
 #include "StatusWatcher.h"
 #include "JournalWatcher.h"
+#include "EventLogger.h"
 #include "VoicePack.h"
 #include "AudioPlayer.h"
 
@@ -23,13 +23,17 @@ int main(int argc, char* argv[])
     const std::filesystem::path userProfile = EliteFileUtil::getUserProfile();
     const std::filesystem::path voicePackConfig = "C:\\Users\\Siegfried\\Desktop\\Bean\\Bean.json";
 
-    AudioPlayer player(nullptr);
-    VoicePack voicePack(voicePackConfig, player);
     StatusWatcher status(EliteFileUtil::getStatusFile(userProfile));
     JournalWatcher journal(EliteFileUtil::getLatestJournal(userProfile));
 
+    AudioPlayer player(nullptr);
+    VoicePack voicePack(voicePackConfig, player);
     status.addListener(&voicePack);
     journal.addListener(&voicePack);
+
+    EventLogger logger;
+    status.addListener(&logger);
+    journal.addListener(&logger);
 
     // Monitor any file change in user profile folder
 
@@ -44,7 +48,7 @@ int main(int argc, char* argv[])
     );
 
     if (hDir == INVALID_HANDLE_VALUE) {
-        std::cerr << "[ERR] Cannot open status folder." << std::endl;
+        std::cerr << "[ERR   ] Cannot open status folder." << std::endl;
         return 1;
     }
 

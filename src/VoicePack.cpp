@@ -36,7 +36,7 @@ VoicePack::VoicePack(const std::filesystem::path& filepath, AudioPlayer& p)
                 const std::optional<StatusEvent::Event> status = StatusEvent::fromString(st.key());
 
                 if (!status || status == StatusEvent::N_StatusEvents) {
-                    std::cout << "[WARN] Unknown status event: " << st.key() << "\n";
+                    std::cout << "[WARN  ] Unknown status event: " << st.key() << "\n";
                     continue;
                 }
 
@@ -48,7 +48,7 @@ VoicePack::VoicePack(const std::filesystem::path& filepath, AudioPlayer& p)
                         _voiceStatus[2 * status.value() + 0] = resolvePath(statusEntry.value().get<std::string>());
                     }
                     else {
-                        std::cout << "[WARN] Unknown status key: " << statusEntry.key() << "\n";
+                        std::cout << "[WARN  ] Unknown status key: " << statusEntry.key() << "\n";
                     }
                 }
             }
@@ -73,7 +73,7 @@ VoicePack::VoicePack(const std::filesystem::path& filepath, AudioPlayer& p)
             const size_t index = 2 * iEvent + i;
 
             if (!_voiceStatus[index].empty() && !std::filesystem::exists(_voiceStatus[index])) {
-                std::cout << "[ERR] Missing file for status '" << eventName << "' (" << state << "): " << _voiceStatus[index] << std::endl;
+                std::cout << "[ERR   ] Missing file for status '" << eventName << "' (" << state << "): " << _voiceStatus[index] << std::endl;
                 _voiceStatus[index].clear();
             }
         }
@@ -81,7 +81,7 @@ VoicePack::VoicePack(const std::filesystem::path& filepath, AudioPlayer& p)
 
     for (auto& [event, path] : _voiceJournal) {
         if (!path.empty() && !std::filesystem::exists(path)) {
-            std::cerr << "[ERR] Missing file for event '" << event << "': " << path << std::endl;
+            std::cerr << "[ERR   ] Missing file for event '" << event << "': " << path << std::endl;
             path.clear();
         }
     }

@@ -1,9 +1,10 @@
 add_executable(EDVoice
     main.cpp
-    StatusWatcher.cpp
-    VoicePack.cpp
-    JournalWatcher.cpp 
     EliteFileUtil.cpp
+    StatusWatcher.cpp
+    JournalWatcher.cpp 
+    VoicePack.cpp
+    EventLogger.cpp
     ../assets/edvoice.rc
 )
 
