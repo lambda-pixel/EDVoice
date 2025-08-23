@@ -46,6 +46,12 @@ cmake --build . --config Release
 3. Run the tool while playing Elite Dangerous.
 By default, the game logs are located in: `%USERPROFILE%\Saved Games\Frontier Developments\Elite Dangerous\`
 
+## 🎙️ Creating a Custom Voice Pack
+
+To create your own voice pack, follow the detailed instructions on our [dedicated wiki page](https://github.com/lambda-pixel/EDVoice/wiki/Creating-a-Custom-Voice-Pack).
+
+This page explains how to define custom voice actions using a JSON file, with concrete examples for status changes and journal events.
+
 ## 🛠 Roadmap
 - Add configuration file for custom audio mapping
 - GUI for event selection and testing alerts
