@@ -8,7 +8,7 @@
 class JournalListener
 {
 public:
-    virtual void onJournalEvent(const std::string& event) = 0;
+    virtual void onJournalEvent(const std::string& event, const std::string& jounralEntry) = 0;
 };
 
 

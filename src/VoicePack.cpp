@@ -102,7 +102,7 @@ void VoicePack::onStatusChanged(StatusEvent::Event event, bool status)
 }
 
 
-void VoicePack::onJournalEvent(const std::string& event)
+void VoicePack::onJournalEvent(const std::string& event, const std::string& journalEntry)
 {
     auto it = _voiceJournal.find(event);
 

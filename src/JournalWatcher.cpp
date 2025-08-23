@@ -38,7 +38,7 @@ void JournalWatcher::update(const std::filesystem::path& filename)
         std::cout << "[EVENT ] Journal entry: " << j["event"] << std::endl;
 
         for (JournalListener* listener : _listeners) {
-            listener->onJournalEvent(j["event"]);
+            listener->onJournalEvent(j["event"], line);
         }
     }
 
