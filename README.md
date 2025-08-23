@@ -1,3 +1,4 @@
+![banner](https://repository-images.githubusercontent.com/1041658528/ab5369e8-237f-4bac-86be-d822ac75e14a)
 # Elite Dangerous Journal Alerts
 
 A lightweight C++ tool that monitors both **Elite Dangerous journal logs** and the **Status.json** file in real time, triggering custom **voice alerts** (via audio playback) when key in-game events occur.
