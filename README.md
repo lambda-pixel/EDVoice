@@ -2,6 +2,12 @@
 
 A lightweight C++ tool that monitors both **Elite Dangerous journal logs** and the **Status.json** file in real time, triggering custom **voice alerts** (via audio playback) when key in-game events occur.
 
+## ⚠️ Disclaimer
+
+Use at your own risk! I am not responsible for any game crashes, FSD explosions, in-game disasters, or even potential computer corruption.
+
+> Seriously, if your PC spontaneously combusts or your Commander’s ship jumps into a star… that’s on you 😜.
+
 ## Features
 - Real-time monitoring of:
   - `Journal.*.log` files
