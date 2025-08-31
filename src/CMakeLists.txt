@@ -5,7 +5,6 @@ add_executable(EDVoice
     StatusWatcher.cpp
     JournalWatcher.cpp 
     VoicePack.cpp
-    EventLogger.cpp
     ../assets/edvoice.rc
 )
 
