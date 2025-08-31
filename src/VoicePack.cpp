@@ -3,8 +3,7 @@
 #include <sstream>
 #include <json.hpp>
 
-VoicePack::VoicePack(const std::filesystem::path& filepath, AudioPlayer& p)
-    : _player(p)
+VoicePack::VoicePack(const std::filesystem::path& filepath)
 {
     if (!std::filesystem::exists(filepath)) {
         throw std::runtime_error("VoicePack: Cannot find configuration file: " + filepath.string());
@@ -35,7 +34,7 @@ VoicePack::VoicePack(const std::filesystem::path& filepath, AudioPlayer& p)
         // Parse status
         if (json.contains("status")) {
             for (auto& st : json["status"].items()) {
-                const std::optional<StatusEvent::Event> status = StatusEvent::fromString(st.key());
+                const std::optional<StatusEvent> status = StatusEventUtil::fromString(st.key());
 
                 if (!status || status == StatusEvent::N_StatusEvents) {
                     std::cout << "[WARN  ] Unknown status event: " << st.key() << "\n";
@@ -68,7 +67,7 @@ VoicePack::VoicePack(const std::filesystem::path& filepath, AudioPlayer& p)
 
     // Log missing files and remove them from the list
     for (size_t iEvent = 0; iEvent < StatusEvent::N_StatusEvents; iEvent++) {
-        const std::string eventName = StatusEvent::toString((StatusEvent::Event)iEvent);
+        const std::string eventName = StatusEventUtil::toString((StatusEvent)iEvent);
 
         for (size_t i = 0; i < 2; i++) {
             const std::string state = (i == 0) ? "false" : "true";
@@ -90,7 +89,7 @@ VoicePack::VoicePack(const std::filesystem::path& filepath, AudioPlayer& p)
 }
 
 
-void VoicePack::onStatusChanged(StatusEvent::Event event, bool status)
+void VoicePack::onStatusChanged(StatusEvent event, bool status)
 {
     if (event >= StatusEvent::N_StatusEvents) {
         return;

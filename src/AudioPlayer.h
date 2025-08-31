@@ -9,7 +9,7 @@
 
 class AudioPlayer {
 public:
-    AudioPlayer(HWND hWnd)
+    AudioPlayer()
     {
     }
 

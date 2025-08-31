@@ -3,9 +3,9 @@
 #include <iostream>
 
 
-void EventLogger::onStatusChanged(StatusEvent::Event event, bool status)
+void EventLogger::onStatusChanged(StatusEvent event, bool status)
 {
-    std::cout << "[EVENT ] Status change: " << StatusEvent::toString(event) << " -> " << (status ? "true" : "false") << std::endl;
+    std::cout << "[EVENT ] Status change: " << StatusEventUtil::toString(event) << " -> " << (status ? "true" : "false") << std::endl;
 }
 
 

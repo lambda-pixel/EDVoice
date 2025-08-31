@@ -10,7 +10,7 @@
 class StatusListener
 {
 public:
-    virtual void onStatusChanged(StatusEvent::Event event, bool set) = 0;
+    virtual void onStatusChanged(StatusEvent event, bool set) = 0;
 };
 
 

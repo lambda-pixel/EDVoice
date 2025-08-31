@@ -67,7 +67,7 @@ void StatusWatcher::checkUpdatedBits(uint32_t flags)
         // Skip it if we already know the status
         if (prevStatusBit != currStatusBit) {
             for (StatusListener* listener : _listeners) {
-                listener->onStatusChanged((StatusEvent::Event)i_bit, currStatusBit);
+                listener->onStatusChanged((StatusEvent)i_bit, currStatusBit);
             }
         }
     }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <PluginInterface.h>
+
 #include <optional>
 #include <string>
 
@@ -39,65 +41,69 @@
 */
 
 // List of logged events
-#define STATUS_EVENTS(X)            \
-    X(Docked)                       \
-    X(Landed)                       \
-    X(LandingGear_Down)             \
-    X(Shields_Up)                   \
-    X(Supercruise)                  \
-    X(FlightAssist_Off)             \
-    X(Hardpoints_Deployed)          \
-    X(In_Wing)                      \
-    X(LightsOn)                     \
-    X(Cargo_Scoop_Deployed)         \
-    X(Silent_Running)               \
-    X(Scooping_Fuel)                \
-    X(Srv_Handbrake)                \
-    X(Srv_using_Turret_view)        \
-    X(Srv_Turret_retracted)         \
-    X(Srv_DriveAssist)              \
-    X(Fsd_MassLocked)               \
-    X(Fsd_Charging)                 \
-    X(Fsd_Cooldown)                 \
-    X(Low_Fuel)                     \
-    X(Over_Heating)                 \
-    X(Has_Lat_Long)                 \
-    X(IsInDanger)                   \
-    X(Being_Interdicted)            \
-    X(In_MainShip)                  \
-    X(In_Fighter)                   \
-    X(In_SRV)                       \
-    X(Hud_in_Analysis_mode)         \
-    X(Night_Vision)                 \
-    X(Altitude_from_Average_radius) \
-    X(fsdJump)                      \
-    X(srvHighBeam)
+//#define STATUS_EVENTS(X)            \
+//    X(Docked)                       \
+//    X(Landed)                       \
+//    X(LandingGear_Down)             \
+//    X(Shields_Up)                   \
+//    X(Supercruise)                  \
+//    X(FlightAssist_Off)             \
+//    X(Hardpoints_Deployed)          \
+//    X(In_Wing)                      \
+//    X(LightsOn)                     \
+//    X(Cargo_Scoop_Deployed)         \
+//    X(Silent_Running)               \
+//    X(Scooping_Fuel)                \
+//    X(Srv_Handbrake)                \
+//    X(Srv_using_Turret_view)        \
+//    X(Srv_Turret_retracted)         \
+//    X(Srv_DriveAssist)              \
+//    X(Fsd_MassLocked)               \
+//    X(Fsd_Charging)                 \
+//    X(Fsd_Cooldown)                 \
+//    X(Low_Fuel)                     \
+//    X(Over_Heating)                 \
+//    X(Has_Lat_Long)                 \
+//    X(IsInDanger)                   \
+//    X(Being_Interdicted)            \
+//    X(In_MainShip)                  \
+//    X(In_Fighter)                   \
+//    X(In_SRV)                       \
+//    X(Hud_in_Analysis_mode)         \
+//    X(Night_Vision)                 \
+//    X(Altitude_from_Average_radius) \
+//    X(fsdJump)                      \
+//    X(srvHighBeam)
 
 
-struct StatusEvent {
-    // Enum
-    enum Event {
-#define GEN_ENUM(name) name,
-        STATUS_EVENTS(GEN_ENUM)
-#undef GEN_ENUM
-        N_StatusEvents
-    };
+//struct StatusEvent {
+//    // Enum
+//    enum Event {
+//#define GEN_ENUM(name) name,
+//        STATUS_EVENTS(GEN_ENUM)
+//#undef GEN_ENUM
+//        N_StatusEvents
+//    };
+//};
 
 
-    static const char* toString(Event ev) {
+struct StatusEventUtil {
+    static const char* toString(StatusEvent ev)
+    {
         switch (ev) {
-#define GEN_CASE(name) case name: return #name;
+    #define GEN_CASE(name) case name: return #name;
             STATUS_EVENTS(GEN_CASE)
-#undef GEN_CASE
+    #undef GEN_CASE
         default: return "Unknown";
         }
     }
 
 
-    static std::optional<Event> fromString(const std::string& s) {
-#define GEN_IF(name) if (s == #name) return name;
+    static std::optional<StatusEvent> fromString(const std::string& s)
+    {
+    #define GEN_IF(name) if (s == #name) return name;
         STATUS_EVENTS(GEN_IF)
-#undef GEN_IF
-            return std::nullopt;
+    #undef GEN_IF
+        return std::nullopt;
     }
 };

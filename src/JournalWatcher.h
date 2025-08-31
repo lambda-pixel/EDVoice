@@ -4,6 +4,7 @@
 #include <fstream>
 #include <vector>
 
+#include <PluginInterface.h>
 
 class JournalListener
 {
