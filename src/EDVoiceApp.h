@@ -1,6 +1,8 @@
 #pragma once
 
 #include <filesystem>
+#include <map>
+
 #include <PluginInterface.h>
 
 #ifdef _WIN32
@@ -20,13 +22,10 @@ typedef void* LibHandle;
 #include "StatusWatcher.h"
 #include "JournalWatcher.h"
 
-// Temporary, this shall be replaced by a plugin
-#include "VoicePack.h"
-
 struct LoadedPlugin {
     LibHandle handle = nullptr;
     PluginCallbacks callbacks{};
-    std::string name;
+    std::string name, versionStr, author, longname;
 };
 
 
@@ -70,7 +69,9 @@ private:
 class EDVoiceApp
 {
 public:
-    EDVoiceApp(const std::filesystem::path& config);
+    EDVoiceApp(
+        const std::filesystem::path& exec_path,
+        const std::filesystem::path& config);
     virtual ~EDVoiceApp();
     void run();
 
@@ -83,6 +84,7 @@ private:
     void unloadPlugin(LoadedPlugin& plugin);
 
 private:
+    std::map<std::string, std::filesystem::path> _config;
     std::vector<LoadedPlugin> _plugins;
 
     std::vector<PluginJournalListerner> _pluginJournalListeners;
@@ -90,7 +92,4 @@ private:
 
     StatusWatcher _statusWatcher;
     JournalWatcher _journalWatcher;
-
-    // Temporary, this shall be replaced by a plugin
-    VoicePack _voicePack;
 };

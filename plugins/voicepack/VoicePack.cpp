@@ -1,23 +1,37 @@
 #include "VoicePack.h"
 
+#include <fstream>
 #include <sstream>
 #include <json.hpp>
 
-VoicePack::VoicePack(const std::filesystem::path& filepath)
+
+VoicePack::VoicePack()
 {
-    if (!std::filesystem::exists(filepath)) {
-        throw std::runtime_error("VoicePack: Cannot find configuration file: " + filepath.string());
+}
+
+
+void VoicePack::loadConfig(const char* filepath)
+{
+    // Clear current configuration
+    _voiceStatus.fill(std::filesystem::path());
+    _voiceJournal.clear();
+
+    std::filesystem::path path(filepath);
+
+    // Load new configuration
+    if (!std::filesystem::exists(path)) {
+        throw std::runtime_error("VoicePack: Cannot find configuration file: " + path.string());
     }
 
     std::cout << "[INFO  ] Loading voicepack: " << filepath << std::endl;
 
     std::filesystem::path basePath;
 
-    if (filepath.is_absolute()) {
-        basePath = filepath.parent_path();
+    if (path.is_absolute()) {
+        basePath = path.parent_path();
     }
     else {
-        basePath = std::filesystem::current_path() / filepath.parent_path();
+        basePath = std::filesystem::current_path() / path.parent_path();
     }
 
     auto resolvePath = [basePath](const std::string& file) -> std::filesystem::path {
@@ -34,7 +48,7 @@ VoicePack::VoicePack(const std::filesystem::path& filepath)
         // Parse status
         if (json.contains("status")) {
             for (auto& st : json["status"].items()) {
-                const std::optional<StatusEvent> status = StatusEventUtil::fromString(st.key());
+                const std::optional<StatusEvent> status = statusFromString(st.key());
 
                 if (!status || status == StatusEvent::N_StatusEvents) {
                     std::cout << "[WARN  ] Unknown status event: " << st.key() << "\n";
@@ -67,7 +81,7 @@ VoicePack::VoicePack(const std::filesystem::path& filepath)
 
     // Log missing files and remove them from the list
     for (size_t iEvent = 0; iEvent < StatusEvent::N_StatusEvents; iEvent++) {
-        const std::string eventName = StatusEventUtil::toString((StatusEvent)iEvent);
+        const std::string eventName = statusToString((StatusEvent)iEvent);
 
         for (size_t i = 0; i < 2; i++) {
             const std::string state = (i == 0) ? "false" : "true";

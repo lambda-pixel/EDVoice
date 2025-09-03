@@ -81,13 +81,18 @@ enum StatusEvent {
     N_StatusEvents
 };
 
+typedef void (*LoadConfigFn)(const char* filepath, void* ctx);
 typedef void (*OnStatusChangedFn)(StatusEvent event, int set, void* ctx);
 typedef void (*OnJournalEventFn)(const char* event, const char* jsonEntry, void* ctx);
 
 typedef struct {
+    LoadConfigFn loadConfig;
     OnStatusChangedFn onStatusChanged;
     OnJournalEventFn onJournalEvent;
     void* ctx;
+    char name[32];
+    char versionStr[16];
+    char author[32];
 } PluginCallbacks;
 
 // Each plugin must implement this function to register its callbacks
@@ -98,8 +103,15 @@ __declspec(dllexport) void unregisterPlugin();
 }
 #endif
 
+#ifdef __cplusplus
+#include <cstring>
+#endif
+
 // Macro to define plugin registration boilerplate for EventLogger
-#define DECLARE_PLUGIN(ClassName) \
+#define DECLARE_PLUGIN(ClassName, _name, _versionStr, _author) \
+    static void loadConfig(const char* filepath, void* ctx) { \
+        reinterpret_cast<ClassName*>(ctx)->loadConfig(filepath); \
+    } \
     static void onJournalEvent(StatusEvent event, int set, void* ctx) { \
         reinterpret_cast<ClassName*>(ctx)->onStatusChanged(event, set); \
     } \
@@ -110,9 +122,13 @@ __declspec(dllexport) void unregisterPlugin();
     extern "C" { \
     __declspec(dllexport) void registerPlugin(PluginCallbacks* callbacks) { \
         g_plugin = new ClassName(); \
+        callbacks->loadConfig = loadConfig; \
         callbacks->onStatusChanged = onJournalEvent; \
         callbacks->onJournalEvent = onStatusChanged; \
         callbacks->ctx = g_plugin; \
+        std::strncpy(callbacks->name, _name, sizeof(callbacks->name) - 1); \
+        std::strncpy(callbacks->versionStr, _versionStr, sizeof(callbacks->versionStr) - 1); \
+        std::strncpy(callbacks->author, _author, sizeof(callbacks->author) - 1); \
     } \
     __declspec(dllexport) void unregisterPlugin() { \
         delete g_plugin; \

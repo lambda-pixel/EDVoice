@@ -4,17 +4,56 @@
 #include <thread>
 #include <conio.h>
 
+#include <json.hpp>
+
 #include "EliteFileUtil.h"
 
 
-EDVoiceApp::EDVoiceApp(const std::filesystem::path& config)
+EDVoiceApp::EDVoiceApp(
+    const std::filesystem::path& exec_path,
+    const std::filesystem::path& config)
     : _statusWatcher(EliteFileUtil::getStatusFile(EliteFileUtil::getUserProfile()))
     , _journalWatcher(EliteFileUtil::getLatestJournal(EliteFileUtil::getUserProfile()))
-    // Temporary, this shall be replaced by a plugin
-    , _voicePack(config)
 {
-    // Load install plugins
-    const std::filesystem::path pluginDir = std::filesystem::current_path() / "plugins";
+    // Load configuration
+    if (!std::filesystem::exists(config)) {
+        throw std::runtime_error("Cannot find configuration file: " + config.string());
+    }
+
+    std::filesystem::path basePath;
+
+    if (config.is_absolute()) {
+        basePath = config.parent_path();
+    }
+    else {
+        basePath = std::filesystem::current_path() / config.parent_path();
+    }
+
+    std::cout << "[INFO  ] Using configuration file: " << config << std::endl;
+    {
+        std::ifstream configFile(config);
+        std::string fileContent((std::istreambuf_iterator<char>(configFile)), std::istreambuf_iterator<char>());
+
+        nlohmann::json json = nlohmann::json::parse(fileContent);
+
+        if (json.contains("plugins")) {
+            for (auto& item : json["plugins"].items()) {
+                for (auto& pluginItem : item.value().items()) {
+                    if (pluginItem.key() == "config") {
+                        _config[item.key()] = basePath / pluginItem.value().get<std::string>();
+                    }
+                }
+            }
+        }
+        // Right now, we keep loading voicepacks even if they are not in the "plugins" section
+        else if (json.contains("status") || json.contains("event")) {
+            std::cout << "[WARN  ] Configuration file seems to be a voicepack. We will force load it but this behavior may be dropped in future versions." << std::endl;
+            _config["VoicePack"] = config;
+        }
+    }
+
+    // Load installed plugins
+    const std::filesystem::path pluginDir = exec_path / "plugins";
 
     if (std::filesystem::exists(pluginDir) && std::filesystem::is_directory(pluginDir)) {
         for (const auto& entry : std::filesystem::directory_iterator(pluginDir)) {
@@ -30,10 +69,21 @@ EDVoiceApp::EDVoiceApp(const std::filesystem::path& config)
 
     // Register plugins
     for (auto& plugin : _plugins) {
+        // if configuration exists for this plugin, load it
+        auto it = _config.find(plugin.name);
+
+        if (plugin.callbacks.loadConfig && it != _config.end()) {
+            const std::filesystem::path& cfgPath = it->second;
+            std::cout << "[INFO  ] Loading config for plugin " << plugin.name << ": " << cfgPath << std::endl;
+            plugin.callbacks.loadConfig(cfgPath.string().c_str(), plugin.callbacks.ctx);
+        }
+
         if (plugin.callbacks.onJournalEvent) {
+            std::cout << "[INFO  ] Registering journal listener for plugin " << plugin.name << std::endl;
             _pluginJournalListeners.push_back(PluginJournalListerner(&plugin.callbacks));
         }
         if (plugin.callbacks.onStatusChanged) {
+            std::cout << "[INFO  ] Registering status listener for plugin " << plugin.name << std::endl;
             _pluginStatusListeners.push_back(PluginStatusListener(&plugin.callbacks));
         }
     }
@@ -45,10 +95,6 @@ EDVoiceApp::EDVoiceApp(const std::filesystem::path& config)
     for (auto& listener : _pluginStatusListeners) {
         _statusWatcher.addListener(&listener);
     }
-
-    // Temporary, will be moved to an extension
-    _journalWatcher.addListener(&_voicePack);
-    _statusWatcher.addListener(&_voicePack);
 }
 
 
@@ -227,21 +273,39 @@ void EDVoiceApp::loadPlugin(const std::filesystem::path& path)
     _plugins.push_back(LoadedPlugin{});
 
     _plugins.back().handle = lib;
+
     _plugins.back().name = path.filename().string();
     regFn(&_plugins.back().callbacks);
 
-    std::cout << "[INFO  ] Loaded plugin: " << _plugins.back().name << std::endl;
+    if (_plugins.back().callbacks.name[0] != '\0') {
+        _plugins.back().name     = _plugins.back().callbacks.name;
+        _plugins.back().longname = _plugins.back().callbacks.name;
+    }
+    if (_plugins.back().callbacks.versionStr[0] != '\0') {
+        _plugins.back().versionStr = _plugins.back().callbacks.versionStr;
+        _plugins.back().longname += " v";
+        _plugins.back().longname += _plugins.back().callbacks.versionStr;
+    }
+    if (_plugins.back().callbacks.author[0] != '\0') {
+        _plugins.back().author = _plugins.back().callbacks.author;
+        _plugins.back().longname += " by ";
+        _plugins.back().longname += _plugins.back().callbacks.author;
+    }
+
+    std::cout << "[INFO  ] Loaded plugin: " << path.filename() << " - " << _plugins.back().longname << std::endl;
 }
 
 
 void EDVoiceApp::unloadPlugin(LoadedPlugin& plugin)
 {
     if (plugin.handle) {
-        if (plugin.callbacks.onJournalEvent || plugin.callbacks.onStatusChanged) {
-            plugin.callbacks.onJournalEvent = nullptr;
-            plugin.callbacks.onStatusChanged = nullptr;
-            plugin.callbacks.ctx = nullptr;
-        }
+        plugin.callbacks.onJournalEvent = nullptr;
+        plugin.callbacks.onStatusChanged = nullptr;
+        plugin.callbacks.loadConfig = nullptr;
+        plugin.callbacks.name[0] = '\0';
+        plugin.callbacks.versionStr[0] = '\0';
+        plugin.callbacks.author[0] = '\0';
+        plugin.callbacks.ctx = nullptr;
 
         auto unregFn = reinterpret_cast<void(*)()>(GetSym(plugin.handle, "unregisterPlugin"));
 
