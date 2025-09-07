@@ -16,6 +16,6 @@ set_target_properties(EventLogger PROPERTIES
 
 # Install rule for CPack in plugins/
 install(TARGETS EventLogger
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/plugins
-    LIBRARY DESTINATION ${CMAKE_INSTALL_BINDIR}/plugins
+    RUNTIME DESTINATION plugins
+    LIBRARY DESTINATION plugins
 )
