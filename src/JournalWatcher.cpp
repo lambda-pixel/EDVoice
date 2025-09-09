@@ -7,10 +7,19 @@
 JournalWatcher::JournalWatcher(const std::filesystem::path& filename)
     : _currJournalPath(filename)
     , _currJournalFile(filename)
+    , _stopForceUpdate(false)
+    , _forcedUpdateThread(&JournalWatcher::forcedUpdate, this)
 {
     std::wcout << L"[INFO  ] Monitoring: " << _currJournalPath << std::endl;
     
     _currJournalFile.seekg(0, std::ios::end);
+}
+
+
+JournalWatcher::~JournalWatcher()
+{
+    _stopForceUpdate = true;
+    _forcedUpdateThread.join();
 }
 
 
@@ -43,4 +52,14 @@ void JournalWatcher::update(const std::filesystem::path& filename)
 
     // Clear EOF flag
     _currJournalFile.clear();
+}
+
+
+void JournalWatcher::forcedUpdate() {
+    // We need to regularly load the file to avoid miss in the WIN32 monitoring
+    // in case the file was not flushed to the disk.
+    while (!_stopForceUpdate) {
+        std::wifstream file(_currJournalPath, std::ios::in | std::ios::binary);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    }
 }

@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <fstream>
 #include <vector>
+#include <thread>
 
 #include <PluginInterface.h>
 
@@ -17,13 +18,20 @@ class JournalWatcher
 {
 public:
     JournalWatcher(const std::filesystem::path& filename);
+    virtual ~JournalWatcher();
 
     void addListener(JournalListener* listener);
 
     void update(const std::filesystem::path& filename);
 
 private:
+    void forcedUpdate();
+
+private:
     std::filesystem::path _currJournalPath;
     std::ifstream _currJournalFile;
     std::vector<JournalListener*> _listeners;
+
+    bool _stopForceUpdate;
+    std::thread _forcedUpdateThread;
 };
