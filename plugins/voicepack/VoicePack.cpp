@@ -175,6 +175,21 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
             }
         }
     }
+    else if (event == "CollectCargo") {
+        const nlohmann::json json = nlohmann::json::parse(journalEntry);
+
+        if (json.contains("Type")) {
+            const std::string cargoType = json["Type"].get<std::string>();
+
+            // We've collected an escape pod!
+            if (cargoType == "occupiedcryopod"
+                || cargoType == "damagedescapepod"
+                // TODO Just in case... I don't know all the types like Thargoids pods
+                || cargoType.find("pod") != std::string::npos) {
+                onSpecialEvent("CollectPod");
+            }
+        }
+    }
 }
 
 

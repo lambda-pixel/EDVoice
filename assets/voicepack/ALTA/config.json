@@ -45,8 +45,9 @@
         "UnderAttack": "sounds/UnderAttack.wav"
     },
     "special": {
-        "Activating" : "sounds/Activating.wav",
-        "Deactivating" : "sounds/Deactivating.wav",
-        "CargoFull" : "sounds/CargoFull.wav"
+        "Activating": "sounds/Activating.wav",
+        "Deactivating": "sounds/Deactivating.wav",
+        "CargoFull": "sounds/CargoFull.wav",
+        "CollectPod": "sounds/GetPod.wav"
     }
 }
