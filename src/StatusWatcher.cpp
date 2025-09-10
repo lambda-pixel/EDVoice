@@ -58,6 +58,12 @@ void StatusWatcher::checkUpdatedBits(uint32_t flags)
         return;
     }
 
+    // First time, when launching the app before the game, just store the flags
+    if (_previousFlags == 0) {
+        _previousFlags = flags;
+        return;
+    }
+
     printChangedBits(flags);
 
     for (int i_bit = 0; i_bit < 32; i_bit++) {
