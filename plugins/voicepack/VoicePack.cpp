@@ -107,6 +107,13 @@ void VoicePack::loadConfig(const char* filepath)
             path.clear();
         }
     }
+
+    for (auto& [event, path] : _voiceSpecial) {
+        if (!path.empty() && !std::filesystem::exists(path)) {
+            std::cerr << "[ERR   ] Missing file for special '" << event << "': " << path << std::endl;
+            path.clear();
+}
+    }
 }
 
 
