@@ -113,7 +113,7 @@ void VoicePack::loadConfig(const char* filepath)
         if (!path.empty() && !std::filesystem::exists(path)) {
             std::cerr << "[ERR   ] Missing file for special '" << event << "': " << path << std::endl;
             path.clear();
-}
+        }
     }
 }
 
@@ -172,7 +172,7 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
             }
             else if (cargo == 0) {
                 onSpecialEvent("CargoEmpty");
-}
+            }
         }
     }
 }
@@ -288,15 +288,14 @@ void Alta::loadConfig(const char* filepath)
     // loads another voicepack with drag'n drop.
     // I'll attempt something more elegant later, sorry folks!
     if (!_altaLoaded) {
-    const std::filesystem::path altaVoicepack = basePath.parent_path() / "ALTA" / "config.json";
+        const std::filesystem::path altaVoicepack = basePath.parent_path() / "ALTA" / "config.json";
 
-    _standardVoicePack.loadConfig(filepath);
-    _altaVoicePack.loadConfig(altaVoicepack.string().c_str());
-    _altaActive = false;
-    std::cout << "[INFO  ] ALTA voicepack loaded." << std::endl;
+        _altaVoicePack.loadConfig(altaVoicepack.string().c_str());
+        _altaActive = false;
+        std::cout << "[INFO  ] ALTA voicepack loaded." << std::endl;
 
         _altaLoaded = true;
-}
+    }
 }
 
 
@@ -321,12 +320,12 @@ void Alta::onJournalEvent(const std::string& event, const std::string& journalEn
         if (!_altaActive) {
             // We are activating ALTA
             std::cout << "[INFO  ] ALTA voicepack activated." << std::endl;
-            _altaVoicePack.onSpecialEvent("Activated");
+            _altaVoicePack.onSpecialEvent("Activating");
         }
         else {
             // We are deactivating ALTA
             std::cout << "[INFO  ] Standard voicepack activated." << std::endl;
-            _altaVoicePack.onSpecialEvent("Deactivated");
+            _altaVoicePack.onSpecialEvent("Deactivating");
         }
 
         _altaActive = compliant;
