@@ -6,6 +6,7 @@
 
 
 VoicePack::VoicePack()
+    : _previousUnderAttack(false)
 {
 }
 
@@ -133,10 +134,46 @@ void VoicePack::onStatusChanged(StatusEvent event, bool status)
 
 void VoicePack::onJournalEvent(const std::string& event, const std::string& journalEntry)
 {
+    // Prevent multiple "under attack" announcements
+    if (_previousUnderAttack && event == "UnderAttack") {
+        return;
+    }
+
+    _previousUnderAttack = (event == "UnderAttack");
+
     auto it = _voiceJournal.find(event);
 
     if (it != _voiceJournal.end()) {
         _player.addTrack(it->second);
+    }
+
+    // Check for cargo capacity change, there no specific event for max cargo change
+    if (event == "Loadout") {
+        // Check for cargo capacity
+        const nlohmann::json json = nlohmann::json::parse(journalEntry);
+
+        if (json.contains("CargoCapacity")) {
+            const uint32_t cargo = json["CargoCapacity"].get<uint32_t>();
+            if (cargo != _maxCargo) {
+                _maxCargo = cargo;
+                std::cout << "[INFO  ] New cargo capacity: " << _maxCargo << std::endl;
+            }
+        }
+    }
+    else if (event == "Cargo") {
+        // Check for cargo change
+        const nlohmann::json json = nlohmann::json::parse(journalEntry);
+
+        if (json.contains("Count")) {
+            const uint32_t cargo = json["Count"].get<uint32_t>();
+
+            if (cargo == _maxCargo) {
+                onSpecialEvent("CargoFull");
+            }
+            else if (cargo == 0) {
+                onSpecialEvent("CargoEmpty");
+}
+        }
     }
 }
 

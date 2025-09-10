@@ -49,6 +49,11 @@ private:
     std::map<std::string, std::filesystem::path> _voiceJournal;
     std::map<std::string, std::filesystem::path> _voiceSpecial;
     AudioPlayer _player;
+
+    uint32_t _maxCargo;
+
+    // Uggly hack to prevent multiple "under attack" announcements
+    bool _previousUnderAttack;
 };
 
 
