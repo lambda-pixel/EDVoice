@@ -92,6 +92,9 @@ public:
 
     VoicePack _standardVoicePack;
     VoicePack _altaVoicePack;
+
+    // TODO: this is an ungly hack to prevent reloading ALTA after first load
+    bool _altaLoaded;
 };
 
 

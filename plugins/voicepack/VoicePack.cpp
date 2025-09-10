@@ -260,6 +260,7 @@ void MedicCompliant::validateModules(const nlohmann::json& modules)
 
 
 Alta::Alta()
+    : _altaLoaded(false)
 {
 
 }
@@ -278,12 +279,24 @@ void Alta::loadConfig(const char* filepath)
         basePath = std::filesystem::current_path() / path.parent_path();
     }
 
+    _standardVoicePack.loadConfig(filepath);
+
+    // TODO: This is ultra hacky:
+    // Attempt to locate ALTA voicepack from the provided config file.
+    // In case the ALTA voicepack is not next to it, this will shamefully crash
+    // Also, prevent from reloading ALTA mehhh prevent crashing in case the user
+    // loads another voicepack with drag'n drop.
+    // I'll attempt something more elegant later, sorry folks!
+    if (!_altaLoaded) {
     const std::filesystem::path altaVoicepack = basePath.parent_path() / "ALTA" / "config.json";
 
     _standardVoicePack.loadConfig(filepath);
     _altaVoicePack.loadConfig(altaVoicepack.string().c_str());
     _altaActive = false;
     std::cout << "[INFO  ] ALTA voicepack loaded." << std::endl;
+
+        _altaLoaded = true;
+}
 }
 
 
