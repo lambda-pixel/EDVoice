@@ -1,0 +1,52 @@
+{
+    "status": {
+        "LandingGear_Down": {
+            "true": "sounds/LandingGear_Down_1.wav",
+            "false": "sounds/LandingGear_Down_0.wav"
+        },
+        "Shields_Up": {
+            "true": "sounds/Shields_Up_1.wav",
+            "false": "sounds/Shields_Up_0.wav"
+        },
+        "FlightAssist_Off": {
+            "true": "sounds/FlightAssist_Off_1.wav",
+            "false": "sounds/FlightAssist_Off_0.wav"
+        },
+        "Cargo_Scoop_Deployed": {
+            "true": "sounds/Cargo_Scoop_Deployed_1.wav",
+            "false": "sounds/Cargo_Scoop_Deployed_0.wav"
+        },
+        "Fsd_Charging": {
+            "true": "sounds/Fsd_Charging_1.wav"
+        },
+        "In_Wing": {
+            "true": "sounds/In_Wing_1.wav",
+            "false": "sounds/In_Wing_0.wav"
+        },
+        "Silent_Running": {
+            "true": "sounds/Silent_Running_1.wav",
+            "false": "sounds/Silent_Running_0.wav"
+        },
+        "Low_Fuel": {
+            "true": "sounds/Low_Fuel.wav"
+        },
+        "Over_Heating": {
+            "true": "sounds/Over_Heating.wav"
+        },
+        "In_MainShip": {
+            "true": "sounds/Activating.wav"
+        }
+    },
+    "event": {
+        "DockingGranted": "sounds/DockingGranted.wav",
+        "DockingDenied": "sounds/DockingDenied.wav",
+        "StartJump": "sounds/StartJump.wav",
+        "ApproachBody": "sounds/OrbitalFlight.wav",
+        "UnderAttack": "sounds/UnderAttack.wav"
+    },
+    "special": {
+        "Activating" : "sounds/Activating.wav",
+        "Deactivating" : "sounds/Deactivating.wav",
+        "CargoFull" : "sounds/CargoFull.wav"
+    }
+}
