@@ -1,4 +1,4 @@
-#include "EDVoiceApp.h"
+﻿#include "EDVoiceApp.h"
 
 #include <iostream>
 #include <thread>
@@ -186,7 +186,7 @@ void EDVoiceApp::fileWatcherThread(
         if (!ok && GetLastError() != ERROR_IO_PENDING) {
             std::cerr << "[ERR   ] ReadDirectoryChangesW failed: " << GetLastError() << std::endl;
         }
-        };
+    };
 
     postRead();
 
@@ -225,6 +225,9 @@ void EDVoiceApp::fileWatcherThread(
                 }
                 else if (EliteFileUtil::isJournalFile(filename)) {
                     _journalWatcher.update(userProfile / filename);
+                }
+                else {
+                    std::wcout << L"[INFO  ] Ignoring file change: " << filename << std::endl;
                 }
 
                 if (fni->NextEntryOffset == 0) break;

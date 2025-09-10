@@ -75,6 +75,13 @@ void VoicePack::loadConfig(const char* filepath)
                 _voiceJournal[je.key()] = resolvePath(je.value().get<std::string>());
             }
         }
+
+        // Parse journal
+        if (json.contains("special")) {
+            for (auto& je : json["special"].items()) {
+                _voiceSpecial[je.key()] = resolvePath(je.value().get<std::string>());
+            }
+        }
     } catch (const std::exception& e) {
         std::cerr << "[ERR] JSON: " << e.what() << "\n";
     }
@@ -123,5 +130,155 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
 
     if (it != _voiceJournal.end()) {
         _player.addTrack(it->second);
+    }
+}
+
+
+void VoicePack::onSpecialEvent(const std::string& event)
+{
+    auto it = _voiceSpecial.find(event);
+
+    if (it != _voiceSpecial.end()) {
+        _player.addTrack(it->second);
+    }
+}
+
+
+// ---- Medic Compliant class implementation ----
+
+
+bool MedicCompliant::isCompliant()
+{
+    return correctIdentifier && !hasWeapons;
+}
+
+
+void MedicCompliant::setShipID(const std::string& shipIdent)
+{
+    std::string shipIdentLower = shipIdent;
+    std::transform(shipIdentLower.begin(), shipIdentLower.end(), shipIdentLower.begin(), ::tolower);
+
+    correctIdentifier = (shipIdentLower == "medic");
+}
+
+
+void MedicCompliant::update(const std::string& event, const std::string& journalEntry) {
+    const nlohmann::json json = nlohmann::json::parse(journalEntry);
+
+    if (event == "Loadout") {
+        if (json.contains("ShipIdent")) {
+            const std::string shipIdent = json["ShipIdent"].get<std::string>();
+            setShipID(shipIdent);
+        }
+
+        if (json.contains("Modules")) {
+            const auto& modules = json["Modules"];
+            validateModules(modules);
+        }
+    }
+    else if (event == "SetUserShipName") {
+        if (json.contains("UserShipId")) {
+            const std::string shipIdent = json["UserShipId"].get<std::string>();
+            setShipID(shipIdent);
+        }
+    }
+}
+
+
+void MedicCompliant::validateModules(const nlohmann::json& modules)
+{
+    hasWeapons = false;
+
+    for (const auto& module : modules) {
+        if (module.contains("Slot")) {
+            const std::string slotName = module["Slot"].get<std::string>();
+
+            // Check for TinyHardpoint first, they can be legal
+            if (slotName.find("TinyHardpoint") != std::string::npos) {
+                if (module.contains("Item")) {
+                    const std::string item = module["Item"].get<std::string>();
+
+                    if (item.find("defence_turret") != std::string::npos) {
+                        hasWeapons = true;
+                    }
+                }
+            }
+            else if (slotName.find("Hardpoint") != std::string::npos) {
+                hasWeapons = true;
+                return;
+            }
+        }
+    }
+}
+
+
+// ---- Alta class implementation ----
+
+
+Alta::Alta()
+{
+
+}
+
+
+void Alta::loadConfig(const char* filepath)
+{
+    // small hack to get the path of voicepack
+    std::filesystem::path path(filepath);
+    std::filesystem::path basePath;
+
+    if (path.is_absolute()) {
+        basePath = path.parent_path();
+    }
+    else {
+        basePath = std::filesystem::current_path() / path.parent_path();
+    }
+
+    const std::filesystem::path altaVoicepack = basePath.parent_path() / "ALTA" / "config.json";
+
+    _standardVoicePack.loadConfig(filepath);
+    _altaVoicePack.loadConfig(altaVoicepack.string().c_str());
+    _altaActive = false;
+    std::cout << "[INFO  ] ALTA voicepack loaded." << std::endl;
+}
+
+
+void Alta::onStatusChanged(StatusEvent event, bool status)
+{
+    if (_altaActive) {
+        _altaVoicePack.onStatusChanged(event, status);
+    }
+    else {
+        _standardVoicePack.onStatusChanged(event, status);
+    }
+}
+
+
+void Alta::onJournalEvent(const std::string& event, const std::string& journalEntry)
+{
+    _medicCompliant.update(event, journalEntry);
+    const bool compliant = _medicCompliant.isCompliant();
+
+    // Check change of status
+    if (compliant != _altaActive) {
+        if (!_altaActive) {
+            // We are activating ALTA
+            std::cout << "[INFO  ] ALTA voicepack activated." << std::endl;
+            _altaVoicePack.onSpecialEvent("Activated");
+        }
+        else {
+            // We are deactivating ALTA
+            std::cout << "[INFO  ] Standard voicepack activated." << std::endl;
+            _altaVoicePack.onSpecialEvent("Deactivated");
+        }
+
+        _altaActive = compliant;
+    }
+
+    if (_altaActive) {
+        _altaVoicePack.onJournalEvent(event, journalEntry);
+    }
+    else {
+        _standardVoicePack.onJournalEvent(event, journalEntry);
     }
 }
