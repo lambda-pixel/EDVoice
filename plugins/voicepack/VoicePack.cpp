@@ -202,7 +202,7 @@ void MedicCompliant::setShipID(const std::string& shipIdent)
     std::string shipIdentLower = shipIdent;
     std::transform(shipIdentLower.begin(), shipIdentLower.end(), shipIdentLower.begin(), ::tolower);
 
-    correctIdentifier = (shipIdentLower == "medic");
+    correctIdentifier = (shipIdentLower == "medic") || (shipIdentLower == "mdic");
 }
 
 
