@@ -7,6 +7,8 @@
 
 VoicePack::VoicePack()
     : _previousUnderAttack(false)
+    , _currShipCargo(0)
+    , _maxShipCargo(0)
 {
 }
 
@@ -154,9 +156,14 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
 
         if (json.contains("CargoCapacity")) {
             const uint32_t cargo = json["CargoCapacity"].get<uint32_t>();
-            if (cargo != _maxCargo) {
-                _maxCargo = cargo;
-                std::cout << "[INFO  ] New cargo capacity: " << _maxCargo << std::endl;
+            if (cargo != _maxShipCargo) {
+                _maxShipCargo = cargo;
+                std::cout << "[INFO  ] New cargo capacity: " << _maxShipCargo << std::endl;
+            }
+
+            // Check on ship swap if we've reached the max cargo capacity
+            if (_currShipCargo == _maxShipCargo) {
+                onSpecialEvent("CargoFull");
             }
         }
     }
@@ -165,13 +172,11 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
         const nlohmann::json json = nlohmann::json::parse(journalEntry);
 
         if (json.contains("Count")) {
-            const uint32_t cargo = json["Count"].get<uint32_t>();
-
-            if (cargo == _maxCargo) {
-                onSpecialEvent("CargoFull");
-            }
-            else if (cargo == 0) {
-                onSpecialEvent("CargoEmpty");
+            if (json.contains("Vessel")) {
+                const uint32_t cargo = json["Count"].get<uint32_t>();
+                if (json["Vessel"] == "Ship") {
+                    setShipCargo(cargo);
+                }
             }
         }
     }
@@ -199,6 +204,21 @@ void VoicePack::onSpecialEvent(const std::string& event)
 
     if (it != _voiceSpecial.end()) {
         _player.addTrack(it->second);
+    }
+}
+
+
+void VoicePack::setShipCargo(uint32_t cargo)
+{
+    if (cargo != _currShipCargo) {
+        if (cargo == 0) {
+            onSpecialEvent("CargoEmpty");
+        }
+        else if (cargo == _maxShipCargo) {
+            onSpecialEvent("CargoFull");
+        }
+
+        _currShipCargo = cargo;
     }
 }
 
@@ -335,11 +355,13 @@ void Alta::onJournalEvent(const std::string& event, const std::string& journalEn
         if (!_altaActive) {
             // We are activating ALTA
             std::cout << "[INFO  ] ALTA voicepack activated." << std::endl;
+            _altaVoicePack.transferSettings(_standardVoicePack);
             _altaVoicePack.onSpecialEvent("Activating");
         }
         else {
             // We are deactivating ALTA
             std::cout << "[INFO  ] Standard voicepack activated." << std::endl;
+            _standardVoicePack.transferSettings(_altaVoicePack);
             _altaVoicePack.onSpecialEvent("Deactivating");
         }
 

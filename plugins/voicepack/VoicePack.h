@@ -26,7 +26,17 @@ public:
 
     void onSpecialEvent(const std::string& event);
 
+    // Needed to switch between standard and ALTA voicepack
+    void transferSettings(const VoicePack& other)
+    {
+        _maxShipCargo = other._maxShipCargo;
+        _currShipCargo = other._currShipCargo;
+        _previousUnderAttack = other._previousUnderAttack;
+    }
+
 private:
+    void setShipCargo(uint32_t cargo);
+
     static std::optional<StatusEvent> statusFromString(const std::string& s)
     {
 #define GEN_IF(name) if (s == #name) return name;
@@ -50,7 +60,8 @@ private:
     std::map<std::string, std::filesystem::path> _voiceSpecial;
     AudioPlayer _player;
 
-    uint32_t _maxCargo;
+    uint32_t _maxShipCargo;
+    uint32_t _currShipCargo;
 
     // Uggly hack to prevent multiple "under attack" announcements
     bool _previousUnderAttack;
