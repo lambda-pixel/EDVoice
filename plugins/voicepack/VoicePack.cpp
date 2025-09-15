@@ -211,7 +211,7 @@ void VoicePack::onSpecialEvent(const std::string& event)
 void VoicePack::setShipCargo(uint32_t cargo)
 {
     if (cargo != _currShipCargo) {
-        if (cargo == 0) {
+        if (cargo == 0 && _maxShipCargo > 0) {
             onSpecialEvent("CargoEmpty");
         }
         else if (cargo == _maxShipCargo) {
