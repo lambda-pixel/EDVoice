@@ -13,6 +13,14 @@
 #include <json.hpp>
 
 
+enum Vehicle
+{
+    Ship,
+    SRV,
+    OnFoot,
+    N_Vehicles
+};
+
 class VoicePack
 {
 public:
@@ -29,13 +37,31 @@ public:
     // Needed to switch between standard and ALTA voicepack
     void transferSettings(const VoicePack& other)
     {
+        _currVehicle = other._currVehicle;
+
         _maxShipCargo = other._maxShipCargo;
         _currShipCargo = other._currShipCargo;
+
+        _maxSRVCargo = other._maxSRVCargo;
+        _currSRVCargo = other._currSRVCargo;
+    
         _previousUnderAttack = other._previousUnderAttack;
     }
 
 private:
     void setShipCargo(uint32_t cargo);
+    void setSRVCargo(uint32_t cargo);
+    void setCurrentVehicle(Vehicle vehicle);
+
+    static void loadStatusConfig(
+        const std::filesystem::path& basePath,
+        const nlohmann::json& json,
+        std::array<std::filesystem::path, 2 * StatusEvent::N_StatusEvents>& voiceStatus
+    );
+
+    static std::filesystem::path resolvePath(
+        const std::filesystem::path& basePath,
+        const std::string& file);
 
     static std::optional<StatusEvent> statusFromString(const std::string& s)
     {
@@ -55,13 +81,31 @@ private:
         }
     }
 
-    std::array<std::filesystem::path, 2 * StatusEvent::N_StatusEvents> _voiceStatus;
+    static const char* vehicleToString(Vehicle v)
+    {
+        // TODO: Make it cleaner
+        switch (v) {
+        case Ship: return "Ship";
+        case SRV: return "SRV";
+        case OnFoot: return "OnFoot";
+        default: return "Unknown";
+        }
+    }
+
+    std::array<std::filesystem::path, 2 * StatusEvent::N_StatusEvents> _voiceStatusCommon;
+    std::array<std::array<std::filesystem::path, 2 * StatusEvent::N_StatusEvents>, N_Vehicles> _voiceStatusSpecial;
+
     std::map<std::string, std::filesystem::path> _voiceJournal;
     std::map<std::string, std::filesystem::path> _voiceSpecial;
     AudioPlayer _player;
 
+    Vehicle _currVehicle;
+
     uint32_t _maxShipCargo;
     uint32_t _currShipCargo;
+
+    uint32_t _maxSRVCargo;
+    uint32_t _currSRVCargo;
 
     // Uggly hack to prevent multiple "under attack" announcements
     bool _previousUnderAttack;

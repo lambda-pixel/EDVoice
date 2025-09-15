@@ -1,9 +1,5 @@
 {
     "status": {
-        "LandingGear_Down": {
-            "true": "sounds/LandingGear_Down_1.wav",
-            "false": "sounds/LandingGear_Down_0.wav"
-        },
         "Shields_Up": {
             "true": "sounds/Shields_Up_1.wav",
             "false": "sounds/Shields_Up_0.wav"
@@ -32,6 +28,12 @@
         },
         "Over_Heating": {
             "true": "sounds/Over_Heating_1.wav"
+        },
+        "Ship": {
+            "LandingGear_Down": {
+                "true": "sounds/LandingGear_Down_1.wav",
+                "false": "sounds/LandingGear_Down_0.wav"
+            }
         }
     },
     "event": {

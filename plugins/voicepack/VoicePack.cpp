@@ -6,9 +6,12 @@
 
 
 VoicePack::VoicePack()
-    : _previousUnderAttack(false)
-    , _currShipCargo(0)
+    : _currVehicle(Vehicle::Ship)
     , _maxShipCargo(0)
+    , _currShipCargo(0)
+    , _maxSRVCargo(0)
+    , _currSRVCargo(0)
+    , _previousUnderAttack(false)
 {
 }
 
@@ -16,7 +19,12 @@ VoicePack::VoicePack()
 void VoicePack::loadConfig(const char* filepath)
 {
     // Clear current configuration
-    _voiceStatus.fill(std::filesystem::path());
+    _voiceStatusCommon.fill(std::filesystem::path());
+
+    for (auto& vs : _voiceStatusSpecial) {
+        vs.fill(std::filesystem::path());
+    }
+
     _voiceJournal.clear();
 
     std::filesystem::path path(filepath);
@@ -37,11 +45,6 @@ void VoicePack::loadConfig(const char* filepath)
         basePath = std::filesystem::current_path() / path.parent_path();
     }
 
-    auto resolvePath = [basePath](const std::string& file) -> std::filesystem::path {
-        std::filesystem::path p(file);
-        return p.is_absolute() ? p : (basePath / p);
-    };
-
     try {
         std::ifstream file(filepath);
         std::string fileContent((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
@@ -50,24 +53,13 @@ void VoicePack::loadConfig(const char* filepath)
 
         // Parse status
         if (json.contains("status")) {
-            for (auto& st : json["status"].items()) {
-                const std::optional<StatusEvent> status = statusFromString(st.key());
+            // Load common status config
+            loadStatusConfig(basePath, json["status"], _voiceStatusCommon);
 
-                if (!status || status == StatusEvent::N_StatusEvents) {
-                    std::cout << "[WARN  ] Unknown status event: " << st.key() << "\n";
-                    continue;
-                }
-
-                for (auto& statusEntry : st.value().items()) {
-                    if (statusEntry.key() == "true") {
-                        _voiceStatus[2 * status.value() + 1] = resolvePath(statusEntry.value().get<std::string>());
-                    }
-                    else if (statusEntry.key() == "false") {
-                        _voiceStatus[2 * status.value() + 0] = resolvePath(statusEntry.value().get<std::string>());
-                    }
-                    else {
-                        std::cout << "[WARN  ] Unknown status key: " << statusEntry.key() << "\n";
-                    }
+            for (size_t v = 0; v < N_Vehicles; v++) {
+                const std::string vehicleName = vehicleToString((Vehicle)v);
+                if (json["status"].contains(vehicleName)) {
+                    loadStatusConfig(basePath, json["status"][vehicleName], _voiceStatusSpecial[v]);
                 }
             }
         }
@@ -75,14 +67,14 @@ void VoicePack::loadConfig(const char* filepath)
         // Parse journal
         if (json.contains("event")) {
             for (auto& je : json["event"].items()) {
-                _voiceJournal[je.key()] = resolvePath(je.value().get<std::string>());
+                _voiceJournal[je.key()] = resolvePath(basePath, je.value().get<std::string>());
             }
         }
 
         // Parse journal
         if (json.contains("special")) {
             for (auto& je : json["special"].items()) {
-                _voiceSpecial[je.key()] = resolvePath(je.value().get<std::string>());
+                _voiceSpecial[je.key()] = resolvePath(basePath, je.value().get<std::string>());
             }
         }
     } catch (const std::exception& e) {
@@ -97,9 +89,18 @@ void VoicePack::loadConfig(const char* filepath)
             const std::string state = (i == 0) ? "false" : "true";
             const size_t index = 2 * iEvent + i;
 
-            if (!_voiceStatus[index].empty() && !std::filesystem::exists(_voiceStatus[index])) {
-                std::cout << "[ERR   ] Missing file for status '" << eventName << "' (" << state << "): " << _voiceStatus[index] << std::endl;
-                _voiceStatus[index].clear();
+            if (!_voiceStatusCommon[index].empty() && 
+                !std::filesystem::exists(_voiceStatusCommon[index])) {
+                std::cout << "[ERR   ] Missing file for status '" << eventName << "' (" << state << "): " << _voiceStatusCommon[index] << std::endl;
+                _voiceStatusCommon[index].clear();
+            }
+
+            for (size_t v = 0; v < N_Vehicles; v++) {
+                if (!_voiceStatusSpecial[v][index].empty() &&
+                    !std::filesystem::exists(_voiceStatusSpecial[v][index])) {
+                    std::cout << "[ERR   ] Missing file for status '" << eventName << "' (" << state << ") vehicle '" << vehicleToString((Vehicle)v) << "': " << _voiceStatusSpecial[v][index] << std::endl;
+                    _voiceStatusSpecial[v][index].clear();
+                }
             }
         }
     }
@@ -128,8 +129,12 @@ void VoicePack::onStatusChanged(StatusEvent event, bool status)
 
     const size_t index = 2 * event + (status ? 1 : 0);
 
-    if (!_voiceStatus[index].empty()) {
-        _player.addTrack(_voiceStatus[index]);
+    if (!_voiceStatusCommon[index].empty()) {
+        _player.addTrack(_voiceStatusCommon[index]);
+    }
+
+    if (!_voiceStatusSpecial[_currVehicle][index].empty()) {
+        _player.addTrack(_voiceStatusSpecial[_currVehicle][index]);
     }
 }
 
@@ -149,11 +154,11 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
         _player.addTrack(it->second);
     }
 
+    const nlohmann::json json = nlohmann::json::parse(journalEntry);
+
     // Check for cargo capacity change, there no specific event for max cargo change
     if (event == "Loadout") {
         // Check for cargo capacity
-        const nlohmann::json json = nlohmann::json::parse(journalEntry);
-
         if (json.contains("CargoCapacity")) {
             const uint32_t cargo = json["CargoCapacity"].get<uint32_t>();
             if (cargo != _maxShipCargo) {
@@ -169,20 +174,19 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
     }
     else if (event == "Cargo") {
         // Check for cargo change
-        const nlohmann::json json = nlohmann::json::parse(journalEntry);
-
         if (json.contains("Count")) {
             if (json.contains("Vessel")) {
                 const uint32_t cargo = json["Count"].get<uint32_t>();
                 if (json["Vessel"] == "Ship") {
                     setShipCargo(cargo);
                 }
+                else if (json["Vessel"] == "SRV") {
+                    setSRVCargo(cargo);
+                }
             }
         }
     }
     else if (event == "CollectCargo") {
-        const nlohmann::json json = nlohmann::json::parse(journalEntry);
-
         if (json.contains("Type")) {
             const std::string cargoType = json["Type"].get<std::string>();
 
@@ -195,6 +199,30 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
             }
         }
     }
+    // On foot transitions
+    else if (event == "Disembark") {
+        setCurrentVehicle(Vehicle::OnFoot);
+    }
+    else if (event == "Embark") {
+        if (json["SRV"].get<bool>()) {
+            setCurrentVehicle(Vehicle::SRV);
+        }
+        else {
+            setCurrentVehicle(Vehicle::Ship);
+        }
+    }
+    else if (event == "LaunchSRV") {
+        setCurrentVehicle(Vehicle::SRV);
+    }
+    else if (event == "DockSRV") {
+        setCurrentVehicle(Vehicle::Ship);
+    }
+    //else if (event == "LaunchFighter") {
+    //    _currentVehicule = Vehicle::Ship;
+    //}
+    //else if (event == "DockFighter") {
+    //    _currentVehicule = Vehicle::Ship;
+    //}
 }
 
 
@@ -211,15 +239,93 @@ void VoicePack::onSpecialEvent(const std::string& event)
 void VoicePack::setShipCargo(uint32_t cargo)
 {
     if (cargo != _currShipCargo) {
-        if (cargo == 0 && _maxShipCargo > 0) {
-            onSpecialEvent("CargoEmpty");
-        }
-        else if (cargo == _maxShipCargo) {
-            onSpecialEvent("CargoFull");
+        // Only trigger if we have a max cargo defined
+        if (_maxShipCargo > 0) {
+            if (cargo == 0) {
+                onSpecialEvent("CargoEmpty");
+            }
+            else if (cargo == _maxShipCargo) {
+                onSpecialEvent("CargoFull");
+            }
         }
 
         _currShipCargo = cargo;
     }
+}
+
+
+void VoicePack::setSRVCargo(uint32_t cargo)
+{
+    if (cargo != _currSRVCargo) {
+        // Only trigger if we have a max cargo defined
+        if (_maxSRVCargo > 0) {
+            if (cargo == 0 && _maxSRVCargo > 0) {
+                onSpecialEvent("CargoEmpty");
+            }
+            else if (cargo == _maxSRVCargo) {
+                onSpecialEvent("CargoFull");
+            }
+        }
+
+        _currSRVCargo = cargo;
+    }
+}
+
+
+void VoicePack::setCurrentVehicle(Vehicle vehicle)
+{
+    if (vehicle != _currVehicle) {
+        _currVehicle = vehicle;
+
+        switch (_currVehicle) {
+        case Ship:
+            std::cout << "[INFO  ] Now in ship" << std::endl;
+            break;
+        case SRV:
+            std::cout << "[INFO  ] Now in SRV" << std::endl;
+            break;
+        case OnFoot:
+            std::cout << "[INFO  ] Now on foot" << std::endl;
+            break;
+        }
+    }
+}
+
+
+void VoicePack::loadStatusConfig(
+    const std::filesystem::path& basePath,
+    const nlohmann::json& json,
+    std::array<std::filesystem::path, 2 * StatusEvent::N_StatusEvents>& voiceStatus)
+{
+    for (auto& st : json.items()) {
+        const std::optional<StatusEvent> status = statusFromString(st.key());
+
+        if (!status || status == StatusEvent::N_StatusEvents) {
+            // This is a nested status probably
+            // std::cout << "[WARN  ] Unknown status event: " << st.key() << "\n";
+            continue;
+        }
+
+        for (auto& statusEntry : st.value().items()) {
+            if (statusEntry.key() == "true") {
+                voiceStatus[2 * status.value() + 1] = resolvePath(basePath, statusEntry.value().get<std::string>());
+            }
+            else if (statusEntry.key() == "false") {
+                voiceStatus[2 * status.value() + 0] = resolvePath(basePath, statusEntry.value().get<std::string>());
+            }
+            else {
+                std::cout << "[WARN  ] Unknown status key: " << statusEntry.key() << "\n";
+            }
+        }
+    }
+}
+
+std::filesystem::path VoicePack::resolvePath(
+    const std::filesystem::path& basePath,
+    const std::string& file)
+{
+    std::filesystem::path p(file);
+    return p.is_absolute() ? p : (basePath / p);
 }
 
 
