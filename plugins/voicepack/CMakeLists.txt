@@ -1,5 +1,6 @@
 add_library(VoicePack SHARED
     VoicePack.cpp
+    AudioPlayer.cpp
 )
 
 target_include_directories(VoicePack PRIVATE ../include)
