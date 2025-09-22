@@ -8,7 +8,11 @@ public:
     EventLogger() = default;
 
     void loadConfig(const char* filepath) {}
+
     void onStatusChanged(StatusEvent event, int set);
+
+    void setJournalPreviousEvent(const char* event, const char* jsonEntry);
+
     void onJournalEvent(const char* event, const char* jsonEntry);
 
 private:

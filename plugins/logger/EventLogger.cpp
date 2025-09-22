@@ -12,9 +12,15 @@ void EventLogger::onStatusChanged(StatusEvent event, int set)
 }
 
 
+void EventLogger::setJournalPreviousEvent(const char* event, const char* jsonEntry)
+{
+    std::cout << "[EVENT ] Journal old entry: " << event << std::endl;
+}
+
+
 void EventLogger::onJournalEvent(const char* event, const char* jsonEntry)
 {
-    std::cout << "[EVENT ] Journal entry: " << event << std::endl;
+    std::cout << "[EVENT ] Journal new entry: " << event << std::endl;
 }
 
 

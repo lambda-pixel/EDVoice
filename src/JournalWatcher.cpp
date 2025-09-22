@@ -8,11 +8,8 @@ JournalWatcher::JournalWatcher(const std::filesystem::path& filename)
     : _currJournalPath(filename)
     , _currJournalFile(filename)
     , _stopForceUpdate(false)
-    , _forcedUpdateThread(&JournalWatcher::forcedUpdate, this)
 {
     std::wcout << L"[INFO  ] Monitoring: " << _currJournalPath << std::endl;
-    
-    _currJournalFile.seekg(0, std::ios::end);
 }
 
 
@@ -26,6 +23,23 @@ JournalWatcher::~JournalWatcher()
 void JournalWatcher::addListener(JournalListener* listener)
 {
     _listeners.push_back(listener);
+}
+
+
+void JournalWatcher::start()
+{
+    // Prime the listeners with existing entries
+    std::string line;
+
+    while (std::getline(_currJournalFile, line)) {
+        auto j = nlohmann::json::parse(line);
+
+        for (JournalListener* listener : _listeners) {
+            listener->setJournalPreviousEvent(j["event"], line);
+        }
+    }
+
+    _forcedUpdateThread = std::thread(&JournalWatcher::forcedUpdate, this);
 }
 
 

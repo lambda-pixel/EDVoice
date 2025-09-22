@@ -10,6 +10,7 @@
 class JournalListener
 {
 public:
+    virtual void setJournalPreviousEvent(const std::string& event, const std::string& jounralEntry) = 0;
     virtual void onJournalEvent(const std::string& event, const std::string& jounralEntry) = 0;
 };
 
@@ -21,6 +22,8 @@ public:
     virtual ~JournalWatcher();
 
     void addListener(JournalListener* listener);
+
+    void start();
 
     void update(const std::filesystem::path& filename);
 

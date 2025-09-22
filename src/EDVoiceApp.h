@@ -37,6 +37,13 @@ public:
     {
     }
 
+    void setJournalPreviousEvent(const std::string& event, const std::string& journalEntry) override
+    {
+        if (_callbacks && _callbacks->setJournalPreviousEvent) {
+            _callbacks->setJournalPreviousEvent(event.c_str(), journalEntry.c_str(), _callbacks->ctx);
+        }
+    }
+
     void onJournalEvent(const std::string& event, const std::string& journalEntry) override
     {
         if (_callbacks && _callbacks->onJournalEvent) {

@@ -60,8 +60,8 @@ AudioPlayer::~AudioPlayer()
 
 void AudioPlayer::addTrack(const std::wstring& path)
 {
-    // Avoid queue twice the same track
-    if (_trackQueue.has(path)) {
+    // Avoid queue twice the same track or overflow the queue
+    if (_trackQueue.has(path) || _trackQueue.size() > 4) {
         return;
     }
 

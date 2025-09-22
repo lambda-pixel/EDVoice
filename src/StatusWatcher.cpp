@@ -21,6 +21,12 @@ void StatusWatcher::addListener(StatusListener* listener)
 }
 
 
+void StatusWatcher::start()
+{
+    // This does nothing but makes API consistent with JournalWatcher
+}
+
+
 void StatusWatcher::update()
 {
     checkUpdatedBits(getFlags());

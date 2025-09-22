@@ -30,6 +30,8 @@ public:
 
     void onStatusChanged(StatusEvent event, bool status);
 
+    void setJournalPreviousEvent(const std::string& event, const std::string& journalEntry);
+
     void onJournalEvent(const std::string& event, const std::string& journalEntry);
 
     void onSpecialEvent(const std::string& event);
@@ -52,6 +54,8 @@ private:
     void setShipCargo(uint32_t cargo);
     void setSRVCargo(uint32_t cargo);
     void setCurrentVehicle(Vehicle vehicle);
+
+    void playVoiceline(const std::filesystem::path& path);
 
     static void loadStatusConfig(
         const std::filesystem::path& basePath,
@@ -109,6 +113,9 @@ private:
 
     // Uggly hack to prevent multiple "under attack" announcements
     bool _previousUnderAttack;
+    bool _isShutdownState = false;
+
+    bool _isPriming = false;
 };
 
 
@@ -136,14 +143,13 @@ public:
     Alta();
 
     void loadConfig(const char* filepath);
-
     void onStatusChanged(StatusEvent event, bool status);
-
+    void setJournalPreviousEvent(const std::string& event, const std::string& journalEntry);
     void onJournalEvent(const std::string& event, const std::string& journalEntry);
 
     // MediCorp specific ALTA voicepack
     MedicCompliant _medicCompliant;
-    bool _altaActive;
+    bool _altaActive = false;
 
     VoicePack _standardVoicePack;
     VoicePack _altaVoicePack;

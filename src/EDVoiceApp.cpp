@@ -95,6 +95,10 @@ EDVoiceApp::EDVoiceApp(
     for (auto& listener : _pluginStatusListeners) {
         _statusWatcher.addListener(&listener);
     }
+
+    // Prime watchers
+    _journalWatcher.start();
+    _statusWatcher.start();
 }
 
 
@@ -252,7 +256,6 @@ void EDVoiceApp::fileWatcherThread(
     CloseHandle(ov.hEvent);
     CloseHandle(hDir);
 }
-
 
 
 void EDVoiceApp::loadPlugin(const std::filesystem::path& path)

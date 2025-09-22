@@ -21,6 +21,8 @@ public:
 
     void addListener(StatusListener* listener);
 
+    void start();
+
     void update();
 
 private:

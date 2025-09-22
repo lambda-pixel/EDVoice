@@ -84,18 +84,21 @@ enum StatusEvent {
 typedef void (*LoadConfigFn)(const char* filepath, void* ctx);
 typedef void (*OnStatusChangedFn)(StatusEvent event, int set, void* ctx);
 typedef void (*OnJournalEventFn)(const char* event, const char* jsonEntry, void* ctx);
+typedef void (*SetJournalPreviousEventFn)(const char* event, const char* jsonEntry, void* ctx);
 
 typedef struct {
-    LoadConfigFn loadConfig;
-    OnStatusChangedFn onStatusChanged;
-    OnJournalEventFn onJournalEvent;
+    LoadConfigFn                loadConfig;                 // Load a configuration file
+    OnStatusChangedFn           onStatusChanged;            // Notify a new status change
+    SetJournalPreviousEventFn   setJournalPreviousEvent;    // Set the previous journal events known at loading (for stateful plugins)
+    OnJournalEventFn            onJournalEvent;             // Notify a new journal event
     void* ctx;
+    // Metadata
     char name[32];
     char versionStr[16];
     char author[32];
 } PluginCallbacks;
 
-// Each plugin must implement this function to register its callbacks
+// Each plugin must implement these functions to register its callbacks
 __declspec(dllexport) void registerPlugin(PluginCallbacks* callbacks);
 __declspec(dllexport) void unregisterPlugin();
 
@@ -112,20 +115,24 @@ __declspec(dllexport) void unregisterPlugin();
     static void loadConfig(const char* filepath, void* ctx) { \
         reinterpret_cast<ClassName*>(ctx)->loadConfig(filepath); \
     } \
-    static void onJournalEvent(StatusEvent event, int set, void* ctx) { \
+    static void onStatusChanged(StatusEvent event, int set, void* ctx) { \
         reinterpret_cast<ClassName*>(ctx)->onStatusChanged(event, set); \
     } \
-    static void onStatusChanged(const char* event, const char* jsonEntry, void* ctx) { \
+    static void setJournalPreviousEvent(const char* event, const char* jsonEntry, void* ctx) { \
+        reinterpret_cast<ClassName*>(ctx)->setJournalPreviousEvent(event, jsonEntry); \
+    } \
+    static void onJournalEvent(const char* event, const char* jsonEntry, void* ctx) { \
         reinterpret_cast<ClassName*>(ctx)->onJournalEvent(event, jsonEntry); \
     } \
     ClassName* g_plugin = nullptr; \
     extern "C" { \
     __declspec(dllexport) void registerPlugin(PluginCallbacks* callbacks) { \
         g_plugin = new ClassName(); \
-        callbacks->loadConfig = loadConfig; \
-        callbacks->onStatusChanged = onJournalEvent; \
-        callbacks->onJournalEvent = onStatusChanged; \
-        callbacks->ctx = g_plugin; \
+        callbacks->loadConfig               = loadConfig; \
+        callbacks->onStatusChanged          = onStatusChanged; \
+        callbacks->setJournalPreviousEvent  = setJournalPreviousEvent; \
+        callbacks->onJournalEvent           = onJournalEvent; \
+        callbacks->ctx                      = g_plugin; \
         std::strncpy(callbacks->name, _name, sizeof(callbacks->name) - 1); \
         std::strncpy(callbacks->versionStr, _versionStr, sizeof(callbacks->versionStr) - 1); \
         std::strncpy(callbacks->author, _author, sizeof(callbacks->author) - 1); \

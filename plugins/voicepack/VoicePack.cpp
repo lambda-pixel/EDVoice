@@ -123,6 +123,10 @@ void VoicePack::loadConfig(const char* filepath)
 
 void VoicePack::onStatusChanged(StatusEvent event, bool status)
 {
+    if (_isShutdownState) {
+        return;
+    }
+
     if (event >= StatusEvent::N_StatusEvents) {
         return;
     }
@@ -130,17 +134,40 @@ void VoicePack::onStatusChanged(StatusEvent event, bool status)
     const size_t index = 2 * event + (status ? 1 : 0);
 
     if (!_voiceStatusCommon[index].empty()) {
-        _player.addTrack(_voiceStatusCommon[index]);
+        playVoiceline(_voiceStatusCommon[index]);
     }
 
     if (!_voiceStatusSpecial[_currVehicle][index].empty()) {
-        _player.addTrack(_voiceStatusSpecial[_currVehicle][index]);
+        playVoiceline(_voiceStatusSpecial[_currVehicle][index]);
     }
+}
+
+
+void VoicePack::setJournalPreviousEvent(const std::string& event, const std::string& journalEntry)
+{
+    // Ensure we're updating player status silently (no voiceline triggered)
+    _isPriming = true;
+    onJournalEvent(event, journalEntry);
+    _isPriming = false;
+
+    // Just for debugging
+    std::cout << "[INFO  ] Priming done. Current vehicle: " << vehicleToString(_currVehicle)
+              << ", Ship cargo: " << _currShipCargo << "/" << _maxShipCargo
+              << ", SRV cargo: " << _currSRVCargo << "/" << _maxSRVCargo
+        << std::endl;
 }
 
 
 void VoicePack::onJournalEvent(const std::string& event, const std::string& journalEntry)
 {
+    if (event == "Shutdown") {
+        _isShutdownState = true;
+        std::cout << "[INFO  ] Entering shutdown state" << std::endl;
+    } else if (event == "LoadGame") {
+        _isShutdownState = false;
+        std::cout << "[INFO  ] Exiting shutdown state" << std::endl;
+    }
+
     // Prevent multiple "under attack" announcements
     if (_previousUnderAttack && event == "UnderAttack") {
         return;
@@ -151,7 +178,7 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
     auto it = _voiceJournal.find(event);
 
     if (it != _voiceJournal.end()) {
-        _player.addTrack(it->second);
+        playVoiceline(it->second);
     }
 
     const nlohmann::json json = nlohmann::json::parse(journalEntry);
@@ -231,7 +258,7 @@ void VoicePack::onSpecialEvent(const std::string& event)
     auto it = _voiceSpecial.find(event);
 
     if (it != _voiceSpecial.end()) {
-        _player.addTrack(it->second);
+        playVoiceline(it->second);
     }
 }
 
@@ -275,6 +302,12 @@ void VoicePack::setSRVCargo(uint32_t cargo)
 void VoicePack::setCurrentVehicle(Vehicle vehicle)
 {
     if (vehicle != _currVehicle) {
+        if (_currVehicle == Vehicle::SRV && vehicle == Vehicle::Ship) {
+            // Reset SRV cargo when switching back to ship
+            setShipCargo(_currShipCargo + _currSRVCargo);
+            setSRVCargo(0);
+        }
+
         _currVehicle = vehicle;
 
         switch (_currVehicle) {
@@ -288,6 +321,14 @@ void VoicePack::setCurrentVehicle(Vehicle vehicle)
             std::cout << "[INFO  ] Now on foot" << std::endl;
             break;
         }
+    }
+}
+
+
+void VoicePack::playVoiceline(const std::filesystem::path& path)
+{
+    if (!path.empty() && !_isShutdownState && !_isPriming) {
+        _player.addTrack(path);
     }
 }
 
@@ -320,6 +361,7 @@ void VoicePack::loadStatusConfig(
     }
 }
 
+
 std::filesystem::path VoicePack::resolvePath(
     const std::filesystem::path& basePath,
     const std::string& file)
@@ -328,8 +370,9 @@ std::filesystem::path VoicePack::resolvePath(
     return p.is_absolute() ? p : (basePath / p);
 }
 
-
-// ---- Medic Compliant class implementation ----
+// ----------------------------------------------------------------------------
+// Medic Compliant class implementation
+// ----------------------------------------------------------------------------
 
 
 bool MedicCompliant::isCompliant()
@@ -396,8 +439,9 @@ void MedicCompliant::validateModules(const nlohmann::json& modules)
     }
 }
 
-
-// ---- Alta class implementation ----
+// ----------------------------------------------------------------------------
+// Alta class implementation
+// ----------------------------------------------------------------------------
 
 
 Alta::Alta()
@@ -447,6 +491,36 @@ void Alta::onStatusChanged(StatusEvent event, bool status)
     }
     else {
         _standardVoicePack.onStatusChanged(event, status);
+    }
+}
+
+
+void Alta::setJournalPreviousEvent(const std::string& event, const std::string& journalEntry)
+{
+    _medicCompliant.update(event, journalEntry);
+    const bool compliant = _medicCompliant.isCompliant();
+
+    // Check change of status
+    if (compliant != _altaActive) {
+        if (!_altaActive) {
+            // We are activating ALTA
+            std::cout << "[INFO  ] ALTA voicepack activated." << std::endl;
+            _altaVoicePack.transferSettings(_standardVoicePack);
+        }
+        else {
+            // We are deactivating ALTA
+            std::cout << "[INFO  ] Standard voicepack activated." << std::endl;
+            _standardVoicePack.transferSettings(_altaVoicePack);
+        }
+
+        _altaActive = compliant;
+    }
+
+    if (_altaActive) {
+        _altaVoicePack.setJournalPreviousEvent(event, journalEntry);
+    }
+    else {
+        _standardVoicePack.setJournalPreviousEvent(event, journalEntry);
     }
 }
 
