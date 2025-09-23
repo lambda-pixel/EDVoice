@@ -72,6 +72,9 @@
         "CargoFull": "sounds/Cargo.mp3",
         "FuelScoopFinished": "sounds/FuelScoopFinished.mp3",
         "AutoPilot_Liftoff": "sounds/Liftoff.mp3",
-        "AutoPilot_Touchdown": "sounds/Touchdown.mp3"
+        "AutoPilot_Touchdown": "sounds/Touchdown.mp3",
+        "Activating": "sounds/Activating.mp3",
+        "Deactivating": "sounds/Deactivating.mp3",
+        "CollectPod": "sounds/GetPod.mp3"
     }
 }

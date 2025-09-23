@@ -244,6 +244,11 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
     }
     else if (event == "LaunchSRV") {
         setCurrentVehicle(Vehicle::SRV);
+        
+        if (json.contains("SRVType") && srvTypeFromString(json["SRVType"])) {
+            const SRVType srvType = srvTypeFromString(json["SRVType"]).value();
+            _maxSRVCargo = SRV_MAX_CARGO[srvType];
+        }
     }
     else if (event == "DockSRV") {
         setCurrentVehicle(Vehicle::Ship);
@@ -254,6 +259,12 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
             if (currentFuel == _maxShipFuel) {
                 onSpecialEvent(FuelScoopFinished);
             }
+            // This is removed, not reliable right now
+            //else if (_canTriggerFuelScooping) {
+            //    // Only trigger once per fuel scooping session
+            //    onSpecialEvent(FuelScooping);
+            //    _canTriggerFuelScooping = false;
+            //}
         }
     }
     else if (event == "ReservoirReplenished") {
@@ -271,6 +282,16 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
             else {
                 onSpecialEvent(HullIntegrity_Compromised);
             }
+        }
+    }
+    else if (event == "Liftoff") {
+        if (json.contains("PlayerControlled") && !json["PlayerControlled"].get<bool>()) {
+            onSpecialEvent(AutoPilot_Liftoff);
+        }
+    }
+    else if (event == "Touchdown") {
+        if (json.contains("PlayerControlled") && !json["PlayerControlled"].get<bool>()) {
+            onSpecialEvent(AutoPilot_Touchdown);
         }
     }
     //else if (event == "LaunchFighter") {
@@ -399,6 +420,7 @@ std::filesystem::path VoicePack::resolvePath(
     return p.is_absolute() ? p : (basePath / p);
 }
 
+
 // ----------------------------------------------------------------------------
 // Medic Compliant class implementation
 // ----------------------------------------------------------------------------
@@ -468,6 +490,7 @@ void MedicCompliant::validateModules(const nlohmann::json& modules)
     }
 }
 
+
 // ----------------------------------------------------------------------------
 // Alta class implementation
 // ----------------------------------------------------------------------------
@@ -502,7 +525,7 @@ void Alta::loadConfig(const char* filepath)
     // loads another voicepack with drag'n drop.
     // I'll attempt something more elegant later, sorry folks!
     if (!_altaLoaded) {
-        const std::filesystem::path altaVoicepack = basePath.parent_path() / "ALTA" / "config.json";
+        const std::filesystem::path altaVoicepack = basePath.parent_path() / "ALTA" / "ALTA.json";
 
         _altaVoicePack.loadConfig(altaVoicepack.string().c_str());
         _altaActive = false;

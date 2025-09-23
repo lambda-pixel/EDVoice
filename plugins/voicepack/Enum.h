@@ -10,6 +10,10 @@
     X(SRV)                           \
     X(OnFoot)                        \
 
+#define ENUM_SRV_TYPES(X)            \
+    X(testbuggy)                     \
+    X(combat_multicrew_srv_01)       \
+
 #define ENUM_SPECIAL_EVENTS(X)      \
     X(CargoFull)                    \
     X(CargoEmpty)                   \
@@ -19,6 +23,8 @@
     X(FuelScoopFinished)            \
     X(HullIntegrity_Compromised)    \
     X(HullIntegrity_Critical)       \
+    X(AutoPilot_Liftoff)            \
+    X(AutoPilot_Touchdown)          \
 
 // ----------------------------------------------------------------------------
 // Vehicule enum and conversion functions
@@ -45,6 +51,40 @@ std::optional<Vehicle> vehiculeFromString(const std::string& s)
 {
 #define GEN_IF(name) if (s == #name) return name;
     ENUM_VEHICULES(GEN_IF)
+#undef GEN_IF
+    return std::nullopt;
+}
+
+// ----------------------------------------------------------------------------
+// SRV enum and conversion functions
+// ----------------------------------------------------------------------------
+
+enum SRVType {
+#define GEN_ENUM(name) name,
+    ENUM_SRV_TYPES(GEN_ENUM)
+#undef GEN_ENUM
+    N_SRVTypes
+};
+
+const uint32_t SRV_MAX_CARGO[N_SRVTypes] = {
+    4, // testbuggy
+    2  // combat_multicrew_srv_01
+};
+
+const char* srvTypeToString(SRVType v)
+{
+    switch (v) {
+#define GEN_CASE(name) case name: return #name;
+        ENUM_SRV_TYPES(GEN_CASE)
+#undef GEN_CASE
+    default: return "Unknown";
+    }
+}
+
+std::optional<SRVType> srvTypeFromString(const std::string& s)
+{
+#define GEN_IF(name) if (s == #name) return name;
+    ENUM_SRV_TYPES(GEN_IF)
 #undef GEN_IF
     return std::nullopt;
 }
