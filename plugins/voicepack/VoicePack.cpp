@@ -194,9 +194,13 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
             }
 
             // Check on ship swap if we've reached the max cargo capacity
-            if (_currShipCargo == _maxShipCargo) {
-                onSpecialEvent("CargoFull");
+            if (_maxShipCargo > 0 && _currShipCargo == _maxShipCargo) {
+                onSpecialEvent(CargoFull);
             }
+        }
+        // Check for fuel capacity
+        if (json.contains("FuelCapacity") && json["FuelCapacity"].contains("Main")) {
+            _maxShipFuel = json["FuelCapacity"]["Main"].get<uint32_t>();
         }
     }
     else if (event == "Cargo") {
@@ -222,7 +226,7 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
                 || cargoType == "damagedescapepod"
                 // TODO Just in case... I don't know all the types like Thargoids pods
                 || cargoType.find("pod") != std::string::npos) {
-                onSpecialEvent("CollectPod");
+                onSpecialEvent(CollectPod);
             }
         }
     }
@@ -244,6 +248,31 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
     else if (event == "DockSRV") {
         setCurrentVehicle(Vehicle::Ship);
     }
+    else if (event == "FuelScoop") {
+        if (json.contains("Total")) {
+            const uint32_t currentFuel = json["Total"].get<uint32_t>();
+            if (currentFuel == _maxShipFuel) {
+                onSpecialEvent(FuelScoopFinished);
+            }
+        }
+    }
+    else if (event == "ReservoirReplenished") {
+        if (json.contains("FuelMain")) {
+            const uint32_t currentFuel = json["FuelMain"].get<uint32_t>();
+            // TODO: special event at X% fuel?
+        }
+    }
+    else if (event == "HullDamage") {
+        if (json.contains("Health")) {
+            const float health = json["Health"].get<float>();
+            if (health < 25E-2f) {
+                onSpecialEvent(HullIntegrity_Critical);
+            }
+            else {
+                onSpecialEvent(HullIntegrity_Compromised);
+            }
+        }
+    }
     //else if (event == "LaunchFighter") {
     //    _currentVehicule = Vehicle::Ship;
     //}
@@ -253,9 +282,9 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
 }
 
 
-void VoicePack::onSpecialEvent(const std::string& event)
+void VoicePack::onSpecialEvent(SpecialEvent event)
 {
-    auto it = _voiceSpecial.find(event);
+    auto it = _voiceSpecial.find(specialEventToString(event));
 
     if (it != _voiceSpecial.end()) {
         playVoiceline(it->second);
@@ -269,10 +298,10 @@ void VoicePack::setShipCargo(uint32_t cargo)
         // Only trigger if we have a max cargo defined
         if (_maxShipCargo > 0) {
             if (cargo == 0) {
-                onSpecialEvent("CargoEmpty");
+                onSpecialEvent(CargoEmpty);
             }
             else if (cargo == _maxShipCargo) {
-                onSpecialEvent("CargoFull");
+                onSpecialEvent(CargoFull);
             }
         }
 
@@ -287,10 +316,10 @@ void VoicePack::setSRVCargo(uint32_t cargo)
         // Only trigger if we have a max cargo defined
         if (_maxSRVCargo > 0) {
             if (cargo == 0 && _maxSRVCargo > 0) {
-                onSpecialEvent("CargoEmpty");
+                onSpecialEvent(CargoEmpty);
             }
             else if (cargo == _maxSRVCargo) {
-                onSpecialEvent("CargoFull");
+                onSpecialEvent(CargoFull);
             }
         }
 
@@ -536,13 +565,13 @@ void Alta::onJournalEvent(const std::string& event, const std::string& journalEn
             // We are activating ALTA
             std::cout << "[INFO  ] ALTA voicepack activated." << std::endl;
             _altaVoicePack.transferSettings(_standardVoicePack);
-            _altaVoicePack.onSpecialEvent("Activating");
+            _altaVoicePack.onSpecialEvent(Activating);
         }
         else {
             // We are deactivating ALTA
             std::cout << "[INFO  ] Standard voicepack activated." << std::endl;
             _standardVoicePack.transferSettings(_altaVoicePack);
-            _altaVoicePack.onSpecialEvent("Deactivating");
+            _altaVoicePack.onSpecialEvent(Deactivating);
         }
 
         _altaActive = compliant;
