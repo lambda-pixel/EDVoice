@@ -39,6 +39,8 @@ public:
         _currSRVCargo = other._currSRVCargo;
     
         _previousUnderAttack = other._previousUnderAttack;
+        _isShutdownState = other._isShutdownState;
+        _isPriming = other._isPriming;
     }
 
 private:
