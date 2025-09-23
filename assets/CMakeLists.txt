@@ -13,9 +13,15 @@ add_custom_target(copy_assets ALL
     COMMENT "Copying assets and default.json to ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
 )
 
-install(DIRECTORY ${VOICEPACK_DIR}/
+install(DIRECTORY ${VOICEPACK_DIR}/Aria
         DESTINATION config/VoicePack
         FILES_MATCHING PATTERN "*")
+
+if(BUILD_MEDICORP)
+    install(DIRECTORY ${VOICEPACK_DIR}/ALTA
+            DESTINATION config/VoicePack
+            FILES_MATCHING PATTERN "*")
+endif()
 
 install(FILES ${DEFAULT_JSON}
         DESTINATION config

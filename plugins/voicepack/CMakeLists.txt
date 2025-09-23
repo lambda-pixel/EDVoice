@@ -10,6 +10,11 @@ if(WIN32)
     set_target_properties(VoicePack PROPERTIES PREFIX "")
 endif()
 
+if (BUILD_MEDICORP)
+    target_compile_definitions(VoicePack PRIVATE BUILD_MEDICORP)
+    message(STATUS "Building with MediCorp support")
+endif()
+
 # plugins/
 set_target_properties(VoicePack PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR}/plugins

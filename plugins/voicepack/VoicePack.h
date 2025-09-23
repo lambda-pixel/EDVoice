@@ -83,6 +83,7 @@ private:
     bool _isPriming = false;
 };
 
+#ifdef BUILD_MEDICORP
 
 class MedicCompliant
 {
@@ -123,6 +124,10 @@ public:
     bool _altaLoaded;
 };
 
-
 DECLARE_PLUGIN(Alta, "VoicePack", "0.1", "Siegfried-Origin")
-//DECLARE_PLUGIN(VoicePack, "VoicePack", "0.1", "Siegfried-Origin")
+
+#else
+
+DECLARE_PLUGIN(VoicePack, "VoicePack", "0.1", "Siegfried-Origin")
+
+#endif // BUILD_MEDICORP

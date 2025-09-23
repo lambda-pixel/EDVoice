@@ -421,6 +421,9 @@ std::filesystem::path VoicePack::resolvePath(
 }
 
 
+#ifdef BUILD_MEDICORP
+
+
 // ----------------------------------------------------------------------------
 // Medic Compliant class implementation
 // ----------------------------------------------------------------------------
@@ -607,3 +610,5 @@ void Alta::onJournalEvent(const std::string& event, const std::string& journalEn
         _standardVoicePack.onJournalEvent(event, journalEntry);
     }
 }
+
+#endif // BUILD_MEDICORP
