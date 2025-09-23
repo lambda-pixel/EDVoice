@@ -10,6 +10,9 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: read
+
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
@@ -43,10 +46,17 @@ jobs:
       working-directory: ${{github.workspace}}/build
       run: cmake --build . --target package --config ${{env.BUILD_TYPE}}
 
-    - name: Upload Release Asset
+  release:
+      needs: build
       if: github.event_name == 'release'
-      uses: softprops/action-gh-release@v2
-      with:
-        files: ${{github.workspace}}/build/*.zip
-      env:
-        GITHUB_TOKEN: ${{ secrets.ACTION_UPDATE_RELEASE }}
+      runs-on: windows-latest
+      permissions:
+        contents: write
+      steps:
+      - uses: actions/checkout@v4
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v2
+        with:
+            files: ${{github.workspace}}/build/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACTION_UPDATE_RELEASE }}
