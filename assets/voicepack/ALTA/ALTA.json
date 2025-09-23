@@ -1,7 +1,7 @@
 {
     "status": {
         "Over_Heating": {
-            "true": "sounds/HearWarning.mp3"
+            "true": "sounds/HeatWarning.mp3"
         },
         "Low_Fuel": {
             "true": "sounds/FuelTankAlert.mp3"
