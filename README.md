@@ -55,8 +55,5 @@ This page explains how to define custom voice actions using a JSON file, with co
 
 ## 🛠 Roadmap
 - GUI for event selection and testing alerts
-- Plugin system for community contributions
 - TTS playback support (e.g., ingame chat messages)
-- Sample plugin for custom actions (e.g., Philips Hue trigger)
-- Improve the audio playback system: allow for queuing multiple messages
-- Preference settings (e.g., volume, voicepack selection)
+- Improved preference settings (e.g., volume, voicepack selection)
