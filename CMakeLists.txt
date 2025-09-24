@@ -32,6 +32,7 @@ endif()
 
 include(CPack)
 
+add_subdirectory(3rdparty)
 add_subdirectory(assets)
 add_subdirectory(plugins)
 add_subdirectory(src)

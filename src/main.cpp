@@ -2,14 +2,31 @@
 #include <filesystem>
 
 #include "EDVoiceApp.h"
+#include "GUI/EDVoiceGUI.h"
 
-/*
-int WinMain(
-    HINSTANCE hInstance,
-    HINSTANCE hPrevInstance,
-    LPSTR     lpCmdLine,
-    int       nShowCmd)
-*/
+// ----------------------------------------------------------------------------
+// GUI
+// ----------------------------------------------------------------------------
+
+#include <windows.h>
+
+int WINAPI wWinMain(
+    _In_ HINSTANCE hInstance,
+    _In_opt_ HINSTANCE hPrevInstance,
+    _In_ LPWSTR lpCmdLine,
+    _In_ int nShowCmd)
+{
+    EDVoiceGUI gui(hInstance, nShowCmd);
+
+    gui.run();
+    
+    return 0;
+}
+
+// ----------------------------------------------------------------------------
+
+
+#if 0
 int main(int argc, char* argv[])
 {
     const std::filesystem::path execPath = std::filesystem::path(argv[0]).parent_path();
@@ -30,3 +47,4 @@ int main(int argc, char* argv[])
 
     return 0;
 }
+#endif
