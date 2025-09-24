@@ -131,6 +131,11 @@ void VoicePack::onStatusChanged(StatusEvent event, bool status)
         return;
     }
 
+    // Prevents voiceline triggered while launching drone
+    if (event == StatusEvent::Cargo_Scoop_Deployed && _previousLaunchDrone) {
+        return;
+    }
+
     const size_t index = 2 * event + (status ? 1 : 0);
 
     if (!_voiceStatusCommon[index].empty()) {
@@ -174,6 +179,7 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
     }
 
     _previousUnderAttack = (event == "UnderAttack");
+    _previousLaunchDrone = (event == "LaunchDrone");
 
     auto it = _voiceJournal.find(event);
 

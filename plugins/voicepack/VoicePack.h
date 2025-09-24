@@ -39,6 +39,8 @@ public:
         _currSRVCargo = other._currSRVCargo;
     
         _previousUnderAttack = other._previousUnderAttack;
+        _previousLaunchDrone = other._previousLaunchDrone;
+
         _isShutdownState = other._isShutdownState;
         _isPriming = other._isPriming;
     }
@@ -77,9 +79,11 @@ private:
     uint32_t _currSRVCargo;
 
     // Uggly hack to prevent multiple "under attack" announcements
-    bool _previousUnderAttack;
-    bool _isShutdownState = false;
+    bool _previousUnderAttack = false;
+    // Ugly hack to prevent cargo scoop anouncements while launching a drone
+    bool _previousLaunchDrone = false;
 
+    bool _isShutdownState = false;
     bool _isPriming = false;
 };
 
