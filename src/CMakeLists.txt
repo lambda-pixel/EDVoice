@@ -9,8 +9,13 @@ add_executable(EDVoice WIN32
     GUI/Vulkan/VkAdapter.cpp
     GUI/Vulkan/Swapchain.cpp
     GUI/Vulkan/VkUtil.cpp
+
+    voicepack/AudioPlayer.cpp
+    voicepack/VoicePack.cpp
+    voicepack/Enum.cpp
+
     ../assets/edvoice.rc
- )
+  "voicepack/Enum.cpp")
 
 target_include_directories(EDVoice PRIVATE ../3rdparty)
 target_include_directories(EDVoice PRIVATE ../plugins/include)

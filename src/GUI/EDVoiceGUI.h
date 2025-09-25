@@ -3,16 +3,20 @@
 #include <windows.h>
 #include "Vulkan/VkAdapter.h"
 
+#include <filesystem>
+#include <thread>
+#include "../EDVoiceApp.h"
 
 class EDVoiceGUI
 {
 public:
-    EDVoiceGUI(HINSTANCE hInstance, int nShowCmd);
+    EDVoiceGUI(
+        const std::filesystem::path& exec_path,
+        const std::filesystem::path& config,
+        HINSTANCE hInstance, int nShowCmd);
     ~EDVoiceGUI();
 
     void run();
-
-    //void set_borderless_shadow(bool enabled);
 
 private:
     void resize();
@@ -31,10 +35,10 @@ private:
     void w32AdjustMaximizedClientRect(RECT& rect);
     LRESULT w32HitTest(POINT cursor) const;
 
-    bool _imGuiInitialized = false;
-
+    EDVoiceApp _app;
     VkAdapter _vkAdapter;
 
+    bool _imGuiInitialized = false;
     float _mainScale = 1.f;
     bool _borderlessWindow = true;
     float _titlebarHeight = 32.f;

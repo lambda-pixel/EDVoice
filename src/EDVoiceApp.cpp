@@ -1,12 +1,48 @@
 ﻿#include "EDVoiceApp.h"
 
 #include <iostream>
-#include <thread>
 #include <conio.h>
 
 #include <json.hpp>
 
 #include "util/EliteFileUtil.h"
+
+// Ugly hack for now but whatever...
+static void loadConfigVP(const char* filepath, void* ctx)
+{
+    reinterpret_cast<VoicePack*>(ctx)->loadConfig(filepath);
+}
+
+static void onStatusChangedVP(StatusEvent event, int set, void* ctx)
+{
+    reinterpret_cast<VoicePack*>(ctx)->onStatusChanged(event, set);
+}
+
+static void setJournalPreviousEventVP(const char* event, const char* jsonEntry, void* ctx)
+{
+    reinterpret_cast<VoicePack*>(ctx)->setJournalPreviousEvent(event, jsonEntry);
+}
+
+static void onJournalEventVP(const char* event, const char* jsonEntry, void* ctx)
+{
+    reinterpret_cast<VoicePack*>(ctx)->onJournalEvent(event, jsonEntry);
+}
+
+extern "C" {
+    void registerPluginVP(VoicePack* voicepack, PluginCallbacks* callbacks) {
+        callbacks->loadConfig = loadConfigVP;
+        callbacks->onStatusChanged = onStatusChangedVP;
+        callbacks->setJournalPreviousEvent = setJournalPreviousEventVP;
+        callbacks->onJournalEvent = onJournalEventVP;
+        callbacks->ctx = voicepack;
+        std::strncpy(callbacks->name, "VoicePack", sizeof(callbacks->name) - 1);
+        std::strncpy(callbacks->versionStr, "0.3", sizeof(callbacks->versionStr) - 1);
+        std::strncpy(callbacks->author, "Siegfried-Origin", sizeof(callbacks->author) - 1);
+    }
+    void unregisterPluginVP()
+    {
+    }
+}
 
 
 EDVoiceApp::EDVoiceApp(
@@ -67,6 +103,15 @@ EDVoiceApp::EDVoiceApp(
         }
     }
 
+    //// Now, register manually the voicepack
+    _plugins.push_back(LoadedPlugin{});
+    LoadedPlugin& voice = _plugins.back();
+    voice.handle = nullptr;
+    voice.name = "VoicePack";
+    voice.author = "Siegfried-Origin";
+    voice.versionStr = "0.3";
+    registerPluginVP(&_voicepack, &voice.callbacks);
+
     // Register plugins
     for (auto& plugin : _plugins) {
         // if configuration exists for this plugin, load it
@@ -99,6 +144,14 @@ EDVoiceApp::EDVoiceApp(
     // Prime watchers
     _journalWatcher.start();
     _statusWatcher.start();
+
+    // Start monitoring file change
+    _hStop = CreateEvent(nullptr, TRUE, FALSE, nullptr);
+
+    _watcherThread = std::thread(
+        &EDVoiceApp::fileWatcherThread,
+        this,
+        _hStop);
 }
 
 
@@ -107,45 +160,35 @@ EDVoiceApp::~EDVoiceApp()
     for (auto& plugin : _plugins) {
         unloadPlugin(plugin);
     }
+
+    SetEvent(_hStop);
+    _watcherThread.join();
+    CloseHandle(_hStop);
 }
 
 
 void EDVoiceApp::run()
 {
-    HANDLE hStop = CreateEvent(nullptr, TRUE, FALSE, nullptr);
-    const std::filesystem::path userProfile = EliteFileUtil::getUserProfile();
-
-    std::thread watcherThread(
-        &EDVoiceApp::fileWatcherThread,
-        this,
-        hStop,
-        userProfile
-    );
-
     std::cout << "Press any key to exit" << std::endl;
 
     while (true) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
         if (_kbhit()) {
-            SetEvent(hStop);
+            SetEvent(_hStop);
             std::cout << "Exiting..." << std::endl;
             break;
         }
     }
 
     std::cout << "Goodbye!" << std::endl;
-
-    watcherThread.join();
-
-    CloseHandle(hStop);
 }
 
 
-void EDVoiceApp::fileWatcherThread(
-    HANDLE hStop,
-    const std::filesystem::path userProfile)
+void EDVoiceApp::fileWatcherThread(HANDLE hStop)
 {
+    const std::filesystem::path userProfile = EliteFileUtil::getUserProfile();
+
     HANDLE hDir = CreateFileW(
         userProfile.c_str(),
         FILE_LIST_DIRECTORY,

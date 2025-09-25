@@ -17,8 +17,12 @@ const wchar_t WINDOW_TITLE[] = L"EDVoice";
 
 #include "roboto.cpp"
 
-EDVoiceGUI::EDVoiceGUI(HINSTANCE hInstance, int nShowCmd)
-    : _vkAdapter({ VK_KHR_SURFACE_EXTENSION_NAME, "VK_KHR_win32_surface" })
+EDVoiceGUI::EDVoiceGUI(
+    const std::filesystem::path& exec_path,
+    const std::filesystem::path& config, 
+    HINSTANCE hInstance, int nShowCmd)
+    : _app(exec_path, config)
+    , _vkAdapter({ VK_KHR_SURFACE_EXTENSION_NAME, "VK_KHR_win32_surface" })
 {
     // ImGui initialization
     ImGui_ImplWin32_EnableDpiAwareness();
