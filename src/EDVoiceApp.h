@@ -19,8 +19,8 @@ typedef void* LibHandle;
 #define CloseLib dlclose
 #endif
 
-#include "StatusWatcher.h"
-#include "JournalWatcher.h"
+#include "watchers/StatusWatcher.h"
+#include "watchers/JournalWatcher.h"
 
 struct LoadedPlugin {
     LibHandle handle = nullptr;

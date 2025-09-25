@@ -1,9 +1,10 @@
 add_executable(EDVoice WIN32
     main.cpp
     EDVoiceApp.cpp
-    EliteFileUtil.cpp
-    StatusWatcher.cpp
-    JournalWatcher.cpp
+    util/EliteFileUtil.cpp
+    watchers/JournalWatcher.cpp
+    watchers/StatusWatcher.cpp
+    
     GUI/EDVoiceGUI.cpp
     GUI/Vulkan/VkAdapter.cpp
     GUI/Vulkan/Swapchain.cpp
