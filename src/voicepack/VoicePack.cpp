@@ -23,11 +23,15 @@ void VoicePack::loadConfig(const char* filepath)
         vs.fill(std::filesystem::path());
     }
 
+    _voiceJournal.clear();
+    _voiceSpecial.clear();
+
     for (auto& va : _voiceStatusActive) {
         va.fill(Undefined);
     }
 
-    _voiceJournal.clear();
+    _voiceJournalActive.clear();
+    _voiceSpeciallActive.clear();
 
     std::filesystem::path path(filepath);
 
@@ -111,13 +115,20 @@ void VoicePack::loadConfig(const char* filepath)
         if (!path.empty() && !std::filesystem::exists(path)) {
             std::cerr << "[ERR   ] Missing file for event '" << event << "': " << path << std::endl;
             path.clear();
+            _voiceJournalActive[event] = Undefined;
         }
+
+        _voiceJournalActive[event] = Active;
     }
 
     for (auto& [event, path] : _voiceSpecial) {
         if (!path.empty() && !std::filesystem::exists(path)) {
             std::cerr << "[ERR   ] Missing file for special '" << event << "': " << path << std::endl;
             path.clear();
+            _voiceSpeciallActive[event] = Undefined;
+        }
+        else {
+            _voiceSpeciallActive[event] = Active;
         }
     }
 }
@@ -176,7 +187,8 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
 
     auto it = _voiceJournal.find(event);
 
-    if (it != _voiceJournal.end()) {
+    if (it != _voiceJournal.end() && 
+        _voiceJournalActive[event] == Active) {
         playVoiceline(it->second);
     }
 
@@ -304,9 +316,11 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
 
 void VoicePack::onSpecialEvent(SpecialEvent event)
 {
-    auto it = _voiceSpecial.find(specialEventToString(event));
+    std::string eventString = specialEventToString(event);
+    auto it = _voiceSpecial.find(eventString);
 
-    if (it != _voiceSpecial.end()) {
+    if (it != _voiceSpecial.end() &&
+        _voiceSpeciallActive[eventString] == Active) {
         playVoiceline(it->second);
     }
 }
@@ -318,6 +332,22 @@ void VoicePack::setVoiceStatusState(Vehicle vehicle, StatusEvent event, bool sta
 
     if (_voiceStatusActive[vehicle][index] != Undefined) {
         _voiceStatusActive[vehicle][index] = (active ? Active : Inactive);
+    }
+}
+
+
+void VoicePack::setVoiceJournalState(const std::string& event, bool active)
+{
+    if (_voiceJournalActive[event] != Undefined) {
+        _voiceJournalActive[event] = (active ? Active : Inactive);
+    }
+}
+
+
+void VoicePack::setVoiceSpecialState(const std::string& event, bool active)
+{
+    if (_voiceSpeciallActive[event] != Undefined) {
+        _voiceSpeciallActive[event] = (active ? Active : Inactive);
     }
 }
 

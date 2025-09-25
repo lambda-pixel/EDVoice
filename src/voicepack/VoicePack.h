@@ -51,10 +51,12 @@ public:
     }
 
     const std::array<std::array<TriggerStatus, 2 * StatusEvent::N_StatusEvents>, N_Vehicles>& getVoiceStatusActive() const { return _voiceStatusActive; }
-    
-    const std::map<std::string, std::filesystem::path>& getVoiceSpecial() const { return _voiceSpecial; }
+    const std::map<std::string, TriggerStatus>& getVoiceJournalActive() const { return _voiceJournalActive; }
+    const std::map<std::string, TriggerStatus>& getVoiceSpecialActive() const { return _voiceSpeciallActive; }
 
     void setVoiceStatusState(Vehicle vehicle, StatusEvent event, bool statusState, bool active);
+    void setVoiceJournalState(const std::string& event, bool active);
+    void setVoiceSpecialState(const std::string& event, bool active);
 
 private:
     void setShipCargo(uint32_t cargo);
@@ -76,8 +78,12 @@ private:
     std::array<std::array<TriggerStatus, 2 * StatusEvent::N_StatusEvents>, N_Vehicles> _voiceStatusActive;
     std::array<std::array<std::filesystem::path, 2 * StatusEvent::N_StatusEvents>, N_Vehicles> _voiceStatusSpecial;
 
+    std::map<std::string, TriggerStatus> _voiceJournalActive;
     std::map<std::string, std::filesystem::path> _voiceJournal;
+
+    std::map<std::string, TriggerStatus> _voiceSpeciallActive;
     std::map<std::string, std::filesystem::path> _voiceSpecial;
+
     AudioPlayer _player;
 
     Vehicle _currVehicle;

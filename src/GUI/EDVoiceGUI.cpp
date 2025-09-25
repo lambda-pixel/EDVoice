@@ -66,6 +66,91 @@ EDVoiceGUI::~EDVoiceGUI()
 }
 
 
+void EDVoiceGUI::run()
+{
+    bool show_demo_window = true;
+    bool quit = false;
+
+    while (!quit)
+    {
+        MSG msg;
+        while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+        {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+
+            if (msg.message == WM_QUIT) {
+                quit = true;
+            }
+        }
+
+        ImGui_ImplVulkan_NewFrame();
+        ImGui_ImplWin32_NewFrame();
+        ImGui::NewFrame();
+
+        beginMainWindow();
+
+        voicePackGUI();
+
+        endMainWindow();
+
+        ImGui::Render();
+        ImDrawData* draw_data = ImGui::GetDrawData();
+        const bool is_minimized = (draw_data->DisplaySize.x <= 0.0f || draw_data->DisplaySize.y <= 0.0f);
+
+        if (!is_minimized)
+        {
+            VkCommandBuffer commandBuffer = _vkAdapter.startNewFrame();
+
+            if (commandBuffer != VK_NULL_HANDLE) {
+                ImGui_ImplVulkan_RenderDrawData(draw_data, commandBuffer);
+                _vkAdapter.renderFrame();
+                _vkAdapter.presentFrame();
+            }
+            else {
+                resize();
+            }
+        }
+    }
+}
+
+
+void EDVoiceGUI::resize()
+{
+    if (_imGuiInitialized) {
+        ImGui_ImplVulkan_Shutdown();
+    }
+
+    ImGui_ImplVulkan_InitInfo init_info = {
+        _vkAdapter.API_VERSION,             // ApiVersion
+        _vkAdapter.getInstance(),           // Instance
+        _vkAdapter.getPhysicalDevice(),     // PhysicalDevice
+        _vkAdapter.getDevice(),             // Device
+        _vkAdapter.getQueueFamily(),        // QueueFamily
+        _vkAdapter.getQueue(),              // Queue
+        VK_NULL_HANDLE,                     // DescriptorPool
+        IMGUI_IMPL_VULKAN_MINIMUM_IMAGE_SAMPLER_POOL_SIZE, // DescriptorPoolSize
+        _vkAdapter.nImageCount(),           // MinImageCount
+        _vkAdapter.nImageCount(),           // ImageCount
+        VK_NULL_HANDLE,                     // PipelineCache (optional)
+        _vkAdapter.getRenderPass(),         // RenderPass
+        0,                                  // Subpass
+        VK_SAMPLE_COUNT_1_BIT,              // msaaSamples
+        false,                              // UseDynamicRendering
+    #ifdef IMGUI_IMPL_VULKAN_HAS_DYNAMIC_RENDERING
+        {},                                 // PipelineRenderingCreateInfo (optional)
+    #endif
+        nullptr,                            // VkAllocationCallbacks
+        nullptr,                            // (*CheckVkResultFn)(VkResult err)
+        1024 * 1024                           // MinAllocationSize
+    };
+
+    ImGui_ImplVulkan_Init(&init_info);
+
+    _imGuiInitialized = true;
+}
+
+
 void EDVoiceGUI::beginMainWindow()
 {
     ImGuiViewport* pViewport = ImGui::GetMainViewport();
@@ -150,21 +235,36 @@ void EDVoiceGUI::endMainWindow()
 
 void EDVoiceGUI::voicePackGUI()
 {
+    VoicePack& voicepack = _app.getVoicepack();
+    
+    ImGui::SeparatorText("Status event voicelines");
+    ImGui::PushID("Status");
+    voicePackStatusGUI(voicepack);
+    ImGui::PopID();
+    
+    ImGui::SeparatorText("Special events voicelines");
+    ImGui::PushID("Special");
+    voicePackSpecialEventGUI(voicepack);
+    ImGui::PopID();
+
+    ImGui::SeparatorText("Journal events voicelines");
+    ImGui::PushID("Journal");
+    voicePackJourmalEventGUI(voicepack);
+    ImGui::PopID();
+}
+
+
+
+void EDVoiceGUI::voicePackStatusGUI(VoicePack& voicepack) {
+    const std::array<std::array<VoicePack::TriggerStatus, 2 * StatusEvent::N_StatusEvents>, N_Vehicles>& statusActive = voicepack.getVoiceStatusActive();
     static ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter;
 
-    VoicePack& voicepack = _app.getVoicepack();
-
-    const std::array<std::array<VoicePack::TriggerStatus, 2 * StatusEvent::N_StatusEvents>, N_Vehicles>& statusActive = voicepack.getVoiceStatusActive();
-    
-    ImGui::PushID("Status");
-
     if (ImGui::BeginTable("Status", N_Vehicles + 1, flags)) {
-        ImGui::TableSetupColumn("Event", ImGuiTableColumnFlags_WidthStretch);
-
         for (uint32_t iVehicle = 0; iVehicle < N_Vehicles; iVehicle++) {
             ImGui::TableSetupColumn(prettyPrintVehicle((Vehicle)iVehicle));
         }
 
+        ImGui::TableSetupColumn("Event", ImGuiTableColumnFlags_WidthStretch);
         ImGui::TableHeadersRow();
 
         for (uint32_t iEvent = 0; iEvent < StatusEvent::N_StatusEvents; iEvent++) {
@@ -181,8 +281,6 @@ void EDVoiceGUI::voicePackGUI()
                 // At least one voice was found for a given vehicle
                 if (hasVoiceForOneVehicle) {
                     ImGui::TableNextRow();
-                    ImGui::TableNextColumn();
-                    ImGui::Text(prettyPrintStatusState((StatusEvent)iEvent, statusState));
 
                     for (uint32_t iVehicle = 0; iVehicle < N_Vehicles; iVehicle++) {
                         const VoicePack::TriggerStatus triggerStatus = statusActive[iVehicle][2 * iEvent + iActivating];
@@ -207,127 +305,94 @@ void EDVoiceGUI::voicePackGUI()
                             ImGui::PopID();
                         }
                     }
+
+                    ImGui::TableNextColumn();
+                    ImGui::Text(prettyPrintStatusState((StatusEvent)iEvent, statusState));
                 }
             }
         }
 
         ImGui::EndTable();
     }
+}
 
-    ImGui::PopID();
-    
-    //ImGui::ShowDemoWindow();
-    /*
-    const std::map<std::string, std::filesystem::path>& voiceSpecial = voicepack.getVoiceSpecial();
-    const std::map<std::string, std::filesystem::path>& voiceSpecial = voicepack.getVoiceSpecial();
 
-    //ImGui::BeginGroup();
-    
-    //ImGui::EndGroup();
+void EDVoiceGUI::voicePackJourmalEventGUI(VoicePack& voicepack)
+{
+    const std::map<std::string, VoicePack::TriggerStatus>& eventItems = voicepack.getVoiceJournalActive();
 
-    if (ImGui::BeginTable("table1", 2, flags)) {
-        ImGui::TableSetupColumn("Event");
-        ImGui::TableSetupColumn("Play");
+    static ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter;
+    uint32_t uid = 0;
+
+    if (ImGui::BeginTable("Journal", 2, flags)) {
+        ImGui::TableSetupColumn("Active");
+        ImGui::TableSetupColumn("Event", ImGuiTableColumnFlags_WidthStretch);
         ImGui::TableHeadersRow();
 
-        bool active = true;
+        for (const auto& voiceItem : eventItems) {
+            const VoicePack::TriggerStatus triggerStatus = voiceItem.second;
 
-        for (auto& voiceItem : voiceSpecial) {
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
-            ImGui::Checkbox(voiceItem.first.c_str(), &active);
+
+            if (triggerStatus != VoicePack::Undefined) {
+                bool active = triggerStatus == VoicePack::Active;
+
+                ImGui::PushID(uid++);
+                ImGui::Checkbox("", &active);
+                ImGui::PopID();
+
+                if (active != (triggerStatus == VoicePack::Active)) {
+                    voicepack.setVoiceJournalState(voiceItem.first, active);
+                }
+            }
+
             ImGui::TableNextColumn();
-            ImGui::Button("Play##T");
+            ImGui::Text(voiceItem.first.c_str());
         }
 
         ImGui::EndTable();
     }
-    */
 }
 
 
-void EDVoiceGUI::run()
+void EDVoiceGUI::voicePackSpecialEventGUI(VoicePack& voicepack)
 {
-    bool show_demo_window = true;
-    bool quit = false;
+    // TODO: shitty copy paste... but works for now :(
+    const std::map<std::string, VoicePack::TriggerStatus>& eventItems = voicepack.getVoiceSpecialActive();
 
-    while (!quit)
-    {
-        MSG msg;
-        while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
-        {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
+    static ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter;
+    uint32_t uid = 0;
 
-            if (msg.message == WM_QUIT) {
-                quit = true;
+    if (ImGui::BeginTable("Journal", 2, flags)) {
+        ImGui::TableSetupColumn("Active");
+        ImGui::TableSetupColumn("Event", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableHeadersRow();
+
+        for (const auto& voiceItem : eventItems) {
+            const VoicePack::TriggerStatus triggerStatus = voiceItem.second;
+
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+
+            if (triggerStatus != VoicePack::Undefined) {
+                bool active = triggerStatus == VoicePack::Active;
+
+                ImGui::PushID(uid++);
+                ImGui::Checkbox("", &active);
+                ImGui::PopID();
+
+                if (active != (triggerStatus == VoicePack::Active)) {
+                    voicepack.setVoiceSpecialState(voiceItem.first, active);
+                }
             }
+
+            ImGui::TableNextColumn();
+            ImGui::Text(voiceItem.first.c_str());
         }
 
-        ImGui_ImplVulkan_NewFrame();
-        ImGui_ImplWin32_NewFrame();
-        ImGui::NewFrame();
-
-        beginMainWindow();
-
-        voicePackGUI();
-
-        endMainWindow();
-
-        ImGui::Render();
-        ImDrawData* draw_data = ImGui::GetDrawData();
-        const bool is_minimized = (draw_data->DisplaySize.x <= 0.0f || draw_data->DisplaySize.y <= 0.0f);
-            
-        if (!is_minimized)
-        {
-            VkCommandBuffer commandBuffer = _vkAdapter.startNewFrame();
-
-            if (commandBuffer != VK_NULL_HANDLE) {
-                ImGui_ImplVulkan_RenderDrawData(draw_data, commandBuffer);
-                _vkAdapter.renderFrame();
-                _vkAdapter.presentFrame();
-            }
-            else {
-                resize();
-            }
-        }
+        ImGui::EndTable();
     }
-}
-
-
-void EDVoiceGUI::resize()
-{
-    if (_imGuiInitialized) {
-        ImGui_ImplVulkan_Shutdown();
-    }
-
-    ImGui_ImplVulkan_InitInfo init_info = {
-        _vkAdapter.API_VERSION,             // ApiVersion
-        _vkAdapter.getInstance(),           // Instance
-        _vkAdapter.getPhysicalDevice(),     // PhysicalDevice
-        _vkAdapter.getDevice(),             // Device
-        _vkAdapter.getQueueFamily(),        // QueueFamily
-        _vkAdapter.getQueue(),              // Queue
-        VK_NULL_HANDLE,                     // DescriptorPool
-        IMGUI_IMPL_VULKAN_MINIMUM_IMAGE_SAMPLER_POOL_SIZE, // DescriptorPoolSize
-        _vkAdapter.nImageCount(),           // MinImageCount
-        _vkAdapter.nImageCount(),           // ImageCount
-        VK_NULL_HANDLE,                     // PipelineCache (optional)
-        _vkAdapter.getRenderPass(),         // RenderPass
-        0,                                  // Subpass
-        VK_SAMPLE_COUNT_1_BIT,              // msaaSamples
-        false,                              // UseDynamicRendering
-    #ifdef IMGUI_IMPL_VULKAN_HAS_DYNAMIC_RENDERING
-        {},                                 // PipelineRenderingCreateInfo (optional)
-    #endif
-        nullptr,                            // VkAllocationCallbacks
-        nullptr,                            // (*CheckVkResultFn)(VkResult err)
-        1024 * 1024                           // MinAllocationSize
-    };
-
-    ImGui_ImplVulkan_Init(&init_info);
-
-    _imGuiInitialized = true;
 }
 
 

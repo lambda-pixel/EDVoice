@@ -26,6 +26,10 @@ private:
 
     void voicePackGUI();
 
+    void voicePackStatusGUI(VoicePack& voicepack);
+    void voicePackJourmalEventGUI(VoicePack& voicepack);
+    void voicePackSpecialEventGUI(VoicePack& voicepack);
+
 
     static const char* prettyPrintStatusState(StatusEvent status, bool activated);
     static const char* prettyPrintVehicle(Vehicle vehicle);

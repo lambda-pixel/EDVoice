@@ -87,6 +87,8 @@ public:
     virtual ~EDVoiceApp();
     void run();
 
+    VoicePack& getVoicepack() { return _voicepack; }
+
 private:
     void fileWatcherThread(HANDLE hStop);
 
