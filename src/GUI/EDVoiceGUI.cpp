@@ -15,6 +15,7 @@
 const wchar_t CLASS_NAME[] = L"EDVoice";
 const wchar_t WINDOW_TITLE[] = L"EDVoice";
 
+#include "roboto.cpp"
 
 EDVoiceGUI::EDVoiceGUI(HINSTANCE hInstance, int nShowCmd)
     : _vkAdapter({ VK_KHR_SURFACE_EXTENSION_NAME, "VK_KHR_win32_surface" })
@@ -42,6 +43,9 @@ EDVoiceGUI::EDVoiceGUI(HINSTANCE hInstance, int nShowCmd)
     style.FontScaleDpi = _mainScale;
 
     ImGui_ImplWin32_Init(_hwnd);
+
+    ImFont* font = io.Fonts->AddFontFromMemoryCompressedTTF(Roboto_compressed_data, Roboto_compressed_size, _mainScale * 20.f);
+
     resize();
 }
 
@@ -68,7 +72,6 @@ void EDVoiceGUI::drawTitlebar()
 
     _totalButtonWidth = 3 * buttonWidth;
 
-
     ImGui::SetNextWindowSize(pViewport->Size);
     ImGui::SetNextWindowPos(ImVec2(0, 0));
     ImGui::Begin("Main", nullptr,
@@ -78,7 +81,7 @@ void EDVoiceGUI::drawTitlebar()
         ImGuiWindowFlags_NoCollapse |
         ImGuiWindowFlags_NoDecoration);
 
-    ImGui::PushFont(NULL, ImGui::GetStyle().FontSizeBase * 2.0f);
+    ImGui::PushFont(NULL, ImGui::GetStyle().FontSizeBase * 1.2f);
     // Center title vertically
     ImGui::SetCursorPos(ImVec2(titleMarginLeft, .5f * (_titlebarHeight - ImGui::GetFontSize())));
     ImGui::Text("EDVoice");
