@@ -17,7 +17,8 @@ public:
 private:
     void resize();
 
-    void drawTitlebar();
+    void beginMainWindow();
+    void endMainWindow();
 
     // WIN32 stuff for working with borderless windows
     // see https://github.com/melak47/BorderlessWindow/tree/main

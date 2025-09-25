@@ -62,19 +62,10 @@ EDVoiceGUI::~EDVoiceGUI()
 }
 
 
-void EDVoiceGUI::drawTitlebar()
+void EDVoiceGUI::beginMainWindow()
 {
     ImGuiViewport* pViewport = ImGui::GetMainViewport();
-
-    const float titleMarginLeft = 8.f;
-    const float buttonWidth = 55.f;
-    const ImVec2 buttonSize(buttonWidth, _titlebarHeight);
-
-    const ImGuiStyle& style = ImGui::GetStyle();
     
-
-    _totalButtonWidth = 3 * buttonWidth;
-
     ImGui::SetNextWindowSize(pViewport->Size);
     ImGui::SetNextWindowPos(ImVec2(0, 0));
     ImGui::Begin("Main", nullptr,
@@ -84,46 +75,59 @@ void EDVoiceGUI::drawTitlebar()
         ImGuiWindowFlags_NoCollapse |
         ImGuiWindowFlags_NoDecoration);
 
-    ImGui::PushFont(NULL, style.FontSizeBase * 1.2f);
+    if (_borderlessWindow) {
+        const ImGuiStyle& style = ImGui::GetStyle();
+        const float titleMarginLeft = 8.f;
+        const float buttonWidth = 55.f;
+        const ImVec2 buttonSize(buttonWidth, _titlebarHeight);
 
-    // Center title vertically
-    ImGui::SetCursorPos(ImVec2(titleMarginLeft, .5f * (_titlebarHeight - ImGui::GetFontSize())));
-    ImGui::Text("EDVoice");
-    ImGui::PopFont();
+        _totalButtonWidth = 3 * buttonWidth;
 
-    ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(255, 255, 255, 20));
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(255, 255, 255, 50));
-    {
-        ImGui::SetCursorPos(ImVec2(pViewport->Size.x - 3 * buttonWidth, 0.));
-        if (ImGui::Button("-", buttonSize)) { PostMessage(_hwnd, WM_SYSCOMMAND, SC_MINIMIZE, 0); }
+        // Center title vertically
+        ImGui::PushFont(NULL, style.FontSizeBase * 1.2f);
+        ImGui::SetCursorPos(ImVec2(titleMarginLeft, .5f * (_titlebarHeight - ImGui::GetFontSize())));
+        ImGui::Text("EDVoice");
+        ImGui::PopFont();
 
-        ImGui::SetCursorPos(ImVec2(pViewport->Size.x - 2 * buttonWidth, 0.));
-        if (ImGui::Button("+", buttonSize)) { PostMessage(_hwnd, WM_SYSCOMMAND, IsZoomed(_hwnd) ? SC_RESTORE : SC_MAXIMIZE, 0); }
+        // Minimize & Resize buttons
+        ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(255, 255, 255, 20));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(255, 255, 255, 50));
+        {
+            ImGui::SetCursorPos(ImVec2(pViewport->Size.x - 3 * buttonWidth, 0.));
+            if (ImGui::Button("-", buttonSize)) { PostMessage(_hwnd, WM_SYSCOMMAND, SC_MINIMIZE, 0); }
+
+            ImGui::SetCursorPos(ImVec2(pViewport->Size.x - 2 * buttonWidth, 0.));
+            if (ImGui::Button("+", buttonSize)) { PostMessage(_hwnd, WM_SYSCOMMAND, IsZoomed(_hwnd) ? SC_RESTORE : SC_MAXIMIZE, 0); }
+        }
+        ImGui::PopStyleColor(3);
+
+        // Close button
+        ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(255, 0, 0, 125));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(255, 50, 50, 200));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(255, 0, 0, 255));
+        {
+            ImGui::SetCursorPos(ImVec2(pViewport->Size.x - buttonWidth, 0.));
+            if (ImGui::Button("x", buttonSize)) { PostMessage(_hwnd, WM_CLOSE, 0, 0); }
+        }
+        ImGui::PopStyleColor(3);
+
+        // Title separator
+        ImU32 col = ImGui::GetColorU32(ImGuiCol_Separator);
+
+        ImGui::GetWindowDrawList()->AddLine(
+            ImVec2(0, _titlebarHeight),
+            ImVec2(pViewport->Size.x, _titlebarHeight),
+            col, 1.0f
+        );
     }
-    ImGui::PopStyleColor(3);
-    
-    ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(255, 0, 0, 125));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(255, 50, 50, 200));
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(255, 0, 0, 255));
-    {
-        ImGui::SetCursorPos(ImVec2(pViewport->Size.x - buttonWidth, 0.));
-        if (ImGui::Button("x", buttonSize)) { PostMessage(_hwnd, WM_CLOSE, 0, 0); }
-    }
-    ImGui::PopStyleColor(3);
-
-    ImU32 col = ImGui::GetColorU32(ImGuiCol_Separator);
-
-    ImGui::GetWindowDrawList()->AddLine(
-        ImVec2(0, _titlebarHeight),
-        ImVec2(pViewport->Size.x, _titlebarHeight),
-        col, 1.0f
-    );
-
-    ImGui::Text("Hello World!");
-
-    ImGui::End();
  }
+
+
+void EDVoiceGUI::endMainWindow()
+{
+    ImGui::End();
+}
 
 
 void EDVoiceGUI::run()
@@ -148,9 +152,11 @@ void EDVoiceGUI::run()
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        if (_borderlessWindow) {
-            drawTitlebar();
-        }
+        beginMainWindow();
+
+        ImGui::Text("Hello World!");
+
+        endMainWindow();
 
         ImGui::Render();
         ImDrawData* draw_data = ImGui::GetDrawData();
