@@ -69,17 +69,15 @@ EDVoiceGUI::~EDVoiceGUI()
 void EDVoiceGUI::beginMainWindow()
 {
     ImGuiViewport* pViewport = ImGui::GetMainViewport();
-    
-    ImGui::SetNextWindowSize(pViewport->Size);
-    ImGui::SetNextWindowPos(ImVec2(0, 0));
-    ImGui::Begin("Main", nullptr,
-        ImGuiWindowFlags_NoMove |
-        ImGuiWindowFlags_NoScrollbar |
-        ImGuiWindowFlags_NoSavedSettings |
-        ImGuiWindowFlags_NoCollapse |
-        ImGuiWindowFlags_NoDecoration);
 
     if (_borderlessWindow) {
+        ImGui::SetNextWindowSize(ImVec2(pViewport->Size.x, _titlebarHeight));
+        ImGui::SetNextWindowPos(ImVec2(0, 0));
+        ImGui::Begin("Title", nullptr,
+            ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoSavedSettings |
+            ImGuiWindowFlags_NoDecoration);
+
         const ImGuiStyle& style = ImGui::GetStyle();
         const float titleMarginLeft = 8.f;
         const float buttonWidth = 55.f;
@@ -124,13 +122,127 @@ void EDVoiceGUI::beginMainWindow()
             ImVec2(pViewport->Size.x, _titlebarHeight),
             col, 1.0f
         );
+
+        ImGui::End();
+
+        ImGui::SetNextWindowSize(ImVec2(pViewport->Size.x, pViewport->Size.y - _titlebarHeight));
+        ImGui::SetNextWindowPos(ImVec2(0, _titlebarHeight));
     }
+    else {
+        ImGui::SetNextWindowSize(pViewport->Size);
+        ImGui::SetNextWindowPos(ImVec2(0, 0));
+    }
+
+    ImGui::Begin("Main", nullptr,
+        ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoSavedSettings |
+        ImGuiWindowFlags_NoCollapse |
+        ImGuiWindowFlags_NoTitleBar |
+        ImGuiWindowFlags_NoResize);
  }
 
 
 void EDVoiceGUI::endMainWindow()
 {
     ImGui::End();
+}
+
+
+void EDVoiceGUI::voicePackGUI()
+{
+    static ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter;
+
+    VoicePack& voicepack = _app.getVoicepack();
+
+    const std::array<std::array<VoicePack::TriggerStatus, 2 * StatusEvent::N_StatusEvents>, N_Vehicles>& statusActive = voicepack.getVoiceStatusActive();
+    
+    ImGui::PushID("Status");
+
+    if (ImGui::BeginTable("Status", N_Vehicles + 1, flags)) {
+        ImGui::TableSetupColumn("Event", ImGuiTableColumnFlags_WidthStretch);
+
+        for (uint32_t iVehicle = 0; iVehicle < N_Vehicles; iVehicle++) {
+            ImGui::TableSetupColumn(prettyPrintVehicle((Vehicle)iVehicle));
+        }
+
+        ImGui::TableHeadersRow();
+
+        for (uint32_t iEvent = 0; iEvent < StatusEvent::N_StatusEvents; iEvent++) {
+            for (int iActivating = 0; iActivating < 2; iActivating++) {
+                const bool statusState = iActivating == 1;
+
+                // Check if any event are populated
+                bool hasVoiceForOneVehicle = false;
+
+                for (uint32_t iVehicle = 0; iVehicle < N_Vehicles; iVehicle++) {
+                    hasVoiceForOneVehicle = hasVoiceForOneVehicle || (statusActive[iVehicle][2 * iEvent + iActivating] != VoicePack::Undefined);
+                }
+
+                // At least one voice was found for a given vehicle
+                if (hasVoiceForOneVehicle) {
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    ImGui::Text(prettyPrintStatusState((StatusEvent)iEvent, statusState));
+
+                    for (uint32_t iVehicle = 0; iVehicle < N_Vehicles; iVehicle++) {
+                        const VoicePack::TriggerStatus triggerStatus = statusActive[iVehicle][2 * iEvent + iActivating];
+                        ImGui::TableNextColumn();
+
+                        if (triggerStatus != VoicePack::Undefined) {
+                            uint32_t uid = 2 * (iVehicle * StatusEvent::N_StatusEvents + iEvent) + iActivating;
+                            ImGui::PushID(uid);
+
+                            bool active = triggerStatus == VoicePack::Active;
+                            ImGui::Checkbox("", &active);
+
+                            // Change of status
+                            if (active != (triggerStatus == VoicePack::Active)) {
+                                voicepack.setVoiceStatusState(
+                                    (Vehicle)iVehicle,
+                                    (StatusEvent)iEvent,
+                                    statusState,
+                                    active);
+                            }
+
+                            ImGui::PopID();
+                        }
+                    }
+                }
+            }
+        }
+
+        ImGui::EndTable();
+    }
+
+    ImGui::PopID();
+    
+    //ImGui::ShowDemoWindow();
+    /*
+    const std::map<std::string, std::filesystem::path>& voiceSpecial = voicepack.getVoiceSpecial();
+    const std::map<std::string, std::filesystem::path>& voiceSpecial = voicepack.getVoiceSpecial();
+
+    //ImGui::BeginGroup();
+    
+    //ImGui::EndGroup();
+
+    if (ImGui::BeginTable("table1", 2, flags)) {
+        ImGui::TableSetupColumn("Event");
+        ImGui::TableSetupColumn("Play");
+        ImGui::TableHeadersRow();
+
+        bool active = true;
+
+        for (auto& voiceItem : voiceSpecial) {
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::Checkbox(voiceItem.first.c_str(), &active);
+            ImGui::TableNextColumn();
+            ImGui::Button("Play##T");
+        }
+
+        ImGui::EndTable();
+    }
+    */
 }
 
 
@@ -158,7 +270,7 @@ void EDVoiceGUI::run()
 
         beginMainWindow();
 
-        ImGui::Text("Hello World!");
+        voicePackGUI();
 
         endMainWindow();
 
@@ -216,6 +328,56 @@ void EDVoiceGUI::resize()
     ImGui_ImplVulkan_Init(&init_info);
 
     _imGuiInitialized = true;
+}
+
+
+const char* EDVoiceGUI::prettyPrintStatusState(StatusEvent status, bool activated)
+{
+    switch (status) {
+    case Docked: return activated ? "Ship has docked" : "Ship left dock";
+    case Landed: return activated ? "Ship has landed" : "Ship is taking off";
+    case LandingGear_Down: return activated ? "Landing gears deployed" : "Landing gears retracted";
+    case Shields_Up: return activated ? "Shields actived" : "Shields inactived";
+    case Supercruise: return activated ? "Supercruise activated" : "Supercruise deactivated";
+    case FlightAssist_Off: return activated ? "Fligh assist off" : "Fligh assist on";
+    case Hardpoints_Deployed: return activated ? "Hardpoints deployed" : "Hardpoints retracted";
+    case In_Wing: return activated ? "Joining wing" : "Leaving wing";
+    case LightsOn: return activated ? "Lights on" : "Lights off";
+    case Cargo_Scoop_Deployed: return activated ? "Cargo scoop deployed" : "Cargo scoop retracted";
+    case Silent_Running: return activated ? "Silent running activated" : "Silent running deactivated";
+    case Scooping_Fuel: return activated ? "Fuel scoop deployed" : "Fuel scoop retracted";
+    case Srv_Handbrake: return activated ? "SRV handbrake on" : "SRV handbrake off";
+    case Srv_using_Turret_view: return activated ? "SRV in turret view on" : "SRV in turret view off";
+    case Srv_Turret_retracted: return activated ? "SRV turret retracted" : "SRV turret deployed";
+    case Srv_DriveAssist: return activated ? "SRV drive assist activated" : "SRV drive assist deactivated";
+    case Fsd_MassLocked: return activated ? "FSD is masslocked" : "FSD is not masslocked";
+    case Fsd_Charging: return activated ? "FSD charging" : "FSD not charging";
+    case Fsd_Cooldown: return activated ? "FSD is cooling down" : "FSD is not cooling down";
+    case Low_Fuel: return activated ? "Low fuel" : "Fuel OK";
+    case Over_Heating: return activated ? "Overheating" : "Cooled down";
+    case Has_Lat_Long: return activated ? "Has latitude longitude" : "Does not have latitude longitude";
+    case IsInDanger: return activated ? "In danger" : "Left danger";
+    case Being_Interdicted: return activated ? "Beeing interdicted" : "Left interdiction";
+    case In_MainShip: return activated ? "Getting on main ship" : "Getting off main ship";
+    case In_Fighter: return activated ? "Getting on fighter" : "Getting off fighter";
+    case In_SRV: return activated ? "Getting in SRV" : "Getting off SRV";
+    case Hud_in_Analysis_mode: return activated ? "HUD is in analysis mode" : "HUD is in fight mode";
+    case Night_Vision: return activated ? "Night vision activated" : "Night vision deactivated";
+    case Altitude_from_Average_radius: return activated ? "Altitude from average radius" : "Altitude not from average radius";
+    case fsdJump: return activated ? "FSD jumping" : "FSD jump ended";
+    case srvHighBeam: return activated ? "SRV high beams enabled" : "SRV high beams disabled";
+    case N_StatusEvents: return "Unknown";
+    }
+}
+
+
+const char* EDVoiceGUI::prettyPrintVehicle(Vehicle vehicle)
+{
+    switch (vehicle) {
+    case Ship: return "Ship";
+    case SRV: return "SRV";
+    case OnFoot: return "On foot";
+    }
 }
 
 

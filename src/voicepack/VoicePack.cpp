@@ -19,10 +19,12 @@ VoicePack::VoicePack()
 void VoicePack::loadConfig(const char* filepath)
 {
     // Clear current configuration
-    _voiceStatusCommon.fill(std::filesystem::path());
-
     for (auto& vs : _voiceStatusSpecial) {
         vs.fill(std::filesystem::path());
+    }
+
+    for (auto& va : _voiceStatusActive) {
+        va.fill(Undefined);
     }
 
     _voiceJournal.clear();
@@ -54,7 +56,9 @@ void VoicePack::loadConfig(const char* filepath)
         // Parse status
         if (json.contains("status")) {
             // Load common status config
-            loadStatusConfig(basePath, json["status"], _voiceStatusCommon);
+            for (size_t v = 0; v < N_Vehicles; v++) {
+                loadStatusConfig(basePath, json["status"], _voiceStatusSpecial[v]);
+            }
 
             for (size_t v = 0; v < N_Vehicles; v++) {
                 const std::string vehicleName = vehicleToString((Vehicle)v);
@@ -89,17 +93,15 @@ void VoicePack::loadConfig(const char* filepath)
             const std::string state = (i == 0) ? "false" : "true";
             const size_t index = 2 * iEvent + i;
 
-            if (!_voiceStatusCommon[index].empty() && 
-                !std::filesystem::exists(_voiceStatusCommon[index])) {
-                std::cout << "[ERR   ] Missing file for status '" << eventName << "' (" << state << "): " << _voiceStatusCommon[index] << std::endl;
-                _voiceStatusCommon[index].clear();
-            }
-
             for (size_t v = 0; v < N_Vehicles; v++) {
-                if (!_voiceStatusSpecial[v][index].empty() &&
-                    !std::filesystem::exists(_voiceStatusSpecial[v][index])) {
-                    std::cout << "[ERR   ] Missing file for status '" << eventName << "' (" << state << ") vehicle '" << vehicleToString((Vehicle)v) << "': " << _voiceStatusSpecial[v][index] << std::endl;
-                    _voiceStatusSpecial[v][index].clear();
+                if (!_voiceStatusSpecial[v][index].empty()) {
+                    if (!std::filesystem::exists(_voiceStatusSpecial[v][index])) {
+                        std::cout << "[ERR   ] Missing file for status '" << eventName << "' (" << state << ") vehicle '" << vehicleToString((Vehicle)v) << "': " << _voiceStatusSpecial[v][index] << std::endl;
+                        _voiceStatusSpecial[v][index].clear();
+                    }
+                    else {
+                        _voiceStatusActive[v][index] = Active;
+                    }
                 }
             }
         }
@@ -133,11 +135,8 @@ void VoicePack::onStatusChanged(StatusEvent event, bool status)
 
     const size_t index = 2 * event + (status ? 1 : 0);
 
-    if (!_voiceStatusCommon[index].empty()) {
-        playVoiceline(_voiceStatusCommon[index]);
-    }
-
-    if (!_voiceStatusSpecial[_currVehicle][index].empty()) {
+    if (!_voiceStatusSpecial[_currVehicle][index].empty() && 
+        _voiceStatusActive[_currVehicle][index] == Active) {
         playVoiceline(_voiceStatusSpecial[_currVehicle][index]);
     }
 }
@@ -309,6 +308,16 @@ void VoicePack::onSpecialEvent(SpecialEvent event)
 
     if (it != _voiceSpecial.end()) {
         playVoiceline(it->second);
+    }
+}
+
+
+void VoicePack::setVoiceStatusState(Vehicle vehicle, StatusEvent event, bool statusState, bool active)
+{
+    const size_t index = 2 * event + (statusState ? 1 : 0);
+
+    if (_voiceStatusActive[vehicle][index] != Undefined) {
+        _voiceStatusActive[vehicle][index] = (active ? Active : Inactive);
     }
 }
 

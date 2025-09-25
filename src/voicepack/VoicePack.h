@@ -11,9 +11,16 @@
 #include "AudioPlayer.h"
 #include "Enum.h"
 
+
 class VoicePack
 {
 public:
+    enum TriggerStatus {
+        Active,
+        Inactive,
+        Undefined
+    };
+
     VoicePack();
 
     void loadConfig(const char* filepath);
@@ -43,6 +50,12 @@ public:
         _isPriming = other._isPriming;
     }
 
+    const std::array<std::array<TriggerStatus, 2 * StatusEvent::N_StatusEvents>, N_Vehicles>& getVoiceStatusActive() const { return _voiceStatusActive; }
+    
+    const std::map<std::string, std::filesystem::path>& getVoiceSpecial() const { return _voiceSpecial; }
+
+    void setVoiceStatusState(Vehicle vehicle, StatusEvent event, bool statusState, bool active);
+
 private:
     void setShipCargo(uint32_t cargo);
     void setSRVCargo(uint32_t cargo);
@@ -60,7 +73,7 @@ private:
         const std::filesystem::path& basePath,
         const std::string& file);
 
-    std::array<std::filesystem::path, 2 * StatusEvent::N_StatusEvents> _voiceStatusCommon;
+    std::array<std::array<TriggerStatus, 2 * StatusEvent::N_StatusEvents>, N_Vehicles> _voiceStatusActive;
     std::array<std::array<std::filesystem::path, 2 * StatusEvent::N_StatusEvents>, N_Vehicles> _voiceStatusSpecial;
 
     std::map<std::string, std::filesystem::path> _voiceJournal;

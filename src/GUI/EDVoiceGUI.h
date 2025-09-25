@@ -24,6 +24,12 @@ private:
     void beginMainWindow();
     void endMainWindow();
 
+    void voicePackGUI();
+
+
+    static const char* prettyPrintStatusState(StatusEvent status, bool activated);
+    static const char* prettyPrintVehicle(Vehicle vehicle);
+
     // WIN32 stuff for working with borderless windows
     // see https://github.com/melak47/BorderlessWindow/tree/main
     static LRESULT CALLBACK w32WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
