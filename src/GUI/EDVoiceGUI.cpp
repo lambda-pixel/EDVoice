@@ -1,6 +1,10 @@
-#include "EDVoiceGUI.h"
+﻿#include "EDVoiceGUI.h"
+
+#include <stdexcept>
 
 #include <windows.h>
+#include <windowsx.h>
+#include <dwmapi.h>
 
 #include <imgui.h>
 #include <backends/imgui_impl_win32.h>
@@ -9,40 +13,19 @@
 
 
 const wchar_t CLASS_NAME[] = L"EDVoice";
+const wchar_t WINDOW_TITLE[] = L"EDVoice";
 
 
 EDVoiceGUI::EDVoiceGUI(HINSTANCE hInstance, int nShowCmd)
     : _vkAdapter({ VK_KHR_SURFACE_EXTENSION_NAME, "VK_KHR_win32_surface" })
-{    
+{
     // ImGui initialization
     ImGui_ImplWin32_EnableDpiAwareness();
-    const float main_scale = ImGui_ImplWin32_GetDpiScaleForMonitor(MonitorFromPoint(POINT{ 0, 0 }, MONITOR_DEFAULTTOPRIMARY));
+    _mainScale = ImGui_ImplWin32_GetDpiScaleForMonitor(MonitorFromPoint(POINT{ 0, 0 }, MONITOR_DEFAULTTOPRIMARY));
 
-    WNDCLASSEXW wc = { sizeof(WNDCLASSEXW) };
-    wc.lpfnWndProc = EDVoiceGUI::WndProc;
-    wc.hInstance = hInstance;
-    wc.lpszClassName = CLASS_NAME;
-    wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
-
-    RegisterClassExW(&wc);
-
-    _hwnd = CreateWindowExW(
-        0,
-        CLASS_NAME,
-        L"EDVoice",
-        WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT, CW_USEDEFAULT,
-        main_scale * 1280, main_scale * 720,
-        nullptr,
-        nullptr,
-        hInstance,
-        nullptr
-    );
-
+    // Win32 stuff
+    w32CreateWindow(nShowCmd);
     _vkAdapter.initDevice(hInstance, _hwnd);
-
-    ShowWindow(_hwnd, nShowCmd);
-    UpdateWindow(_hwnd);
 
     // Setup ImGui
     IMGUI_CHECKVERSION();
@@ -55,8 +38,8 @@ EDVoiceGUI::EDVoiceGUI(HINSTANCE hInstance, int nShowCmd)
 
     // Scaling
     ImGuiStyle& style = ImGui::GetStyle();
-    style.ScaleAllSizes(main_scale);
-    style.FontScaleDpi = main_scale;
+    style.ScaleAllSizes(_mainScale);
+    style.FontScaleDpi = _mainScale;
 
     ImGui_ImplWin32_Init(_hwnd);
     resize();
@@ -73,6 +56,64 @@ EDVoiceGUI::~EDVoiceGUI()
     DestroyWindow(_hwnd);
     UnregisterClassW(CLASS_NAME, _hInstance);
 }
+
+
+void EDVoiceGUI::drawTitlebar()
+{
+    ImGuiViewport* pViewport = ImGui::GetMainViewport();
+
+    const float titleMarginLeft = 8.f;
+    const float buttonWidth = 40.f;
+    const ImVec2 buttonSize(buttonWidth, _titlebarHeight);
+
+    _totalButtonWidth = 3 * buttonWidth;
+
+
+    ImGui::SetNextWindowSize(pViewport->Size);
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::Begin("Main", nullptr,
+        ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoScrollbar |
+        ImGuiWindowFlags_NoSavedSettings |
+        ImGuiWindowFlags_NoCollapse |
+        ImGuiWindowFlags_NoDecoration);
+
+    ImGui::PushFont(NULL, ImGui::GetStyle().FontSizeBase * 2.0f);
+    // Center title vertically
+    ImGui::SetCursorPos(ImVec2(titleMarginLeft, .5f * (_titlebarHeight - ImGui::GetFontSize())));
+    ImGui::Text("EDVoice");
+    ImGui::PopFont();
+
+    ImGui::SetCursorPos(ImVec2(pViewport->Size.x - 3 * buttonWidth, 0.));
+    if (ImGui::Button("-", buttonSize)) { PostMessage(_hwnd, WM_SYSCOMMAND, SC_MINIMIZE, 0); }
+
+    ImGui::SetCursorPos(ImVec2(pViewport->Size.x - 2 * buttonWidth, 0.));
+    if (ImGui::Button("+", buttonSize)) { PostMessage(_hwnd, WM_SYSCOMMAND, IsZoomed(_hwnd) ? SC_RESTORE : SC_MAXIMIZE, 0); }
+
+    ImGui::SetCursorPos(ImVec2(pViewport->Size.x - buttonWidth, 0.));
+    
+    ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(200, 0, 0, 255));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(255, 50, 50, 255));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(150, 0, 0, 255));
+
+    if (ImGui::Button("x", buttonSize)) { PostMessage(_hwnd, WM_CLOSE, 0, 0); }
+
+
+
+    ImGui::PopStyleColor(3);
+
+    ImU32 col = ImGui::GetColorU32(ImGuiCol_Separator);
+
+    ImGui::GetWindowDrawList()->AddLine(
+        ImVec2(0, _titlebarHeight),
+        ImVec2(pViewport->Size.x, _titlebarHeight),
+        col, 1.0f
+    );
+
+    ImGui::Text("Hello World!");
+
+    ImGui::End();
+ }
 
 
 void EDVoiceGUI::run()
@@ -97,7 +138,9 @@ void EDVoiceGUI::run()
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        ImGui::ShowDemoWindow(&show_demo_window);
+        if (_borderlessWindow) {
+            drawTitlebar();
+        }
 
         ImGui::Render();
         ImDrawData* draw_data = ImGui::GetDrawData();
@@ -117,53 +160,6 @@ void EDVoiceGUI::run()
             }
         }
     }
-}
-
-extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);                // Use ImGui::GetCurrentContext()
-
-LRESULT CALLBACK EDVoiceGUI::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-    if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam)) {
-        return true;
-    }
-
-    switch (msg)
-    {
-        case WM_SIZE:
-            // _vkAdapter != VK_NULL_HANDLE &&
-            if (wParam != SIZE_MINIMIZED)
-            {
-                // Resize swap chain
-                const int fb_width = (UINT)LOWORD(lParam);
-                const int fb_height = (UINT)HIWORD(lParam);
-
-                // TODO!
-                //if (fb_width > 0 && fb_height > 0 &&
-                //    (g_SwapChainRebuild || g_MainWindowData.Width != fb_width || g_MainWindowData.Height != fb_height))
-                //{
-                //    //ImGui_ImplVulkan_SetMinImageCount(g_MinImageCount);
-                //    //ImGui_ImplVulkanH_CreateOrResizeWindow(g_Instance, g_PhysicalDevice, g_Device, &g_MainWindowData, g_QueueFamily, g_Allocator, fb_width, fb_height, g_MinImageCount);
-                //    g_MainWindowData.FrameIndex = 0;
-                //    g_SwapChainRebuild = false;
-                //}
-            }
-            return 0;
-        //case WM_SYSCOMMAND:
-        //    if ((wParam & 0xfff0) == SC_KEYMENU) {
-        //        // Disable ALT application menu
-        //        return 0;
-        //    }
-        //    break;
-
-        case WM_DESTROY:
-            PostQuitMessage(0);
-            return 0;
-
-        default:
-            return DefWindowProc(hwnd, msg, wParam, lParam);
-    }
-
-    return 0;
 }
 
 
@@ -200,4 +196,258 @@ void EDVoiceGUI::resize()
     ImGui_ImplVulkan_Init(&init_info);
 
     _imGuiInitialized = true;
+}
+
+
+// ----------------------------------------------------------------------------
+// WIN32 specific mess
+// ----------------------------------------------------------------------------
+
+
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+LRESULT CALLBACK EDVoiceGUI::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam)) {
+        return true;
+    }
+
+    if (msg == WM_NCCREATE) {
+        auto userdata = reinterpret_cast<CREATESTRUCTW*>(lParam)->lpCreateParams;
+        // store window instance pointer in window user data
+        ::SetWindowLongPtrW(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(userdata));
+    }
+    if (auto window_ptr = reinterpret_cast<EDVoiceGUI*>(::GetWindowLongPtrW(hWnd, GWLP_USERDATA))) {
+        auto& window = *window_ptr;
+
+        switch (msg) {
+        case WM_NCCALCSIZE: {
+            if (wParam == TRUE && window._borderlessWindow) {
+                auto& params = *reinterpret_cast<NCCALCSIZE_PARAMS*>(lParam);
+                window.w32AdjustMaximizedClientRect(params.rgrc[0]);
+                return 0;
+            }
+            break;
+        }
+        case WM_NCHITTEST: {
+            // When we have no border or title bar, we need to perform our
+            // own hit testing to allow resizing and moving.
+            if (window._borderlessWindow) {
+                LRESULT hitResult = window.w32HitTest(POINT{
+                    GET_X_LPARAM(lParam),
+                    GET_Y_LPARAM(lParam)
+                    });
+
+                if (hitResult) {
+                    return hitResult;
+                }
+            }
+            break;
+        }
+        case WM_NCACTIVATE: {
+            if (!window.w32CompositionEnabled()) {
+                // Prevents window frame reappearing on window activation
+                // in "basic" theme, where no aero shadow is present.
+                return 1;
+            }
+            break;
+        }
+
+        case WM_CLOSE: {
+            ::DestroyWindow(hWnd);
+            return 0;
+        }
+
+        case WM_DESTROY: {
+            PostQuitMessage(0);
+            return 0;
+        }
+
+        case WM_KEYDOWN:
+        case WM_SYSKEYDOWN: {
+            switch (wParam) {
+            //case VK_F8: { window.borderless_drag = !window.borderless_drag;        return 0; }
+            //case VK_F9: { window.borderless_resize = !window.borderless_resize;    return 0; }
+            //case VK_F10: { window.set_borderless(!window._borderlessWindow);               return 0; }
+            case VK_F10: { window.w32SetBorderless(!window._borderlessWindow);               return 0; }
+            //case VK_F11: { window.set_borderless_shadow(!window.borderless_shadow); return 0; }
+            }
+            break;
+        }
+        }
+    }
+
+    return ::DefWindowProcW(hWnd, msg, wParam, lParam);
+}
+
+
+bool EDVoiceGUI::w32CompositionEnabled()
+{
+    BOOL compositionEnabled = false;
+    const HRESULT queryComposition = ::DwmIsCompositionEnabled(&compositionEnabled);
+
+    return compositionEnabled && (queryComposition == S_OK);
+}
+
+
+DWORD EDVoiceGUI::w32Style()
+{
+    if (_borderlessWindow) {
+        if (w32CompositionEnabled()) {
+            return WS_POPUP | WS_THICKFRAME | WS_CAPTION | WS_SYSMENU | WS_MAXIMIZEBOX | WS_MINIMIZEBOX;
+        }
+        else {
+            return WS_POPUP | WS_THICKFRAME | WS_SYSMENU | WS_MAXIMIZEBOX | WS_MINIMIZEBOX;
+        }
+    }
+    else {
+        return WS_OVERLAPPEDWINDOW | WS_THICKFRAME | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
+    }
+}
+
+
+void EDVoiceGUI::w32CreateWindow(int nShowCmd)
+{
+    WNDCLASSEXW wcx{};
+    wcx.cbSize = sizeof(wcx);
+    wcx.style = CS_HREDRAW | CS_VREDRAW;
+    wcx.hInstance = nullptr;
+    wcx.lpfnWndProc = EDVoiceGUI::w32WndProc;
+    wcx.lpszClassName = CLASS_NAME;
+    wcx.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
+    wcx.hCursor = ::LoadCursorW(nullptr, IDC_ARROW);
+    const ATOM result = ::RegisterClassExW(&wcx);
+
+    if (!result) {
+        throw std::runtime_error("failed to register window class");
+    }
+
+    _hwnd = ::CreateWindowExW(
+        0,
+        wcx.lpszClassName,
+        WINDOW_TITLE,
+        w32Style(),
+        CW_USEDEFAULT, CW_USEDEFAULT,
+        _mainScale * 1280, _mainScale * 720,
+        nullptr,
+        nullptr,
+        nullptr,
+        this
+    );
+
+    if (w32CompositionEnabled()) {
+        static const MARGINS shadow_state[2]{ { 0,0,0,0 },{ 1,1,1,1 } };
+        ::DwmExtendFrameIntoClientArea(_hwnd, &shadow_state[_borderlessWindow ? 1 : 0]);
+    }
+
+    ::SetWindowPos(_hwnd, nullptr, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE);
+    ::ShowWindow(_hwnd, nShowCmd);
+    ::UpdateWindow(_hwnd);
+}
+
+
+void EDVoiceGUI::w32SetBorderless(bool borderless)
+{
+    if (borderless != _borderlessWindow) {
+        _borderlessWindow = borderless;
+
+        ::SetWindowLongPtrW(_hwnd, GWL_STYLE, static_cast<LONG>(w32Style()));
+
+        if (w32CompositionEnabled()) {
+            static const MARGINS shadow_state[2]{ { 0,0,0,0 },{ 1,1,1,1 } };
+            ::DwmExtendFrameIntoClientArea(_hwnd, &shadow_state[_borderlessWindow ? 1 : 0]);
+        }
+
+        ::SetWindowPos(_hwnd, nullptr, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE);
+        ::ShowWindow(_hwnd, SW_SHOW);
+        ::UpdateWindow(_hwnd);
+    }
+}
+
+
+bool EDVoiceGUI::w32IsMaximized()
+{
+    WINDOWPLACEMENT placement;
+    if (!::GetWindowPlacement(_hwnd, &placement)) {
+        return false;
+    }
+
+    return placement.showCmd == SW_MAXIMIZE;
+}
+
+
+void EDVoiceGUI::w32AdjustMaximizedClientRect(RECT& rect)
+{
+    if (!w32IsMaximized()) {
+        return;
+    }
+
+    auto monitor = ::MonitorFromWindow(_hwnd, MONITOR_DEFAULTTONULL);
+    if (!monitor) {
+        return;
+    }
+
+    MONITORINFO monitor_info{};
+    monitor_info.cbSize = sizeof(monitor_info);
+    if (!::GetMonitorInfoW(monitor, &monitor_info)) {
+        return;
+    }
+
+    // when maximized, make the client area fill just the monitor (without task bar) rect,
+    // not the whole window rect which extends beyond the monitor.
+    rect = monitor_info.rcWork;
+}
+
+
+LRESULT EDVoiceGUI::w32HitTest(POINT cursor) const
+{
+    // identify borders and corners to allow resizing the window.
+    // Note: On Windows 10, windows behave differently and
+    // allow resizing outside the visible window frame.
+    // This implementation does not replicate that behavior.
+    const POINT border{
+        ::GetSystemMetrics(SM_CXFRAME) + ::GetSystemMetrics(SM_CXPADDEDBORDER),
+        ::GetSystemMetrics(SM_CYFRAME) + ::GetSystemMetrics(SM_CXPADDEDBORDER)
+    };
+    RECT window;
+    if (!::GetWindowRect(_hwnd, &window)) {
+        return HTNOWHERE;
+    }
+
+    const auto drag = false;//borderless_drag ? HTCAPTION : HTCLIENT;
+
+    enum region_mask {
+        client = 0b0000,
+        left = 0b0001,
+        right = 0b0010,
+        top = 0b0100,
+        bottom = 0b1000,
+    };
+
+    const auto result =
+        left * (cursor.x < (window.left + border.x)) |
+        right * (cursor.x >= (window.right - border.x)) |
+        top * (cursor.y < (window.top + border.y)) |
+        bottom * (cursor.y >= (window.bottom - border.y));
+
+    switch (result) {
+        case left: return HTLEFT;
+        case right: return HTRIGHT;
+        case top: return HTTOP;
+        case bottom: return HTBOTTOM;
+        case top | left: return HTTOPLEFT;
+        case top | right: return HTTOPRIGHT;
+        case bottom | left: return HTBOTTOMLEFT;
+        case bottom | right: return HTBOTTOMRIGHT;
+        case client: {
+            // TODO: Adjust
+            if (cursor.y < (window.top + _titlebarHeight) && cursor.x < (window.right - _totalButtonWidth)) {
+                return HTCAPTION;
+            }
+            else {
+                return HTCLIENT;
+            }
+        }
+        default: return HTNOWHERE;
+    }
 }

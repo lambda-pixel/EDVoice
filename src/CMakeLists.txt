@@ -9,7 +9,7 @@ add_executable(EDVoice WIN32
     GUI/Vulkan/Swapchain.cpp
     GUI/Vulkan/VkUtil.cpp
     ../assets/edvoice.rc
-)
+ )
 
 target_include_directories(EDVoice PRIVATE ../3rdparty)
 target_include_directories(EDVoice PRIVATE ../plugins/include)

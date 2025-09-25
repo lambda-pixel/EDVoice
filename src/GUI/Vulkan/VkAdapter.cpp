@@ -194,7 +194,7 @@ VkCommandBuffer VkAdapter::startNewFrame()
         vkBeginCommandBuffer(_commandBuffer[iSwapchainImage], &beginInfo);
 
         // Rendering
-        const VkClearValue clearValue[] = { {0, 0, 0, 0}, {1, 1, 1, 1} };
+        const VkClearValue clearValue[] = { {0, 0, 0, 0} };
         const VkRenderPassBeginInfo renderPassBeginInfo = {
             VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO, nullptr,  // sType, pNext
             _renderPass,                                        // renderpass
