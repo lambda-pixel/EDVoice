@@ -40,6 +40,11 @@ public:
         _currSRVCargo = other._currSRVCargo;
 
         _previousUnderAttack = other._previousUnderAttack;
+        _previousLaunchDrone = other._previousLaunchDrone;
+        _previousEjectCargo = other._previousEjectCargo;
+
+        _isShutdownState = other._isShutdownState;
+        _isPriming = other._isPriming;
     }
 
     std::array<std::array<VoiceTriggerStatus, 2 * StatusEvent::N_StatusEvents>, N_Vehicles>& getVoiceStatusActive() { return _voiceStatusActive; }
@@ -85,6 +90,11 @@ private:
 
     // Uggly hack to prevent multiple "under attack" announcements
     bool _previousUnderAttack;
+    bool _previousLaunchDrone = false;
+    bool _previousEjectCargo = false;
+
+    bool _isShutdownState = false;
+    bool _isPriming = false;
 };
 
 

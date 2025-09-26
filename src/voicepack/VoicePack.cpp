@@ -158,7 +158,16 @@ void VoicePack::loadConfig(const std::filesystem::path& filepath)
 
 void VoicePack::onStatusChanged(StatusEvent event, bool status)
 {
+    if (_isShutdownState || _isPriming) {
+        return;
+    }
+
     if (event >= StatusEvent::N_StatusEvents) {
+        return;
+    }
+
+    // Prevents voiceline triggered while launching drone
+    if (event == StatusEvent::Cargo_Scoop_Deployed && (_previousLaunchDrone || _previousEjectCargo)) {
         return;
     }
 
@@ -183,12 +192,23 @@ void VoicePack::setJournalPreviousEvent(const std::string& event, const std::str
 
 void VoicePack::onJournalEvent(const std::string& event, const std::string& journalEntry)
 {
+    if (event == "Shutdown") {
+        _isShutdownState = true;
+        std::cout << "[INFO  ] Entering shutdown state" << std::endl;
+    }
+    else if (event == "LoadGame") {
+        _isShutdownState = false;
+        std::cout << "[INFO  ] Exiting shutdown state" << std::endl;
+    }
+
     // Prevent multiple "under attack" announcements
     if (_previousUnderAttack && event == "UnderAttack") {
         return;
     }
 
     _previousUnderAttack = (event == "UnderAttack");
+    _previousLaunchDrone = (event == "LaunchDrone");
+    _previousEjectCargo = (event == "EjectCargo");
 
     auto it = _voiceJournal.find(event);
 
