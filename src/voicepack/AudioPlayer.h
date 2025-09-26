@@ -18,21 +18,6 @@
 #include "AtomicQueue.hpp"
 
 
-class PlayerCallback : public IMFPMediaPlayerCallback
-{
-public:
-    bool finished = false;
-
-    void STDMETHODCALLTYPE OnMediaPlayerEvent(MFP_EVENT_HEADER* pEventHeader) override;
-
-    // COM boilerplate
-    STDMETHODIMP QueryInterface(REFIID riid, void** ppv) override;
-
-    STDMETHODIMP_(ULONG) AddRef() override;
-    STDMETHODIMP_(ULONG) Release() override;
-};
-
-
 class AudioPlayer
 {
 public:

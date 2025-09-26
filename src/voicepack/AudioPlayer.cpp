@@ -6,34 +6,41 @@
 #include "AudioPlayer.h"
 
 // ----------------------------------------------------------------------------
-// PlayerCallback implementation
+// PlayerCallback implementatio
 // ----------------------------------------------------------------------------
 
+class PlayerCallback : public IMFPMediaPlayerCallback {
+    std::atomic<ULONG> _refCount{1};
+public:
+    bool finished = false;
 
-void STDMETHODCALLTYPE PlayerCallback::OnMediaPlayerEvent(MFP_EVENT_HEADER* pEventHeader)
-{
-    if (pEventHeader->eEventType == MFP_EVENT_TYPE_PLAYBACK_ENDED) {
-        finished = true;
+    void STDMETHODCALLTYPE OnMediaPlayerEvent(MFP_EVENT_HEADER* pEventHeader) override {
+        if (pEventHeader->eEventType == MFP_EVENT_TYPE_PLAYBACK_ENDED) {
+            finished = true;
+        }
     }
-}
 
-
-STDMETHODIMP PlayerCallback::QueryInterface(REFIID riid, void** ppv)
-{
-    if (!ppv) return E_POINTER;
-    *ppv = nullptr;
-    if (riid == IID_IUnknown || riid == __uuidof(IMFPMediaPlayerCallback)) {
-        *ppv = static_cast<IMFPMediaPlayerCallback*>(this);
-        AddRef();
-        return S_OK;
+    STDMETHODIMP QueryInterface(REFIID riid, void** ppv) override {
+        if (!ppv) return E_POINTER;
+        *ppv = nullptr;
+        if (riid == IID_IUnknown || riid == __uuidof(IMFPMediaPlayerCallback)) {
+            *ppv = static_cast<IMFPMediaPlayerCallback*>(this);
+            AddRef();
+            return S_OK;
+        }
+        return E_NOINTERFACE;
     }
-    return E_NOINTERFACE;
-}
 
+    STDMETHODIMP_(ULONG) AddRef() override {
+        return ++_refCount;
+    }
 
-STDMETHODIMP_(ULONG) PlayerCallback::AddRef() { return 1; }
-STDMETHODIMP_(ULONG) PlayerCallback::Release() { return 1; }
-
+    STDMETHODIMP_(ULONG) Release() override {
+        ULONG ref = --_refCount;
+        if (ref == 0) delete this;
+        return ref;
+    }
+};
 
 // ----------------------------------------------------------------------------
 // AudioPlayer implementation
@@ -76,26 +83,27 @@ void AudioPlayer::messageLoop()
 {
     HRESULT hr;
     IMFPMediaPlayer* pPlayer = nullptr;
-    IMFPMediaItem* pMediaItem = nullptr;
-    PlayerCallback callback;
+    PlayerCallback* callback = new PlayerCallback();
 
     hr = MFStartup(MF_VERSION);
-    if (FAILED(hr)) throw std::runtime_error("MFStartup failed");
+    if (FAILED(hr)) {
+        callback->Release();
+        throw std::runtime_error("MFStartup failed");
+    }
 
     MSG msg;
     while (!_stopThread && GetMessage(&msg, NULL, 0, 0)) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
 
-        if (callback.finished) {
+        if (callback->finished) {
             if (pPlayer) {
                 pPlayer->Shutdown();
                 pPlayer->Release();
                 pPlayer = nullptr;
             }
-
             // Signal the thread to check for new tracks
-            PostThreadMessage(GetThreadId(_eventThread.native_handle()), WM_USER + 1, 0, 0);
+            PostThreadMessage(GetCurrentThreadId(), WM_USER + 1, 0, 0);
         }
 
         if (msg.message == WM_USER + 1) {
@@ -104,15 +112,24 @@ void AudioPlayer::messageLoop()
                 const std::wstring track = _trackQueue.front();
                 _trackQueue.pop();
 
-                hr = MFPCreateMediaPlayer(track.c_str(), FALSE, 0, &callback, NULL, &pPlayer);
-                if (FAILED(hr)) throw std::runtime_error("MFPCreateMediaPlayer failed");
+                hr = MFPCreateMediaPlayer(track.c_str(), FALSE, 0, callback, NULL, &pPlayer);
+                if (FAILED(hr)) {
+                    callback->Release();
+                    MFShutdown();
+                    throw std::runtime_error("MFPCreateMediaPlayer failed");
+                }
 
-                callback.finished = false;
+                callback->finished = false;
                 pPlayer->Play();
             }
         }
     }
 
+    if (pPlayer) {
+        pPlayer->Shutdown();
+        pPlayer->Release();
+    }
+    callback->Release();
     MFShutdown();
 }
 
