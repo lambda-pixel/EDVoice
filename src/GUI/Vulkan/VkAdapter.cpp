@@ -7,6 +7,16 @@
 
 
 VkAdapter::VkAdapter(const std::vector<char*>& instanceExtensions)
+    : _instance(VK_NULL_HANDLE)
+    , _physicalDevice(VK_NULL_HANDLE)
+    , _device(VK_NULL_HANDLE)
+    , _iQueueFamily(0)
+    , _queue(VK_NULL_HANDLE)
+    , _swapchain(nullptr)
+    , _renderPass(VK_NULL_HANDLE)
+    , _commandPool(VK_NULL_HANDLE)
+    , _currFrameInfo{ 0, VK_NULL_HANDLE, VK_NULL_HANDLE, false }
+    , _surface(VK_NULL_HANDLE)
 {
     // Create Vulkan Instance
     const VkApplicationInfo applicationInfo = {
@@ -30,7 +40,7 @@ VkAdapter::VkAdapter(const std::vector<char*>& instanceExtensions)
         &applicationInfo,                                   // pApplicationInfo
         static_cast<uint32_t>(enabledLayerNames.size()),
         enabledLayerNames.data(),                           // ppEnabledLayerNames
-        instanceExtensions.size(),
+        (uint32_t)instanceExtensions.size(),
         instanceExtensions.data()                           // ppEnabledExtensionNames
     };
 
@@ -107,7 +117,7 @@ void VkAdapter::initDevice(
         queueProperties.resize(nQueues);
         vkGetPhysicalDeviceQueueFamilyProperties(device, &nQueues, queueProperties.data());
 
-        for (size_t iQueue = 0; iQueue < nQueues; iQueue++) {
+        for (uint32_t iQueue = 0; iQueue < nQueues; iQueue++) {
             const VkQueueFamilyProperties& currentQueue = queueProperties[iQueue];
 
             // TODO: safer !
@@ -154,7 +164,7 @@ void VkAdapter::initDevice(
         VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO, nullptr, 0,       // sType, pNext, flags
         1, &queueCreateInfo,                                    // pQueueCreateInfos
         0, nullptr,                                             // ppEnabledLayerNames
-        extensions.size(), extensions.data(),                   // ppEnabledExtensionNames
+        (uint32_t)extensions.size(), extensions.data(),         // ppEnabledExtensionNames
         nullptr                                                 // VkPhysicalDeviceFeatures
     };
 
@@ -174,8 +184,6 @@ VkCommandBuffer VkAdapter::startNewFrame()
     _currFrameInfo.acquired = false;
 
     uint32_t iSwapchainImage;
-    VkSemaphore semaphoreImageAcquired;
-    VkSemaphore semaphoreRenderReady;
 
     const VkResult acquired = _swapchain->acquireNextImage(
         &iSwapchainImage,
@@ -240,7 +248,8 @@ void VkAdapter::renderFrame()
         const VkPipelineStageFlags waitStage = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
         const VkSubmitInfo submitInfo = {
             VK_STRUCTURE_TYPE_SUBMIT_INFO, nullptr,
-            (_currFrameInfo.semaphoreImageAcquired != VK_NULL_HANDLE) ? 1 : 0, &_currFrameInfo.semaphoreImageAcquired, &waitStage,
+            (uint32_t)((_currFrameInfo.semaphoreImageAcquired != VK_NULL_HANDLE) ? 1 : 0),
+            &_currFrameInfo.semaphoreImageAcquired, &waitStage,
             1, &_commandBuffer[iSwapchainImage],    // commandBuffers
             1, &_currFrameInfo.semaphoreRenderReady // signalSemaphores
         };

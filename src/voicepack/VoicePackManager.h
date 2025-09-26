@@ -83,11 +83,6 @@ private:
     std::map<std::string, VoiceTriggerStatus> _configVoiceJournalActive;
     std::array<VoiceTriggerStatus, N_SpecialEvents> _configVoiceSpecialActive;
 
-    // For the current voicepack
-    std::array<std::array<VoiceTriggerStatus, 2 * StatusEvent::N_StatusEvents>, N_Vehicles> _currVoiceStatusActive;
-    std::map<std::string, VoiceTriggerStatus> _currVoiceJournalActive;
-    std::array<VoiceTriggerStatus, N_SpecialEvents> _currVoiceSpecialActive;
-
     AudioPlayer _player;
 
     bool _isShutdownState = false;

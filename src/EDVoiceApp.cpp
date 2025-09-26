@@ -6,6 +6,8 @@
 #include <json.hpp>
 
 #include "util/EliteFileUtil.h"
+#define __STDC_WANT_LIB_EXT1__ 1
+#include <cstring>
 
 // Ugly hack for now but whatever...
 static void loadConfigVP(const char* filepath, void* ctx)
@@ -35,9 +37,9 @@ extern "C" {
         callbacks->setJournalPreviousEvent = setJournalPreviousEventVP;
         callbacks->onJournalEvent = onJournalEventVP;
         callbacks->ctx = voicepack;
-        std::strncpy(callbacks->name, "VoicePack", sizeof(callbacks->name) - 1);
-        std::strncpy(callbacks->versionStr, "0.3", sizeof(callbacks->versionStr) - 1);
-        std::strncpy(callbacks->author, "Siegfried-Origin", sizeof(callbacks->author) - 1);
+        strncpy_s(callbacks->name, sizeof(callbacks->name), "VoicePack", ((size_t)-1));
+        strncpy_s(callbacks->versionStr, sizeof(callbacks->versionStr), "0.3", ((size_t)-1));
+        strncpy_s(callbacks->author, sizeof(callbacks->author), "Siegfried-Origin", ((size_t)-1));
     }
     void unregisterPluginVP()
     {

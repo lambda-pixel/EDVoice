@@ -53,7 +53,7 @@ private:
     VkInstance _instance = VK_NULL_HANDLE;
     VkPhysicalDevice _physicalDevice = VK_NULL_HANDLE;
     VkDevice _device = VK_NULL_HANDLE;
-    uint32_t _iQueueFamily;
+    uint32_t _iQueueFamily = 0;
     VkQueue _queue = VK_NULL_HANDLE;
 
     Swapchain* _swapchain = nullptr;
@@ -69,9 +69,8 @@ private:
     std::vector<VkCommandBuffer> _commandBuffer;
     std::vector<VkFence> _fenceCommandBuffer;
 
-    CurrFrameInfo _currFrameInfo;
-
-    VkSurfaceKHR _surface;
+    CurrFrameInfo _currFrameInfo = { 0, VK_NULL_HANDLE, VK_NULL_HANDLE, false };
+    VkSurfaceKHR _surface = VK_NULL_HANDLE;
 
 public:
     const uint32_t API_VERSION = VK_API_VERSION_1_0;

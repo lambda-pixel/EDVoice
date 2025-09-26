@@ -10,7 +10,7 @@ uint32_t VkUtil::findMemoryTypeIdx(
 
     vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
 
-    for (size_t i_bit = 0; i_bit < memoryProperties.memoryTypeCount; i_bit++) {
+    for (uint32_t i_bit = 0; i_bit < memoryProperties.memoryTypeCount; i_bit++) {
         if (requirements.memoryTypeBits & (1 << i_bit)) {
             if ((memoryProperties.memoryTypes[i_bit].propertyFlags & requiredFlags) == requiredFlags) {
                 return i_bit;

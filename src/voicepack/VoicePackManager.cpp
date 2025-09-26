@@ -8,9 +8,20 @@
 VoicePackManager::VoicePackManager()
     : _standardVoicePack(*this)
 #ifdef BUILD_MEDICORP
+    , _altaActive(false)
     , _medicVoicePack(*this)
 #endif
+    , _currentVoicePackIndex(0)
+    , _configVoiceStatusActive({ })
+    , _configVoiceSpecialActive({ Undefined })
+    , _isShutdownState(false)
+    , _isPriming(false)
 {
+    for (auto& va : _configVoiceStatusActive) {
+        va.fill(Undefined);
+    }
+
+    _configVoiceSpecialActive.fill(Undefined);
 }
 
 

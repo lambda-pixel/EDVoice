@@ -263,7 +263,7 @@ void EDVoiceGUI::voicePackGUI()
 {
     VoicePackManager& voicepack = _app.getVoicepack();
 
-    int selectedVoicePackIdx = voicepack.getCurrentVoicePackIndex();
+    size_t selectedVoicePackIdx = voicepack.getCurrentVoicePackIndex();
 
 #ifdef BUILD_MEDICORP
     const char* defaultVoicepackLabel = "Standard Voicepack";
@@ -286,7 +286,7 @@ void EDVoiceGUI::voicePackGUI()
                     voicepack.loadVoicePackByIndex(selectedVoicePackIdx);
                 }
                 catch (const std::runtime_error& e) {
-                    _logErrStr = "Changing voicepack failed:\nthe index is out of bounds";
+                    _logErrStr = e.what();
                     _hasError = true;
                 }
             }
@@ -312,7 +312,7 @@ void EDVoiceGUI::voicePackGUI()
                 voicepack.loadVoicePackByIndex(idxNewVoicePack);
             }
             catch (const std::runtime_error& e) {
-                _logErrStr = "Could not load the voicepack:\n a voicepack with the same name already exists";
+                _logErrStr = e.what();
                 _hasError = true;
             }
         }
@@ -524,6 +524,8 @@ const char* EDVoiceGUI::prettyPrintStatusState(StatusEvent status, bool activate
     case srvHighBeam: return activated ? "SRV high beams enabled" : "SRV high beams disabled";
     case N_StatusEvents: return "Unknown";
     }
+
+    return "Unknown";
 }
 
 
@@ -533,7 +535,10 @@ const char* EDVoiceGUI::prettyPrintVehicle(Vehicle vehicle)
     case Ship: return "Ship";
     case SRV: return "SRV";
     case OnFoot: return "On foot";
+    case N_Vehicles: return "Unknown";
     }
+
+    return "Unknown";
 }
 
 
@@ -550,7 +555,10 @@ const char* EDVoiceGUI::prettyPrintSpecialEvent(SpecialEvent event)
     case HullIntegrity_Critical: return "Hull integrity critical";
     case AutoPilot_Liftoff: return "Autopilot liftoff";
     case AutoPilot_Touchdown: return "Autopilot touchdown";
+    case N_SpecialEvents: return "Unknown";
     }
+
+    return "Unknown";
 }
 
 
@@ -683,7 +691,7 @@ void EDVoiceGUI::w32CreateWindow(int nShowCmd)
         WINDOW_TITLE,
         w32Style(),
         CW_USEDEFAULT, CW_USEDEFAULT,
-        _mainScale * 640, _mainScale * 700,
+        (int)(_mainScale * 640), (int)(_mainScale * 700),
         nullptr,
         nullptr,
         nullptr,
@@ -734,7 +742,7 @@ void EDVoiceGUI::w32SetBorderless(bool borderless)
 
 bool EDVoiceGUI::w32IsMaximized()
 {
-    WINDOWPLACEMENT placement;
+    WINDOWPLACEMENT placement = {};
     if (!::GetWindowPlacement(_hwnd, &placement)) {
         return false;
     }

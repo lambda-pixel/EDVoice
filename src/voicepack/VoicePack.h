@@ -10,7 +10,7 @@
 
 #include "Enum.h"
 
-struct VoicePackManager;
+class VoicePackManager;
 
 class VoicePack
 {
