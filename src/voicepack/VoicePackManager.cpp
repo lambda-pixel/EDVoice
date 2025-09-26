@@ -29,11 +29,20 @@ void VoicePackManager::loadConfig(const char* filepath)
         basePath = std::filesystem::current_path() / path.parent_path();
     }
 
+    // Clear current configuration
+    for (auto& va : _configVoiceStatusActive) {
+        va.fill(Undefined);
+    }
+
+    _configVoiceJournalActive.clear();
+    _configVoiceSpecialActive.fill(Undefined);
+
     // Load installed voicepacks
     std::ifstream file(filepath);
     std::string fileContent((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 
     nlohmann::json json = nlohmann::json::parse(fileContent);
+
     if (json.contains("voicepacks")) {
         for (auto& vp : json["voicepacks"].items()) {
             const std::string& value = vp.value().get<std::string>();
@@ -51,8 +60,8 @@ void VoicePackManager::loadConfig(const char* filepath)
     }
 
     // Load standard voicepack
-    if (json.contains("defaultVoicepack")) {
-        const std::string& defaultVP = json["defaultVoicepack"].get<std::string>();
+    if (json.contains("defaultVoicePack")) {
+        const std::string& defaultVP = json["defaultVoicePack"].get<std::string>();
         const auto& it = _installedVoicePacks.find(defaultVP);
 
         if (it != _installedVoicePacks.end()) {
@@ -117,10 +126,10 @@ void VoicePackManager::loadConfig(const char* filepath)
                             }
 
                             if (statusEntry.value().get<bool>()) {
-                                _voiceStatusActive[iVehicle][iEvent] = Active;
+                                _configVoiceStatusActive[iVehicle][iEvent] = Active;
                             }
                             else {
-                                _voiceStatusActive[iVehicle][iEvent] = Inactive;
+                                _configVoiceStatusActive[iVehicle][iEvent] = Inactive;
                             }
                         }
                     }
@@ -133,10 +142,10 @@ void VoicePackManager::loadConfig(const char* filepath)
 
             for (auto& je : jsonEventVoiceActions.items()) {
                 if (je.value().get<bool>()) {
-                    _voiceJournalActive[je.key()] = Active;
+                    _configVoiceJournalActive[je.key()] = Active;
                 }
                 else {
-                    _voiceJournalActive[je.key()] = Inactive;
+                    _configVoiceJournalActive[je.key()] = Inactive;
                 }
             }
         }
@@ -152,10 +161,10 @@ void VoicePackManager::loadConfig(const char* filepath)
                 }
 
                 if (se.value().get<bool>()) {
-                    _voiceSpecialActive[event.value()] = Active;
+                    _configVoiceSpecialActive[event.value()] = Active;
                 }
                 else {
-                    _voiceSpecialActive[event.value()] = Inactive;
+                    _configVoiceSpecialActive[event.value()] = Inactive;
                 }
             }
         }
@@ -163,6 +172,55 @@ void VoicePackManager::loadConfig(const char* filepath)
 
     // Merge back potentially new actions from the standard voicepack
 
+    VoicePack& vp = _standardVoicePack;
+
+    {
+        // 1 - apply to voicepacks
+        std::array<std::array<VoiceTriggerStatus, 2 * StatusEvent::N_StatusEvents>, N_Vehicles>& voiceStatusActive = vp.getVoiceStatusActive();
+        std::map<std::string, VoiceTriggerStatus>& voiceJournalActive = vp.getVoiceJournalActive();
+        std::array<VoiceTriggerStatus, N_SpecialEvents>& voiceSpecialActive = vp.getVoiceSpecialActive();
+
+        for (uint32_t iVehicle = 0; iVehicle < N_Vehicles; iVehicle++) {
+            for (uint32_t iEvent = 0; iEvent < 2 * StatusEvent::N_StatusEvents; iEvent++) {
+                if (_configVoiceStatusActive[iVehicle][iEvent] != Undefined && _configVoiceStatusActive[iVehicle][iEvent] != MissingFile) {
+                    voiceStatusActive[iVehicle][iEvent] = _configVoiceStatusActive[iVehicle][iEvent];
+                }
+            }
+        }
+
+        for (auto& je : _configVoiceJournalActive) {
+            if (je.second != Undefined && je.second != MissingFile) {
+                voiceJournalActive[je.first] = je.second;
+            }
+        }
+
+        for (uint32_t iEvent = 0; iEvent < N_SpecialEvents; iEvent++) {
+            if (_configVoiceSpecialActive[iEvent] != Undefined && _configVoiceSpecialActive[iEvent] != MissingFile) {
+                voiceSpecialActive[iEvent] = _configVoiceSpecialActive[iEvent];
+            }
+        }
+
+        // 2 - get unknown new events from voicepack
+        for (uint32_t iVehicle = 0; iVehicle < N_Vehicles; iVehicle++) {
+            for (uint32_t iEvent = 0; iEvent < 2 * StatusEvent::N_StatusEvents; iEvent++) {
+                if (_configVoiceStatusActive[iVehicle][iEvent] == Undefined) {
+                    _configVoiceStatusActive[iVehicle][iEvent] = voiceStatusActive[iVehicle][iEvent];
+                }
+            }
+        }
+
+        for (auto& je : voiceJournalActive) {
+            if (_configVoiceJournalActive.find(je.first) == _configVoiceJournalActive.end()) {
+                _configVoiceJournalActive[je.first] = je.second;
+            }
+        }
+
+        for (uint32_t iEvent = 0; iEvent < N_SpecialEvents; iEvent++) {
+            if (_configVoiceSpecialActive[iEvent] == Undefined) {
+                _configVoiceSpecialActive[iEvent] = voiceSpecialActive[iEvent];
+            }
+        }
+    }
     // TODO!!
 }
 
@@ -267,7 +325,7 @@ void VoicePackManager::playStatusVoiceline(
     if (!path.empty() &&
         !_isShutdownState &&
         !_isPriming &&
-        _voiceStatusActive[vehicle][indexFromStatusEvent(event, status)] == Active) {
+        _configVoiceStatusActive[vehicle][indexFromStatusEvent(event, status)] == Active) {
         _player.addTrack(path);
     }
 }
@@ -280,7 +338,7 @@ void VoicePackManager::playJournalVoiceline(
     if (!path.empty() &&
         !_isShutdownState &&
         !_isPriming &&
-        _voiceJournalActive[event] == Active) {
+        _configVoiceJournalActive[event] == Active) {
         _player.addTrack(path);
     }
 }
@@ -293,7 +351,7 @@ void VoicePackManager::playSpecialVoiceline(
     if (!path.empty() &&
         !_isShutdownState &&
         !_isPriming &&
-        _voiceSpecialActive[event] == Active) {
+        _configVoiceSpecialActive[event] == Active) {
         _player.addTrack(path);
     }
 }
@@ -303,23 +361,23 @@ void VoicePackManager::setVoiceStatusState(Vehicle vehicle, StatusEvent event, b
 {
     const size_t index = 2 * event + (statusState ? 1 : 0);
 
-    if (_voiceStatusActive[vehicle][index] != Undefined) {
-        _voiceStatusActive[vehicle][index] = (active ? Active : Inactive);
+    if (_configVoiceStatusActive[vehicle][index] != Undefined) {
+        _configVoiceStatusActive[vehicle][index] = (active ? Active : Inactive);
     }
 }
 
 
 void VoicePackManager::setVoiceJournalState(const std::string& event, bool active)
 {
-    if (_voiceJournalActive[event] != Undefined) {
-        _voiceJournalActive[event] = (active ? Active : Inactive);
+    if (_configVoiceJournalActive[event] != Undefined) {
+        _configVoiceJournalActive[event] = (active ? Active : Inactive);
     }
 }
 
 
 void VoicePackManager::setVoiceSpecialState(SpecialEvent event, bool active)
 {
-    if (_voiceSpecialActive[event] != Undefined) {
-        _voiceSpecialActive[event] = (active ? Active : Inactive);
+    if (_configVoiceSpecialActive[event] != Undefined) {
+        _configVoiceSpecialActive[event] = (active ? Active : Inactive);
     }
 }

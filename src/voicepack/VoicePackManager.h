@@ -37,9 +37,9 @@ public:
     void playJournalVoiceline(const std::string& event, const std::filesystem::path& path);
     void playSpecialVoiceline(SpecialEvent event, const std::filesystem::path& path);
 
-    const std::array<std::array<VoiceTriggerStatus, 2 * StatusEvent::N_StatusEvents>, N_Vehicles>& getVoiceStatusActive() const { return _voiceStatusActive; }
-    const std::map<std::string, VoiceTriggerStatus>& getVoiceJournalActive() const { return _voiceJournalActive; }
-    const std::array<VoiceTriggerStatus, N_SpecialEvents>& getVoiceSpecialActive() const { return _voiceSpecialActive; }
+    const std::array<std::array<VoiceTriggerStatus, 2 * StatusEvent::N_StatusEvents>, N_Vehicles>& getVoiceStatusActive() const { return _configVoiceStatusActive; }
+    const std::map<std::string, VoiceTriggerStatus>& getVoiceJournalActive() const { return _configVoiceJournalActive; }
+    const std::array<VoiceTriggerStatus, N_SpecialEvents>& getVoiceSpecialActive() const { return _configVoiceSpecialActive; }
 
     void setVoiceStatusState(Vehicle vehicle, StatusEvent event, bool statusState, bool active);
     void setVoiceJournalState(const std::string& event, bool active);
@@ -59,9 +59,15 @@ private:
     // name, path (the same string as in the config)
     std::map<std::string, std::string> _installedVoicePacks;
 
-    std::array<std::array<VoiceTriggerStatus, 2 * StatusEvent::N_StatusEvents>, N_Vehicles> _voiceStatusActive;
-    std::map<std::string, VoiceTriggerStatus> _voiceJournalActive;
-    std::array<VoiceTriggerStatus, N_SpecialEvents> _voiceSpecialActive;
+    // As determined by the config file
+    std::array<std::array<VoiceTriggerStatus, 2 * StatusEvent::N_StatusEvents>, N_Vehicles> _configVoiceStatusActive;
+    std::map<std::string, VoiceTriggerStatus> _configVoiceJournalActive;
+    std::array<VoiceTriggerStatus, N_SpecialEvents> _configVoiceSpecialActive;
+
+    // For the current voicepack
+    std::array<std::array<VoiceTriggerStatus, 2 * StatusEvent::N_StatusEvents>, N_Vehicles> _currVoiceStatusActive;
+    std::map<std::string, VoiceTriggerStatus> _currVoiceJournalActive;
+    std::array<VoiceTriggerStatus, N_SpecialEvents> _currVoiceSpecialActive;
 
     AudioPlayer _player;
 

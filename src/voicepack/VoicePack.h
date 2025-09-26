@@ -42,6 +42,10 @@ public:
         _previousUnderAttack = other._previousUnderAttack;
     }
 
+    std::array<std::array<VoiceTriggerStatus, 2 * StatusEvent::N_StatusEvents>, N_Vehicles>& getVoiceStatusActive() { return _voiceStatusActive; }
+    std::map<std::string, VoiceTriggerStatus>& getVoiceJournalActive() { return _voiceJournalActive; }
+    std::array<VoiceTriggerStatus, N_SpecialEvents>& getVoiceSpecialActive() { return _voiceSpecialActive; }
+
 private:
     void setShipCargo(uint32_t cargo);
     void setSRVCargo(uint32_t cargo);
@@ -61,7 +65,7 @@ private:
 
     std::array<std::array<VoiceTriggerStatus, 2 * StatusEvent::N_StatusEvents>, N_Vehicles> _voiceStatusActive;
     std::map<std::string, VoiceTriggerStatus> _voiceJournalActive;
-    std::array<VoiceTriggerStatus, N_SpecialEvents> _voiceSpeciallActive;
+    std::array<VoiceTriggerStatus, N_SpecialEvents> _voiceSpecialActive;
 
     Vehicle _currVehicle = Vehicle::Ship;
 

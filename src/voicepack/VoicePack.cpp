@@ -34,7 +34,7 @@ void VoicePack::loadConfig(const std::filesystem::path& filepath)
         va.fill(Undefined);
     }
 
-    _voiceSpeciallActive.fill(Undefined);
+    _voiceSpecialActive.fill(Undefined);
     _voiceJournalActive.clear();
 
     // Load new configuration
@@ -141,14 +141,14 @@ void VoicePack::loadConfig(const std::filesystem::path& filepath)
             if (!std::filesystem::exists(path)) {
                 std::cerr << "[ERR   ] Missing file for special '" << eventName << "': " << path << std::endl;
                 path.clear();
-                _voiceSpeciallActive[iSpecial] = MissingFile;
+                _voiceSpecialActive[iSpecial] = MissingFile;
             }
             else {
-                _voiceSpeciallActive[iSpecial] = Active;
+                _voiceSpecialActive[iSpecial] = Active;
             }
         }
         else {
-            _voiceSpeciallActive[iSpecial] = Undefined;
+            _voiceSpecialActive[iSpecial] = Undefined;
         }
     }
 }
