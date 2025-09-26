@@ -19,7 +19,11 @@ VkAdapter::VkAdapter(const std::vector<char*>& instanceExtensions)
     };
 
     std::vector<const char*> enabledLayerNames;
+
+#ifdef VULKAN_DEBUG_LAYER
+    std::cout << "Enabling Vulkan validation layer" << std::endl;
     enabledLayerNames.push_back("VK_LAYER_KHRONOS_validation");
+#endif
 
     const VkInstanceCreateInfo instanceCreateInfo = {
         VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO, nullptr, 0, // sType, pNext, flags

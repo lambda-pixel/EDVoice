@@ -30,9 +30,8 @@ if (BUILD_MEDICORP)
     message(STATUS "Building with MediCorp support")
 endif()
 
-# For now force medicorp define
 # target_compile_definitions(EDVoice PRIVATE BUILD_MEDICORP)
-
+# target_compile_definitions(EDVoice PRIVATE VULKAN_DEBUG_LAYER)
 
 install(TARGETS EDVoice
         RUNTIME DESTINATION .)
