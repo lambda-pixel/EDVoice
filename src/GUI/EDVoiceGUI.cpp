@@ -30,6 +30,7 @@ EDVoiceGUI::EDVoiceGUI(
     HINSTANCE hInstance, int nShowCmd)
     : _app(exec_path, config)
     , _vkAdapter({ VK_KHR_SURFACE_EXTENSION_NAME, "VK_KHR_win32_surface" })
+    , _imGuiIniPath(config.parent_path() / "imgui.ini")
 {
     // ImGui initialization
     ImGui_ImplWin32_EnableDpiAwareness();
@@ -43,6 +44,9 @@ EDVoiceGUI::EDVoiceGUI(
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
+    io.IniFilename = NULL;
+    ImGui::LoadIniSettingsFromDisk(_imGuiIniPath.string().c_str());
+
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
     
@@ -65,6 +69,7 @@ EDVoiceGUI::~EDVoiceGUI()
 {
     vkDeviceWaitIdle(_vkAdapter.getDevice());
     
+    ImGui::SaveIniSettingsToDisk(_imGuiIniPath.string().c_str());
     ImGui_ImplVulkan_Shutdown();
     ImGui_ImplWin32_Shutdown();
 

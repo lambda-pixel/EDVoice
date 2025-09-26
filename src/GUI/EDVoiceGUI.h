@@ -60,4 +60,6 @@ private:
 
     bool _hasError = false;
     std::string _logErrStr;
+
+    std::filesystem::path _imGuiIniPath;
 };
