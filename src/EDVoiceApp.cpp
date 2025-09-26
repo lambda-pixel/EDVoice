@@ -10,26 +10,26 @@
 // Ugly hack for now but whatever...
 static void loadConfigVP(const char* filepath, void* ctx)
 {
-    reinterpret_cast<VoicePack*>(ctx)->loadConfig(filepath);
+    reinterpret_cast<VoicePackManager*>(ctx)->loadConfig(filepath);
 }
 
 static void onStatusChangedVP(StatusEvent event, int set, void* ctx)
 {
-    reinterpret_cast<VoicePack*>(ctx)->onStatusChanged(event, set);
+    reinterpret_cast<VoicePackManager*>(ctx)->onStatusChanged(event, set);
 }
 
 static void setJournalPreviousEventVP(const char* event, const char* jsonEntry, void* ctx)
 {
-    reinterpret_cast<VoicePack*>(ctx)->setJournalPreviousEvent(event, jsonEntry);
+    reinterpret_cast<VoicePackManager*>(ctx)->setJournalPreviousEvent(event, jsonEntry);
 }
 
 static void onJournalEventVP(const char* event, const char* jsonEntry, void* ctx)
 {
-    reinterpret_cast<VoicePack*>(ctx)->onJournalEvent(event, jsonEntry);
+    reinterpret_cast<VoicePackManager*>(ctx)->onJournalEvent(event, jsonEntry);
 }
 
 extern "C" {
-    void registerPluginVP(VoicePack* voicepack, PluginCallbacks* callbacks) {
+    void registerPluginVP(VoicePackManager* voicepack, PluginCallbacks* callbacks) {
         callbacks->loadConfig = loadConfigVP;
         callbacks->onStatusChanged = onStatusChangedVP;
         callbacks->setJournalPreviousEvent = setJournalPreviousEventVP;

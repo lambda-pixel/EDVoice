@@ -26,13 +26,14 @@ private:
 
     void voicePackGUI();
 
-    void voicePackStatusGUI(VoicePack& voicepack);
-    void voicePackJourmalEventGUI(VoicePack& voicepack);
-    void voicePackSpecialEventGUI(VoicePack& voicepack);
+    void voicePackStatusGUI(VoicePackManager& voicepack);
+    void voicePackJourmalEventGUI(VoicePackManager& voicepack);
+    void voicePackSpecialEventGUI(VoicePackManager& voicepack);
 
 
     static const char* prettyPrintStatusState(StatusEvent status, bool activated);
     static const char* prettyPrintVehicle(Vehicle vehicle);
+    static const char* prettyPrintSpecialEvent(SpecialEvent event);
 
     // WIN32 stuff for working with borderless windows
     // see https://github.com/melak47/BorderlessWindow/tree/main

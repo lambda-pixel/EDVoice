@@ -173,7 +173,12 @@ void EDVoiceGUI::beginMainWindow()
         // Center title vertically
         ImGui::PushFont(NULL, style.FontSizeBase * 1.2f);
         ImGui::SetCursorPos(ImVec2(titleMarginLeft, .5f * (_titlebarHeight - ImGui::GetFontSize())));
+        
+#ifdef BUILD_MEDICORP
+        ImGui::Text("EDVoice - Medicorp Edition");
+#else
         ImGui::Text("EDVoice");
+#endif
         ImGui::PopFont();
 
         // Minimize & Resize buttons
@@ -235,8 +240,9 @@ void EDVoiceGUI::endMainWindow()
 
 void EDVoiceGUI::voicePackGUI()
 {
-    VoicePack& voicepack = _app.getVoicepack();
-    
+#ifdef BUILD_MEDICORP
+    VoicePackManager& voicepack = _app.getVoicepack();
+
     ImGui::SeparatorText("Status event voicelines");
     ImGui::PushID("Status");
     voicePackStatusGUI(voicepack);
@@ -251,12 +257,13 @@ void EDVoiceGUI::voicePackGUI()
     ImGui::PushID("Journal");
     voicePackJourmalEventGUI(voicepack);
     ImGui::PopID();
+#else
+#endif
 }
 
 
-
-void EDVoiceGUI::voicePackStatusGUI(VoicePack& voicepack) {
-    const std::array<std::array<VoicePack::TriggerStatus, 2 * StatusEvent::N_StatusEvents>, N_Vehicles>& statusActive = voicepack.getVoiceStatusActive();
+void EDVoiceGUI::voicePackStatusGUI(VoicePackManager& voicepack) {
+    const std::array<std::array<VoiceTriggerStatus, 2 * StatusEvent::N_StatusEvents>, N_Vehicles>& statusActive = voicepack.getVoiceStatusActive();
     static ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter;
 
     if (ImGui::BeginTable("Status", N_Vehicles + 1, flags)) {
@@ -275,7 +282,8 @@ void EDVoiceGUI::voicePackStatusGUI(VoicePack& voicepack) {
                 bool hasVoiceForOneVehicle = false;
 
                 for (uint32_t iVehicle = 0; iVehicle < N_Vehicles; iVehicle++) {
-                    hasVoiceForOneVehicle = hasVoiceForOneVehicle || (statusActive[iVehicle][2 * iEvent + iActivating] != VoicePack::Undefined);
+                    const VoiceTriggerStatus triggerStatus = statusActive[iVehicle][2 * iEvent + iActivating];
+                    hasVoiceForOneVehicle = hasVoiceForOneVehicle || (triggerStatus == Active || triggerStatus == Inactive);
                 }
 
                 // At least one voice was found for a given vehicle
@@ -283,18 +291,18 @@ void EDVoiceGUI::voicePackStatusGUI(VoicePack& voicepack) {
                     ImGui::TableNextRow();
 
                     for (uint32_t iVehicle = 0; iVehicle < N_Vehicles; iVehicle++) {
-                        const VoicePack::TriggerStatus triggerStatus = statusActive[iVehicle][2 * iEvent + iActivating];
+                        const VoiceTriggerStatus triggerStatus = statusActive[iVehicle][2 * iEvent + iActivating];
                         ImGui::TableNextColumn();
 
-                        if (triggerStatus != VoicePack::Undefined) {
+                        if (triggerStatus != Undefined && triggerStatus != MissingFile) {
                             uint32_t uid = 2 * (iVehicle * StatusEvent::N_StatusEvents + iEvent) + iActivating;
                             ImGui::PushID(uid);
 
-                            bool active = triggerStatus == VoicePack::Active;
+                            bool active = triggerStatus == Active;
                             ImGui::Checkbox("", &active);
 
                             // Change of status
-                            if (active != (triggerStatus == VoicePack::Active)) {
+                            if (active != (triggerStatus == Active)) {
                                 voicepack.setVoiceStatusState(
                                     (Vehicle)iVehicle,
                                     (StatusEvent)iEvent,
@@ -317,9 +325,9 @@ void EDVoiceGUI::voicePackStatusGUI(VoicePack& voicepack) {
 }
 
 
-void EDVoiceGUI::voicePackJourmalEventGUI(VoicePack& voicepack)
+void EDVoiceGUI::voicePackJourmalEventGUI(VoicePackManager& voicepack)
 {
-    const std::map<std::string, VoicePack::TriggerStatus>& eventItems = voicepack.getVoiceJournalActive();
+    const std::map<std::string, VoiceTriggerStatus>& eventItems = voicepack.getVoiceJournalActive();
 
     static ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter;
     uint32_t uid = 0;
@@ -330,19 +338,19 @@ void EDVoiceGUI::voicePackJourmalEventGUI(VoicePack& voicepack)
         ImGui::TableHeadersRow();
 
         for (const auto& voiceItem : eventItems) {
-            const VoicePack::TriggerStatus triggerStatus = voiceItem.second;
+            const VoiceTriggerStatus triggerStatus = voiceItem.second;
 
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
 
-            if (triggerStatus != VoicePack::Undefined) {
-                bool active = triggerStatus == VoicePack::Active;
+            if (triggerStatus != Undefined && triggerStatus != MissingFile) {
+                bool active = triggerStatus == Active;
 
                 ImGui::PushID(uid++);
                 ImGui::Checkbox("", &active);
                 ImGui::PopID();
 
-                if (active != (triggerStatus == VoicePack::Active)) {
+                if (active != (triggerStatus == Active)) {
                     voicepack.setVoiceJournalState(voiceItem.first, active);
                 }
             }
@@ -356,10 +364,10 @@ void EDVoiceGUI::voicePackJourmalEventGUI(VoicePack& voicepack)
 }
 
 
-void EDVoiceGUI::voicePackSpecialEventGUI(VoicePack& voicepack)
+void EDVoiceGUI::voicePackSpecialEventGUI(VoicePackManager& voicepack)
 {
     // TODO: shitty copy paste... but works for now :(
-    const std::map<std::string, VoicePack::TriggerStatus>& eventItems = voicepack.getVoiceSpecialActive();
+    const std::array<VoiceTriggerStatus, N_SpecialEvents>& eventItems = voicepack.getVoiceSpecialActive();
 
     static ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter;
     uint32_t uid = 0;
@@ -369,26 +377,26 @@ void EDVoiceGUI::voicePackSpecialEventGUI(VoicePack& voicepack)
         ImGui::TableSetupColumn("Event", ImGuiTableColumnFlags_WidthStretch);
         ImGui::TableHeadersRow();
 
-        for (const auto& voiceItem : eventItems) {
-            const VoicePack::TriggerStatus triggerStatus = voiceItem.second;
+        for (uint32_t iEvent = 0; iEvent < N_SpecialEvents; iEvent++) {
+            const VoiceTriggerStatus triggerStatus = eventItems[iEvent];
 
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
 
-            if (triggerStatus != VoicePack::Undefined) {
-                bool active = triggerStatus == VoicePack::Active;
+            if (triggerStatus != Undefined && triggerStatus != MissingFile) {
+                bool active = triggerStatus == Active;
 
                 ImGui::PushID(uid++);
                 ImGui::Checkbox("", &active);
                 ImGui::PopID();
 
-                if (active != (triggerStatus == VoicePack::Active)) {
-                    voicepack.setVoiceSpecialState(voiceItem.first, active);
+                if (active != (triggerStatus == Active)) {
+                    voicepack.setVoiceSpecialState((SpecialEvent)iEvent, active);
                 }
             }
 
             ImGui::TableNextColumn();
-            ImGui::Text(voiceItem.first.c_str());
+            ImGui::Text(prettyPrintSpecialEvent((SpecialEvent)iEvent));
         }
 
         ImGui::EndTable();
@@ -442,6 +450,23 @@ const char* EDVoiceGUI::prettyPrintVehicle(Vehicle vehicle)
     case Ship: return "Ship";
     case SRV: return "SRV";
     case OnFoot: return "On foot";
+    }
+}
+
+
+const char* EDVoiceGUI::prettyPrintSpecialEvent(SpecialEvent event)
+{
+    switch (event) {
+    case CargoFull: return "Cargo full";
+    case CargoEmpty: return "Cargo empty";
+    case CollectPod: return "Collect pod";
+    case Activating: return "Activating voicepack";
+    case Deactivating: return "Deactivating voicepack";
+    case FuelScoopFinished: return "Fuel scoop finished";
+    case HullIntegrity_Compromised: return "Hull integrity compromised";
+    case HullIntegrity_Critical: return "Hull integrity critical";
+    case AutoPilot_Liftoff: return "AutoPilot liftoff";
+    case AutoPilot_Touchdown: return "AutoPilot touchdown";
     }
 }
 

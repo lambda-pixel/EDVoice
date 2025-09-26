@@ -24,7 +24,7 @@ typedef void* LibHandle;
 #include "watchers/JournalWatcher.h"
 
 // May be moved to a plugin later on
-#include "voicepack/VoicePack.h"
+#include "voicepack/VoicePackManager.h"
 
 
 struct LoadedPlugin {
@@ -87,7 +87,7 @@ public:
     virtual ~EDVoiceApp();
     void run();
 
-    VoicePack& getVoicepack() { return _voicepack; }
+    VoicePackManager& getVoicepack() { return _voicepack; }
 
 private:
     void fileWatcherThread(HANDLE hStop);
@@ -106,7 +106,7 @@ private:
     JournalWatcher _journalWatcher;
 
     // Now using voicepack as core application component
-    VoicePack _voicepack;
+    VoicePackManager _voicepack;
 
     std::thread _watcherThread;
     HANDLE _hStop;

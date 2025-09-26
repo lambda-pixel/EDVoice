@@ -70,3 +70,12 @@ std::filesystem::path EliteFileUtil::getUserProfile()
 {
     return getSavedGamesPath() / "Frontier Developments" / "Elite Dangerous";
 }
+
+
+std::filesystem::path EliteFileUtil::resolvePath(
+    const std::filesystem::path& basePath,
+    const std::string& file)
+{
+    std::filesystem::path p(file);
+    return p.is_absolute() ? p : (basePath / p);
+}

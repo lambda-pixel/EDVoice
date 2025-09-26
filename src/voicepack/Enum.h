@@ -5,6 +5,15 @@
 #include <string>
 #include <optional>
 
+
+enum VoiceTriggerStatus {
+    Active,
+    Inactive,
+    Undefined,
+    MissingFile
+};
+
+
 #define ENUM_VEHICULES(X)            \
     X(Ship)                          \
     X(SRV)                           \

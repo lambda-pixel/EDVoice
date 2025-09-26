@@ -10,18 +10,29 @@ add_executable(EDVoice WIN32
     GUI/Vulkan/Swapchain.cpp
     GUI/Vulkan/VkUtil.cpp
 
+    voicepack/Enum.cpp
     voicepack/AudioPlayer.cpp
     voicepack/VoicePack.cpp
-    voicepack/Enum.cpp
+    voicepack/VoicePackManager.cpp
+    voicepack/MedicCompliant.cpp
 
     ../assets/edvoice.rc
-  "voicepack/Enum.cpp")
+)
 
 target_include_directories(EDVoice PRIVATE ../3rdparty)
 target_include_directories(EDVoice PRIVATE ../plugins/include)
 
 target_link_libraries(EDVoice PRIVATE imgui)
 target_compile_definitions(EDVoice PRIVATE UNICODE _UNICODE)
+
+if (BUILD_MEDICORP)
+    target_compile_definitions(EDVoice PRIVATE BUILD_MEDICORP)
+    message(STATUS "Building with MediCorp support")
+endif()
+
+# For now force medicorp define
+target_compile_definitions(EDVoice PRIVATE BUILD_MEDICORP)
+
 
 install(TARGETS EDVoice
         RUNTIME DESTINATION .)
