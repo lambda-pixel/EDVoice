@@ -22,6 +22,8 @@ VoicePack::VoicePack(VoicePackManager& voicepackManager)
 
 void VoicePack::loadConfig(const std::filesystem::path& filepath)
 {
+    _configPath = filepath;
+
     // Clear current configuration
     for (auto& vs : _voiceStatus) {
         vs.fill(std::filesystem::path());
@@ -319,6 +321,37 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
 void VoicePack::onSpecialEvent(SpecialEvent event)
 {
     _voicePackManager.playSpecialVoiceline(event, _voiceSpecial[event]);
+}
+
+
+void VoicePack::setVoiceStatusState(Vehicle vehicle, StatusEvent event, bool statusState, bool active)
+{
+    auto& it = _voiceStatusActive[vehicle][2 * event + (statusState ? 1 : 0)];
+
+    if (it != Undefined && it != MissingFile) {
+        it = active ? Active : Inactive;
+    }
+}
+
+
+void VoicePack::setVoiceJournalState(const std::string& event, bool active)
+{
+    auto it = _voiceJournalActive.find(event);
+ 
+    if (it != _voiceJournalActive.end() && 
+        it->second != Undefined && 
+        it->second != MissingFile) {
+        it->second = active ? Active : Inactive;
+    }
+}
+
+
+void VoicePack::setVoiceSpecialState(SpecialEvent event, bool active)
+{
+    auto& it = _voiceSpecialActive[event];
+    if (it != Undefined && it != MissingFile) {
+        it = active ? Active : Inactive;
+    }
 }
 
 

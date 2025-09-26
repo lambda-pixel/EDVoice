@@ -13,7 +13,13 @@
 
 
 const wchar_t CLASS_NAME[] = L"EDVoice";
+#ifdef BUILD_MEDICORP
+const wchar_t WINDOW_TITLE[] = L"EDVoice - MediCorp Edition";
+const char WINDOW_TITLE_STD[] = "EDVoice - MediCorp Edition";
+#else
 const wchar_t WINDOW_TITLE[] = L"EDVoice";
+const char WINDOW_TITLE_STD[] = "EDVoice";
+#endif
 
 #include "roboto.cpp"
 
@@ -173,12 +179,7 @@ void EDVoiceGUI::beginMainWindow()
         // Center title vertically
         ImGui::PushFont(NULL, style.FontSizeBase * 1.2f);
         ImGui::SetCursorPos(ImVec2(titleMarginLeft, .5f * (_titlebarHeight - ImGui::GetFontSize())));
-        
-#ifdef BUILD_MEDICORP
-        ImGui::Text("EDVoice - Medicorp Edition");
-#else
-        ImGui::Text("EDVoice");
-#endif
+        ImGui::Text(WINDOW_TITLE_STD);
         ImGui::PopFont();
 
         // Minimize & Resize buttons

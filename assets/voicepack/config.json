@@ -1,0 +1,36 @@
+{
+    "voicepacks": {
+        "ALTA": "ALTA/ALTA.json",
+        "Aria": "Aria/Aria.json"
+    },
+    "defaultVoicePack": "Aria",
+    "medicVoicePack": "ALTA",
+    "activeVoiceActions": {
+        "status": {
+            "Ship": {
+                "Shields_Up": {
+                    "true": true,
+                    "false": true
+                }
+            },
+            "SRV": {
+                "Shields_Up": {
+                    "true": true,
+                    "false": true
+                }
+            },
+            "OnFoot": {
+                "In_Wing": {
+                    "true": true,
+                    "false": true
+                }
+            }
+        },
+        "event": {
+            "UnderAttack": true
+        },
+        "special": {
+            "HullIntegrity_Compromised": true
+        }
+    }
+}

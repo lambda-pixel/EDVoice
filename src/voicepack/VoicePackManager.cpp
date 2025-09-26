@@ -13,8 +13,21 @@ VoicePackManager::VoicePackManager()
 }
 
 
+VoicePackManager::~VoicePackManager()
+{
+    try {
+        saveConfig();
+    }
+    catch (const std::exception& e) {
+        std::cerr << "[ERR   ] Exception while saving configuration: " << e.what() << std::endl;
+    }
+}
+
+
 void VoicePackManager::loadConfig(const char* filepath)
 {
+    _configPath = filepath;
+
     if (!std::filesystem::exists(filepath)) {
         throw std::runtime_error("Cannot find configuration file: " + std::string(filepath));
     }
@@ -51,6 +64,7 @@ void VoicePackManager::loadConfig(const char* filepath)
             if (std::filesystem::exists(vpPath)) {
                 // We keep the path the same as in the config file
                 _installedVoicePacks[vp.key()] = value;
+                _installedVoicePacksAbsolutePath[vp.key()] = vpPath;
                 std::cout << "[INFO  ] Found installed voicepack: " << vp.key() << " at " << vpPath << std::endl;
             }
             else {
@@ -62,13 +76,11 @@ void VoicePackManager::loadConfig(const char* filepath)
     // Load standard voicepack
     if (json.contains("defaultVoicePack")) {
         const std::string& defaultVP = json["defaultVoicePack"].get<std::string>();
-        const auto& it = _installedVoicePacks.find(defaultVP);
+        const auto& it = _installedVoicePacksAbsolutePath.find(defaultVP);
 
-        if (it != _installedVoicePacks.end()) {
-            const std::filesystem::path vpPath = EliteFileUtil::resolvePath(basePath, it->second);
-
+        if (it != _installedVoicePacksAbsolutePath.end()) {
             std::cout << "[INFO  ] Loading default voicepack: " << defaultVP << std::endl;
-            _standardVoicePack.loadConfig(vpPath);
+            _standardVoicePack.loadConfig(it->second);
         }
         else {
             std::cerr << "[ERR   ] Cannot find default voicepack: " << defaultVP << std::endl;
@@ -78,13 +90,11 @@ void VoicePackManager::loadConfig(const char* filepath)
     // Load medic voicepack
     if (json.contains("medicVoicePack")) {
         const std::string& defaultVP = json["medicVoicePack"].get<std::string>();
-        const auto& it = _installedVoicePacks.find(defaultVP);
+        const auto& it = _installedVoicePacksAbsolutePath.find(defaultVP);
 
-        if (it != _installedVoicePacks.end()) {
-            const std::filesystem::path vpPath = EliteFileUtil::resolvePath(basePath, it->second);
-
+        if (it != _installedVoicePacksAbsolutePath.end()) {
             std::cout << "[INFO  ] Loading default voicepack: " << defaultVP << std::endl;
-            _medicVoicePack.loadConfig(vpPath);
+            _medicVoicePack.loadConfig(it->second);
         }
         else {
             std::cerr << "[ERR   ] Cannot find default voicepack: " << defaultVP << std::endl;
@@ -171,57 +181,96 @@ void VoicePackManager::loadConfig(const char* filepath)
     }
 
     // Merge back potentially new actions from the standard voicepack
+    updateVoicePackSettings(_standardVoicePack);
+#ifdef BUILD_MEDICORP
+    updateVoicePackSettings(_medicVoicePack);
+#endif
+}
 
-    VoicePack& vp = _standardVoicePack;
 
-    {
-        // 1 - apply to voicepacks
-        std::array<std::array<VoiceTriggerStatus, 2 * StatusEvent::N_StatusEvents>, N_Vehicles>& voiceStatusActive = vp.getVoiceStatusActive();
-        std::map<std::string, VoiceTriggerStatus>& voiceJournalActive = vp.getVoiceJournalActive();
-        std::array<VoiceTriggerStatus, N_SpecialEvents>& voiceSpecialActive = vp.getVoiceSpecialActive();
+void VoicePackManager::saveConfig() const
+{
+    if (_configPath.empty()) {
+        throw std::runtime_error("Cannot save configuration file: no path specified");
+    }
 
-        for (uint32_t iVehicle = 0; iVehicle < N_Vehicles; iVehicle++) {
-            for (uint32_t iEvent = 0; iEvent < 2 * StatusEvent::N_StatusEvents; iEvent++) {
-                if (_configVoiceStatusActive[iVehicle][iEvent] != Undefined && _configVoiceStatusActive[iVehicle][iEvent] != MissingFile) {
-                    voiceStatusActive[iVehicle][iEvent] = _configVoiceStatusActive[iVehicle][iEvent];
-                }
-            }
+    nlohmann::json json;
+
+    // Installed voicepacks
+    for (const auto& vp : _installedVoicePacks) {
+        json["voicepacks"][vp.first] = vp.second;
+    }
+
+    // Default voicepacks
+    for (const auto& vp : _installedVoicePacksAbsolutePath) {
+        if (vp.second == _standardVoicePack.getVoicePackPath().string()) {
+            json["defaultVoicePack"] = vp.first;
         }
-
-        for (auto& je : _configVoiceJournalActive) {
-            if (je.second != Undefined && je.second != MissingFile) {
-                voiceJournalActive[je.first] = je.second;
-            }
-        }
-
-        for (uint32_t iEvent = 0; iEvent < N_SpecialEvents; iEvent++) {
-            if (_configVoiceSpecialActive[iEvent] != Undefined && _configVoiceSpecialActive[iEvent] != MissingFile) {
-                voiceSpecialActive[iEvent] = _configVoiceSpecialActive[iEvent];
-            }
-        }
-
-        // 2 - get unknown new events from voicepack
-        for (uint32_t iVehicle = 0; iVehicle < N_Vehicles; iVehicle++) {
-            for (uint32_t iEvent = 0; iEvent < 2 * StatusEvent::N_StatusEvents; iEvent++) {
-                if (_configVoiceStatusActive[iVehicle][iEvent] == Undefined) {
-                    _configVoiceStatusActive[iVehicle][iEvent] = voiceStatusActive[iVehicle][iEvent];
-                }
-            }
-        }
-
-        for (auto& je : voiceJournalActive) {
-            if (_configVoiceJournalActive.find(je.first) == _configVoiceJournalActive.end()) {
-                _configVoiceJournalActive[je.first] = je.second;
-            }
-        }
-
-        for (uint32_t iEvent = 0; iEvent < N_SpecialEvents; iEvent++) {
-            if (_configVoiceSpecialActive[iEvent] == Undefined) {
-                _configVoiceSpecialActive[iEvent] = voiceSpecialActive[iEvent];
-            }
+        if (vp.second == _medicVoicePack.getVoicePackPath().string()) {
+            json["medicVoicePack"] = vp.first;
         }
     }
-    // TODO!!
+
+    // Active voice actions
+    nlohmann::json jsonActiveVoiceActions;
+    {
+        nlohmann::json jsonStatusVoiceActions;
+        nlohmann::json jsonEventVoiceActions;
+        nlohmann::json jsonSpecialVoiceActions;
+
+        // Status events
+        for (uint32_t iVehicle = 0; iVehicle < N_Vehicles; iVehicle++) {
+            const std::string vehicleName = vehicleToString((Vehicle)iVehicle);
+            nlohmann::json jsonVehicleStatusVoiceActions;
+
+            for (uint32_t iEvent = 0; iEvent < StatusEvent::N_StatusEvents; iEvent++) {
+                const std::string eventName = statusToString((StatusEvent)iEvent);
+                for (uint32_t i = 0; i < 2; i++) {
+                    const bool active = (_configVoiceStatusActive[iVehicle][2 * iEvent + i] == Active);
+                    if (_configVoiceStatusActive[iVehicle][2 * iEvent + i] != Undefined &&
+                        _configVoiceStatusActive[iVehicle][2 * iEvent + i] != MissingFile) {
+                        const std::string state = (i == 0) ? "false" : "true";
+                        jsonVehicleStatusVoiceActions[eventName][state] = active;
+                    }
+                }
+            }
+            if (!jsonVehicleStatusVoiceActions.empty()) {
+                jsonStatusVoiceActions[vehicleName] = jsonVehicleStatusVoiceActions;
+            }
+        }
+
+        if (!jsonStatusVoiceActions.empty()) {
+            jsonActiveVoiceActions["status"] = jsonStatusVoiceActions;
+        }
+
+        // Journal events
+        for (const auto& je : _configVoiceJournalActive) {
+            if (je.second != Undefined && je.second != MissingFile) {
+                jsonEventVoiceActions[je.first] = (je.second == Active);
+            }
+        }
+
+        if (!jsonEventVoiceActions.empty()) {
+            jsonActiveVoiceActions["event"] = jsonEventVoiceActions;
+        }
+
+        // Special events
+        for (uint32_t iEvent = 0; iEvent < N_SpecialEvents; iEvent++) {
+            if (_configVoiceSpecialActive[iEvent] != Undefined && _configVoiceSpecialActive[iEvent] != MissingFile) {
+                jsonSpecialVoiceActions[specialEventToString((SpecialEvent)iEvent)] = (_configVoiceSpecialActive[iEvent] == Active);
+            }
+        }
+        if (!jsonSpecialVoiceActions.empty()) {
+            jsonActiveVoiceActions["special"] = jsonSpecialVoiceActions;
+        }
+    }
+
+    json["activeVoiceActions"] = jsonActiveVoiceActions;
+
+    // Write to file
+    std::ofstream file(_configPath);
+    file << std::setw(4) << json << std::endl;
+    file.close();
 }
 
 
@@ -361,23 +410,82 @@ void VoicePackManager::setVoiceStatusState(Vehicle vehicle, StatusEvent event, b
 {
     const size_t index = 2 * event + (statusState ? 1 : 0);
 
-    if (_configVoiceStatusActive[vehicle][index] != Undefined) {
-        _configVoiceStatusActive[vehicle][index] = (active ? Active : Inactive);
-    }
+    _configVoiceStatusActive[vehicle][index] = (active ? Active : Inactive);
+
+    _standardVoicePack.setVoiceStatusState(vehicle, event, statusState, active);
+#ifdef BUILD_MEDICORP
+    _medicVoicePack.setVoiceStatusState(vehicle, event, statusState, active);
+#endif
 }
 
 
 void VoicePackManager::setVoiceJournalState(const std::string& event, bool active)
 {
-    if (_configVoiceJournalActive[event] != Undefined) {
-        _configVoiceJournalActive[event] = (active ? Active : Inactive);
-    }
+    _configVoiceJournalActive[event] = (active ? Active : Inactive);
+
+    _standardVoicePack.setVoiceJournalState(event, active);
+#ifdef BUILD_MEDICORP
+    _medicVoicePack.setVoiceJournalState(event, active);
+#endif
 }
 
 
 void VoicePackManager::setVoiceSpecialState(SpecialEvent event, bool active)
 {
-    if (_configVoiceSpecialActive[event] != Undefined) {
-        _configVoiceSpecialActive[event] = (active ? Active : Inactive);
+    _configVoiceSpecialActive[event] = (active ? Active : Inactive);
+
+    _standardVoicePack.setVoiceSpecialState(event, active);
+#ifdef BUILD_MEDICORP
+    _medicVoicePack.setVoiceSpecialState(event, active);
+#endif
+}
+
+
+void VoicePackManager::updateVoicePackSettings(VoicePack& voicepack)
+{
+    // 1 - apply to voicepacks
+    std::array<std::array<VoiceTriggerStatus, 2 * StatusEvent::N_StatusEvents>, N_Vehicles>& voiceStatusActive = voicepack.getVoiceStatusActive();
+    std::map<std::string, VoiceTriggerStatus>& voiceJournalActive = voicepack.getVoiceJournalActive();
+    std::array<VoiceTriggerStatus, N_SpecialEvents>& voiceSpecialActive = voicepack.getVoiceSpecialActive();
+
+    for (uint32_t iVehicle = 0; iVehicle < N_Vehicles; iVehicle++) {
+        for (uint32_t iEvent = 0; iEvent < 2 * StatusEvent::N_StatusEvents; iEvent++) {
+            if (_configVoiceStatusActive[iVehicle][iEvent] != Undefined && _configVoiceStatusActive[iVehicle][iEvent] != MissingFile) {
+                voiceStatusActive[iVehicle][iEvent] = _configVoiceStatusActive[iVehicle][iEvent];
+            }
+        }
+    }
+
+    for (auto& je : _configVoiceJournalActive) {
+        if (je.second != Undefined && je.second != MissingFile) {
+            voiceJournalActive[je.first] = je.second;
+        }
+    }
+
+    for (uint32_t iEvent = 0; iEvent < N_SpecialEvents; iEvent++) {
+        if (_configVoiceSpecialActive[iEvent] != Undefined && _configVoiceSpecialActive[iEvent] != MissingFile) {
+            voiceSpecialActive[iEvent] = _configVoiceSpecialActive[iEvent];
+        }
+    }
+
+    // 2 - get unknown new events from voicepack
+    for (uint32_t iVehicle = 0; iVehicle < N_Vehicles; iVehicle++) {
+        for (uint32_t iEvent = 0; iEvent < 2 * StatusEvent::N_StatusEvents; iEvent++) {
+            if (_configVoiceStatusActive[iVehicle][iEvent] == Undefined) {
+                _configVoiceStatusActive[iVehicle][iEvent] = voiceStatusActive[iVehicle][iEvent];
+            }
+        }
+    }
+
+    for (auto& je : voiceJournalActive) {
+        if (_configVoiceJournalActive.find(je.first) == _configVoiceJournalActive.end()) {
+            _configVoiceJournalActive[je.first] = je.second;
+        }
+    }
+
+    for (uint32_t iEvent = 0; iEvent < N_SpecialEvents; iEvent++) {
+        if (_configVoiceSpecialActive[iEvent] == Undefined) {
+            _configVoiceSpecialActive[iEvent] = voiceSpecialActive[iEvent];
+        }
     }
 }

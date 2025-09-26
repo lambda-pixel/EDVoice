@@ -46,6 +46,12 @@ public:
     std::map<std::string, VoiceTriggerStatus>& getVoiceJournalActive() { return _voiceJournalActive; }
     std::array<VoiceTriggerStatus, N_SpecialEvents>& getVoiceSpecialActive() { return _voiceSpecialActive; }
 
+    void setVoiceStatusState(Vehicle vehicle, StatusEvent event, bool statusState, bool active);
+    void setVoiceJournalState(const std::string& event, bool active);
+    void setVoiceSpecialState(SpecialEvent event, bool active);
+
+    const std::filesystem::path& getVoicePackPath() const { return _configPath; }
+
 private:
     void setShipCargo(uint32_t cargo);
     void setSRVCargo(uint32_t cargo);
@@ -57,6 +63,7 @@ private:
         std::array<std::filesystem::path, 2 * StatusEvent::N_StatusEvents>& voiceStatus
     );
 
+    std::filesystem::path _configPath;
     VoicePackManager& _voicePackManager;
 
     std::array<std::array<std::filesystem::path, 2 * StatusEvent::N_StatusEvents>, N_Vehicles> _voiceStatus;

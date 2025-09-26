@@ -18,8 +18,11 @@ class VoicePackManager
 {
 public:
     VoicePackManager();
+    ~VoicePackManager();
 
     void loadConfig(const char* filepath);
+    void saveConfig() const;
+
     void onStatusChanged(StatusEvent event, bool status);
     void setJournalPreviousEvent(const std::string& event, const std::string& journalEntry);
     void onJournalEvent(const std::string& event, const std::string& journalEntry);
@@ -46,6 +49,11 @@ public:
     void setVoiceSpecialState(SpecialEvent event, bool active);
 
 private:
+
+    void updateVoicePackSettings(VoicePack& voicepack);
+
+    std::filesystem::path _configPath;
+
     VoicePack _standardVoicePack;
 
     // MediCorp specific ALTA voicepack
@@ -58,6 +66,7 @@ private:
     // List of installed voicepacks:
     // name, path (the same string as in the config)
     std::map<std::string, std::string> _installedVoicePacks;
+    std::map<std::string, std::filesystem::path> _installedVoicePacksAbsolutePath;
 
     // As determined by the config file
     std::array<std::array<VoiceTriggerStatus, 2 * StatusEvent::N_StatusEvents>, N_Vehicles> _configVoiceStatusActive;
