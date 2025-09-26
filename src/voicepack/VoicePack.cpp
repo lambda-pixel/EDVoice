@@ -207,8 +207,28 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
     }
 
     _previousUnderAttack = (event == "UnderAttack");
-    _previousLaunchDrone = (event == "LaunchDrone");
-    _previousEjectCargo = (event == "EjectCargo");
+
+    // Prevent mutilple "cargo scoop deployed" announcements
+    // Not reliable for EjectCargo though...
+    if (event == "LaunchDrone") {
+        _previousLaunchDrone = true;
+        std::cout << "[INFO  ] LaunchDrone event received, setting launch state." << std::endl;
+    }
+
+    if (event == "EjectCargo") {
+        _previousEjectCargo = true;
+        std::cout << "[INFO  ] EjectCargo event received, setting eject state." << std::endl;
+    }
+
+    // Reset voiceline reading when receiving the acknowledgment
+    // from "Cargo" event
+    if (_previousEjectCargo || _previousLaunchDrone) {
+        if (event == "Cargo") {
+            _previousEjectCargo = false;
+            _previousLaunchDrone = false;
+            std::cout << "[INFO  ] Cargo update received, resetting launch/eject state." << std::endl;
+        }
+    }
 
     auto it = _voiceJournal.find(event);
 
