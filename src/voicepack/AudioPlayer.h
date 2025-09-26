@@ -27,32 +27,10 @@ class PlayerCallback : public IMFPMediaPlayerCallback {
 public:
     bool finished = false;
 
-    void STDMETHODCALLTYPE OnMediaPlayerEvent(MFP_EVENT_HEADER* pEventHeader) override {
-        if (pEventHeader->eEventType == MFP_EVENT_TYPE_PLAYBACK_ENDED) {
-            finished = true;
-        }
-    }
-
-    STDMETHODIMP QueryInterface(REFIID riid, void** ppv) override {
-        if (!ppv) return E_POINTER;
-        *ppv = nullptr;
-        if (riid == IID_IUnknown || riid == __uuidof(IMFPMediaPlayerCallback)) {
-            *ppv = static_cast<IMFPMediaPlayerCallback*>(this);
-            AddRef();
-            return S_OK;
-        }
-        return E_NOINTERFACE;
-    }
-
-    STDMETHODIMP_(ULONG) AddRef() override {
-        return ++_refCount;
-    }
-
-    STDMETHODIMP_(ULONG) Release() override {
-        ULONG ref = --_refCount;
-        if (ref == 0) delete this;
-        return ref;
-    }
+    void STDMETHODCALLTYPE OnMediaPlayerEvent(MFP_EVENT_HEADER* pEventHeader) override;
+    STDMETHODIMP QueryInterface(REFIID riid, void** ppv) override;
+    STDMETHODIMP_(ULONG) AddRef() override;
+    STDMETHODIMP_(ULONG) Release() override;
 };
 
 

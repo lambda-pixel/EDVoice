@@ -6,10 +6,41 @@
 #include "AudioPlayer.h"
 
 
+void STDMETHODCALLTYPE PlayerCallback::OnMediaPlayerEvent(MFP_EVENT_HEADER* pEventHeader)
+{
+    if (pEventHeader->eEventType == MFP_EVENT_TYPE_PLAYBACK_ENDED) {
+        finished = true;
+    }
+}
+
+STDMETHODIMP PlayerCallback::QueryInterface(REFIID riid, void** ppv)
+{
+    if (!ppv) return E_POINTER;
+    *ppv = nullptr;
+    if (riid == IID_IUnknown || riid == __uuidof(IMFPMediaPlayerCallback)) {
+        *ppv = static_cast<IMFPMediaPlayerCallback*>(this);
+        AddRef();
+        return S_OK;
+    }
+    return E_NOINTERFACE;
+}
+
+STDMETHODIMP_(ULONG) PlayerCallback::AddRef()
+{
+    return ++_refCount;
+}
+
+STDMETHODIMP_(ULONG) PlayerCallback::Release()
+{
+    ULONG ref = --_refCount;
+    if (ref == 0) delete this;
+    return ref;
+}
+
+
 // ----------------------------------------------------------------------------
 // AudioPlayer implementation
 // ----------------------------------------------------------------------------
-
 
 AudioPlayer::AudioPlayer()
     : _eventThread(&AudioPlayer::messageLoop, this)
