@@ -162,12 +162,19 @@ void EDVoiceGUI::beginMainWindow()
     ImGuiViewport* pViewport = ImGui::GetMainViewport();
 
     if (_borderlessWindow) {
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 0.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
+
         ImGui::SetNextWindowSize(ImVec2(pViewport->Size.x, _titlebarHeight));
         ImGui::SetNextWindowPos(ImVec2(0, 0));
         ImGui::Begin("Title", nullptr,
             ImGuiWindowFlags_NoMove |
             ImGuiWindowFlags_NoSavedSettings |
             ImGuiWindowFlags_NoDecoration);
+
+        ImGui::SetScrollY(0.0f);
+        ImGui::SetScrollX(0.0f);
 
         const ImGuiStyle& style = ImGui::GetStyle();
         const float titleMarginLeft = 8.f;
@@ -215,6 +222,7 @@ void EDVoiceGUI::beginMainWindow()
         );
 
         ImGui::End();
+        ImGui::PopStyleVar(3);
 
         ImGui::SetNextWindowSize(ImVec2(pViewport->Size.x, pViewport->Size.y - _titlebarHeight));
         ImGui::SetNextWindowPos(ImVec2(0, _titlebarHeight));
