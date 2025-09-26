@@ -10,6 +10,7 @@ void STDMETHODCALLTYPE PlayerCallback::OnMediaPlayerEvent(MFP_EVENT_HEADER* pEve
 {
     if (pEventHeader->eEventType == MFP_EVENT_TYPE_PLAYBACK_ENDED) {
         finished = true;
+        PostThreadMessage(_threadId, WM_USER + 1, 0, 0);
     }
 }
 
@@ -53,7 +54,7 @@ AudioPlayer::AudioPlayer()
         throw std::runtime_error("MFStartup failed");
     }
 
-    _playerCallback = new PlayerCallback();
+    _playerCallback = new PlayerCallback(GetThreadId(_eventThread.native_handle()));
 
     // Create the player once
     hr = MFPCreateMediaPlayer(NULL, FALSE, 0, _playerCallback, NULL, &_pPlayer);
@@ -122,24 +123,18 @@ void AudioPlayer::messageLoop()
     while (!_stopThread && GetMessage(&msg, NULL, 0, 0)) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
-
-        if (_playerCallback->finished) {
-            // Signal the thread to check for new tracks
-            PostThreadMessage(GetCurrentThreadId(), WM_USER + 1, 0, 0);
-        }
-
+        
         if (msg.message == WM_USER + 1) {
             // Go to next track
-            if (!_trackQueue.empty()) {
+            if (!_trackQueue.empty() && _playerCallback->finished) {
                 const std::wstring track = _trackQueue.front();
                 _trackQueue.pop();
-
-                _playerCallback->finished = false;
                 
                 IMFPMediaItem* pMediaItem = nullptr;
                 hr = _pPlayer->CreateMediaItemFromURL(track.c_str(), TRUE, NULL, &pMediaItem);
 
                 if (SUCCEEDED(hr) && pMediaItem) {
+                    _playerCallback->finished = false;
                     _pPlayer->SetMediaItem(pMediaItem);
                     _pPlayer->Play();
                     pMediaItem->Release();

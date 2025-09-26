@@ -25,7 +25,13 @@
 class PlayerCallback : public IMFPMediaPlayerCallback {
     std::atomic<ULONG> _refCount{ 1 };
 public:
-    bool finished = false;
+
+    PlayerCallback(DWORD threadId)
+        : _threadId(threadId) {
+    }
+
+    bool finished = true;
+    DWORD _threadId;
 
     void STDMETHODCALLTYPE OnMediaPlayerEvent(MFP_EVENT_HEADER* pEventHeader) override;
     STDMETHODIMP QueryInterface(REFIID riid, void** ppv) override;
