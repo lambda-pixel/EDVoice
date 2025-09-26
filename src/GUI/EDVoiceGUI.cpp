@@ -323,6 +323,14 @@ void EDVoiceGUI::voicePackGUI()
         }
     }
 
+    //ImGui::SameLine();
+    float volume = voicepack.getVolume();
+    ImGui::SliderFloat("Volume", &volume, 0.f, 1.f, "%.2f");
+
+    if (volume != voicepack.getVolume()) {
+        voicepack.setVolume(volume);
+    }
+
 #ifdef BUILD_MEDICORP
     ImGui::Text("MediCorp Compliant: %s", _app.getVoicepack().isAltaCompliant() ? "Yes" : "No");
 #endif

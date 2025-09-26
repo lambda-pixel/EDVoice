@@ -27,10 +27,15 @@ public:
 
     void addTrack(const std::wstring& path);
 
+    float getVolume() const { return _volume; }
+    void setVolume(float volume) { _volume = volume; }
+
 private:
     void messageLoop();
 
     std::atomic<bool> _stopThread{ false };
     std::thread _eventThread;
     AtomicQueue<std::wstring> _trackQueue;
+
+    float _volume = 1.f;
 };

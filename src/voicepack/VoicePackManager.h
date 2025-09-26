@@ -55,6 +55,9 @@ public:
     const std::vector<std::string>& getInstalledVoicePacks() const { return _installedVoicePacksNames; }
     size_t getCurrentVoicePackIndex() const { return _currentVoicePackIndex; }
 
+    void setVolume(float volume) { _player.setVolume(volume); }
+    float getVolume() const { return _player.getVolume(); }
+
 private:
     void updateVoicePackSettings(VoicePack& voicepack);
 

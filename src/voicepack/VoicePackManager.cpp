@@ -62,12 +62,18 @@ void VoicePackManager::loadConfig(const char* filepath)
     _configVoiceJournalActive.clear();
     _configVoiceSpecialActive.fill(Undefined);
 
-    // Load installed voicepacks
+    // Load new configuration
     std::ifstream file(filepath);
     std::string fileContent((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 
     nlohmann::json json = nlohmann::json::parse(fileContent);
 
+    if (json.contains("playerVolume")) {
+        const float volume = json["playerVolume"].get<float>();
+        setVolume(volume);
+    }
+
+    // Load installed voicepacks
     if (json.contains("voicepacks")) {
         for (auto& vp : json["voicepacks"].items()) {
             const std::string& value = vp.value().get<std::string>();
@@ -247,6 +253,9 @@ void VoicePackManager::saveConfig() const
     }
 
     nlohmann::json json;
+
+    // Player volume
+    json["playerVolume"] = getVolume();
 
     // Installed voicepacks
     for (const auto& vp : _installedVoicePacks) {

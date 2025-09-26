@@ -120,6 +120,8 @@ void AudioPlayer::messageLoop()
                 }
 
                 callback->finished = false;
+                
+                pPlayer->SetVolume(_volume);
                 pPlayer->Play();
             }
         }
