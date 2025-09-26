@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <map>
+#include <thread>
 
 #include <PluginInterface.h>
 
@@ -19,8 +20,12 @@ typedef void* LibHandle;
 #define CloseLib dlclose
 #endif
 
-#include "StatusWatcher.h"
-#include "JournalWatcher.h"
+#include "watchers/StatusWatcher.h"
+#include "watchers/JournalWatcher.h"
+
+// May be moved to a plugin later on
+#include "voicepack/VoicePackManager.h"
+
 
 struct LoadedPlugin {
     LibHandle handle = nullptr;
@@ -82,10 +87,10 @@ public:
     virtual ~EDVoiceApp();
     void run();
 
+    VoicePackManager& getVoicepack() { return _voicepack; }
+
 private:
-    void fileWatcherThread(
-        HANDLE hStop,
-        const std::filesystem::path userProfile);
+    void fileWatcherThread(HANDLE hStop);
 
     void loadPlugin(const std::filesystem::path& path);
     void unloadPlugin(LoadedPlugin& plugin);
@@ -99,4 +104,12 @@ private:
 
     StatusWatcher _statusWatcher;
     JournalWatcher _journalWatcher;
+
+    // Now using voicepack as core application component
+    VoicePackManager _voicepack;
+
+    std::thread _watcherThread;
+    HANDLE _hStop;
 };
+
+

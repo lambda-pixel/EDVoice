@@ -16,4 +16,8 @@ struct EliteFileUtil
     static std::filesystem::path getSavedGamesPath();
 
     static std::filesystem::path getUserProfile();
+
+    static std::filesystem::path resolvePath(
+        const std::filesystem::path& basePath,
+        const std::string& file);
 };

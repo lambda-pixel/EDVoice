@@ -5,18 +5,14 @@
 #include <thread>
 #include "AudioPlayer.h"
 
-// ----------------------------------------------------------------------------
-// PlayerCallback implementation
-// ----------------------------------------------------------------------------
-
 
 void STDMETHODCALLTYPE PlayerCallback::OnMediaPlayerEvent(MFP_EVENT_HEADER* pEventHeader)
 {
     if (pEventHeader->eEventType == MFP_EVENT_TYPE_PLAYBACK_ENDED) {
         finished = true;
+        PostThreadMessage(_threadId, WM_USER + 1, 0, 0);
     }
 }
-
 
 STDMETHODIMP PlayerCallback::QueryInterface(REFIID riid, void** ppv)
 {
@@ -30,19 +26,44 @@ STDMETHODIMP PlayerCallback::QueryInterface(REFIID riid, void** ppv)
     return E_NOINTERFACE;
 }
 
+STDMETHODIMP_(ULONG) PlayerCallback::AddRef()
+{
+    return ++_refCount;
+}
 
-STDMETHODIMP_(ULONG) PlayerCallback::AddRef() { return 1; }
-STDMETHODIMP_(ULONG) PlayerCallback::Release() { return 1; }
+STDMETHODIMP_(ULONG) PlayerCallback::Release()
+{
+    ULONG ref = --_refCount;
+    if (ref == 0) delete this;
+    return ref;
+}
 
 
 // ----------------------------------------------------------------------------
 // AudioPlayer implementation
 // ----------------------------------------------------------------------------
 
-
 AudioPlayer::AudioPlayer()
     : _eventThread(&AudioPlayer::messageLoop, this)
 {
+    HRESULT hr;
+
+    hr = MFStartup(MF_VERSION);
+
+    if (FAILED(hr)) {
+        throw std::runtime_error("MFStartup failed");
+    }
+
+    _playerCallback = new PlayerCallback(GetThreadId(_eventThread.native_handle()));
+
+    // Create the player once
+    hr = MFPCreateMediaPlayer(NULL, FALSE, 0, _playerCallback, NULL, &_pPlayer);
+
+    if (FAILED(hr)) {
+        _playerCallback->Release();
+        MFShutdown();
+        throw std::runtime_error("MFPCreateMediaPlayer failed");
+    }
 }
 
 
@@ -55,6 +76,15 @@ AudioPlayer::~AudioPlayer()
     if (_eventThread.joinable()) {
         _eventThread.join();
     }
+
+    if (_pPlayer) {
+        _pPlayer->Shutdown();
+        _pPlayer->Release();
+    }
+
+    _playerCallback->Release();
+
+    MFShutdown();
 }
 
 
@@ -72,47 +102,45 @@ void AudioPlayer::addTrack(const std::wstring& path)
 }
 
 
+float AudioPlayer::getVolume() const
+{
+    return _volume;
+}
+
+
+void AudioPlayer::setVolume(float volume)
+{
+    _volume = volume;
+    _pPlayer->SetVolume(_volume);
+}
+
+
 void AudioPlayer::messageLoop()
 {
     HRESULT hr;
-    IMFPMediaPlayer* pPlayer = nullptr;
-    IMFPMediaItem* pMediaItem = nullptr;
-    PlayerCallback callback;
-
-    hr = MFStartup(MF_VERSION);
-    if (FAILED(hr)) throw std::runtime_error("MFStartup failed");
-
     MSG msg;
+
     while (!_stopThread && GetMessage(&msg, NULL, 0, 0)) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
-
-        if (callback.finished) {
-            if (pPlayer) {
-                pPlayer->Shutdown();
-                pPlayer->Release();
-                pPlayer = nullptr;
-            }
-
-            // Signal the thread to check for new tracks
-            PostThreadMessage(GetThreadId(_eventThread.native_handle()), WM_USER + 1, 0, 0);
-        }
-
+        
         if (msg.message == WM_USER + 1) {
             // Go to next track
-            if (!pPlayer && !_trackQueue.empty()) {
+            if (!_trackQueue.empty() && _playerCallback->finished) {
                 const std::wstring track = _trackQueue.front();
                 _trackQueue.pop();
+                
+                IMFPMediaItem* pMediaItem = nullptr;
+                hr = _pPlayer->CreateMediaItemFromURL(track.c_str(), TRUE, NULL, &pMediaItem);
 
-                hr = MFPCreateMediaPlayer(track.c_str(), FALSE, 0, &callback, NULL, &pPlayer);
-                if (FAILED(hr)) throw std::runtime_error("MFPCreateMediaPlayer failed");
-
-                callback.finished = false;
-                pPlayer->Play();
+                if (SUCCEEDED(hr) && pMediaItem) {
+                    _playerCallback->finished = false;
+                    _pPlayer->SetMediaItem(pMediaItem);
+                    _pPlayer->Play();
+                    pMediaItem->Release();
+                }
             }
         }
     }
-
-    MFShutdown();
 }
 

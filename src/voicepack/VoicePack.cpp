@@ -4,9 +4,13 @@
 #include <sstream>
 #include <json.hpp>
 
+#include "VoicePackManager.h"
+#include "../util/EliteFileUtil.h"
 
-VoicePack::VoicePack()
-    : _currVehicle(Vehicle::Ship)
+
+VoicePack::VoicePack(VoicePackManager& voicepackManager)
+    : _voicePackManager(voicepackManager)
+    , _currVehicle(Vehicle::Ship)
     , _maxShipCargo(0)
     , _currShipCargo(0)
     , _maxSRVCargo(0)
@@ -16,33 +20,39 @@ VoicePack::VoicePack()
 }
 
 
-void VoicePack::loadConfig(const char* filepath)
+void VoicePack::loadConfig(const std::filesystem::path& filepath)
 {
-    // Clear current configuration
-    _voiceStatusCommon.fill(std::filesystem::path());
+    _configPath = filepath;
 
-    for (auto& vs : _voiceStatusSpecial) {
+    // Clear current configuration
+    for (auto& vs : _voiceStatus) {
         vs.fill(std::filesystem::path());
     }
-
+    
+    _voiceSpecial.fill(std::filesystem::path());
     _voiceJournal.clear();
 
-    std::filesystem::path path(filepath);
+    for (auto& va : _voiceStatusActive) {
+        va.fill(Undefined);
+    }
+
+    _voiceSpecialActive.fill(Undefined);
+    _voiceJournalActive.clear();
 
     // Load new configuration
-    if (!std::filesystem::exists(path)) {
-        throw std::runtime_error("VoicePack: Cannot find configuration file: " + path.string());
+    if (!std::filesystem::exists(filepath)) {
+        throw std::runtime_error("VoicePack: Cannot find configuration file: " + filepath.string());
     }
 
     std::cout << "[INFO  ] Loading voicepack: " << filepath << std::endl;
 
     std::filesystem::path basePath;
 
-    if (path.is_absolute()) {
-        basePath = path.parent_path();
+    if (filepath.is_absolute()) {
+        basePath = filepath.parent_path();
     }
     else {
-        basePath = std::filesystem::current_path() / path.parent_path();
+        basePath = std::filesystem::current_path() / filepath.parent_path();
     }
 
     try {
@@ -54,12 +64,14 @@ void VoicePack::loadConfig(const char* filepath)
         // Parse status
         if (json.contains("status")) {
             // Load common status config
-            loadStatusConfig(basePath, json["status"], _voiceStatusCommon);
+            for (size_t v = 0; v < N_Vehicles; v++) {
+                loadStatusConfig(basePath, json["status"], _voiceStatus[v]);
+            }
 
             for (size_t v = 0; v < N_Vehicles; v++) {
                 const std::string vehicleName = vehicleToString((Vehicle)v);
                 if (json["status"].contains(vehicleName)) {
-                    loadStatusConfig(basePath, json["status"][vehicleName], _voiceStatusSpecial[v]);
+                    loadStatusConfig(basePath, json["status"][vehicleName], _voiceStatus[v]);
                 }
             }
         }
@@ -67,14 +79,20 @@ void VoicePack::loadConfig(const char* filepath)
         // Parse journal
         if (json.contains("event")) {
             for (auto& je : json["event"].items()) {
-                _voiceJournal[je.key()] = resolvePath(basePath, je.value().get<std::string>());
+                _voiceJournal[je.key()] = EliteFileUtil::resolvePath(basePath, je.value().get<std::string>());
             }
         }
 
         // Parse journal
         if (json.contains("special")) {
             for (auto& je : json["special"].items()) {
-                _voiceSpecial[je.key()] = resolvePath(basePath, je.value().get<std::string>());
+                const std::optional<SpecialEvent> se = specialEventFromString(je.key());
+
+                if (se.has_value()) {
+                    if (*se != SpecialEvent::N_SpecialEvents) {
+                        _voiceSpecial[*se] = EliteFileUtil::resolvePath(basePath, je.value().get<std::string>());
+                    }
+                }
             }
         }
     } catch (const std::exception& e) {
@@ -89,17 +107,19 @@ void VoicePack::loadConfig(const char* filepath)
             const std::string state = (i == 0) ? "false" : "true";
             const size_t index = 2 * iEvent + i;
 
-            if (!_voiceStatusCommon[index].empty() && 
-                !std::filesystem::exists(_voiceStatusCommon[index])) {
-                std::cout << "[ERR   ] Missing file for status '" << eventName << "' (" << state << "): " << _voiceStatusCommon[index] << std::endl;
-                _voiceStatusCommon[index].clear();
-            }
-
             for (size_t v = 0; v < N_Vehicles; v++) {
-                if (!_voiceStatusSpecial[v][index].empty() &&
-                    !std::filesystem::exists(_voiceStatusSpecial[v][index])) {
-                    std::cout << "[ERR   ] Missing file for status '" << eventName << "' (" << state << ") vehicle '" << vehicleToString((Vehicle)v) << "': " << _voiceStatusSpecial[v][index] << std::endl;
-                    _voiceStatusSpecial[v][index].clear();
+                if (!_voiceStatus[v][index].empty()) {
+                    if (!std::filesystem::exists(_voiceStatus[v][index])) {
+                        std::cout << "[ERR   ] Missing file for status '" << eventName << "' (" << state << ") vehicle '" << vehicleToString((Vehicle)v) << "': " << _voiceStatus[v][index] << std::endl;
+                        _voiceStatus[v][index].clear();
+                        _voiceStatusActive[v][index] = MissingFile;
+                    }
+                    else {
+                        _voiceStatusActive[v][index] = Active;
+                    }
+                }
+                else {
+                    _voiceStatusActive[v][index] = Undefined;
                 }
             }
         }
@@ -109,13 +129,28 @@ void VoicePack::loadConfig(const char* filepath)
         if (!path.empty() && !std::filesystem::exists(path)) {
             std::cerr << "[ERR   ] Missing file for event '" << event << "': " << path << std::endl;
             path.clear();
+            _voiceJournalActive[event] = MissingFile;
         }
+
+        _voiceJournalActive[event] = Active;
     }
 
-    for (auto& [event, path] : _voiceSpecial) {
-        if (!path.empty() && !std::filesystem::exists(path)) {
-            std::cerr << "[ERR   ] Missing file for special '" << event << "': " << path << std::endl;
-            path.clear();
+    for (size_t iSpecial = 0; iSpecial < SpecialEvent::N_SpecialEvents; iSpecial++) {
+        const std::string eventName = specialEventToString((SpecialEvent)iSpecial);
+        auto& path = _voiceSpecial[iSpecial];
+
+        if (!path.empty()) {
+            if (!std::filesystem::exists(path)) {
+                std::cerr << "[ERR   ] Missing file for special '" << eventName << "': " << path << std::endl;
+                path.clear();
+                _voiceSpecialActive[iSpecial] = MissingFile;
+            }
+            else {
+                _voiceSpecialActive[iSpecial] = Active;
+            }
+        }
+        else {
+            _voiceSpecialActive[iSpecial] = Undefined;
         }
     }
 }
@@ -123,7 +158,7 @@ void VoicePack::loadConfig(const char* filepath)
 
 void VoicePack::onStatusChanged(StatusEvent event, bool status)
 {
-    if (_isShutdownState) {
+    if (_isShutdownState || _isPriming) {
         return;
     }
 
@@ -132,28 +167,20 @@ void VoicePack::onStatusChanged(StatusEvent event, bool status)
     }
 
     // Prevents voiceline triggered while launching drone
-    if (event == StatusEvent::Cargo_Scoop_Deployed && _previousLaunchDrone) {
+    if (event == StatusEvent::Cargo_Scoop_Deployed && (_previousLaunchDrone || _previousEjectCargo)) {
         return;
     }
 
     const size_t index = 2 * event + (status ? 1 : 0);
 
-    if (!_voiceStatusCommon[index].empty()) {
-        playVoiceline(_voiceStatusCommon[index]);
-    }
-
-    if (!_voiceStatusSpecial[_currVehicle][index].empty()) {
-        playVoiceline(_voiceStatusSpecial[_currVehicle][index]);
-    }
+    _voicePackManager.playStatusVoiceline(_currVehicle, event, status, _voiceStatus[_currVehicle][index]);
 }
 
 
 void VoicePack::setJournalPreviousEvent(const std::string& event, const std::string& journalEntry)
 {
     // Ensure we're updating player status silently (no voiceline triggered)
-    _isPriming = true;
     onJournalEvent(event, journalEntry);
-    _isPriming = false;
 
     // Just for debugging
     std::cout << "[INFO  ] Priming done. Current vehicle: " << vehicleToString(_currVehicle)
@@ -168,7 +195,8 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
     if (event == "Shutdown") {
         _isShutdownState = true;
         std::cout << "[INFO  ] Entering shutdown state" << std::endl;
-    } else if (event == "LoadGame") {
+    }
+    else if (event == "LoadGame") {
         _isShutdownState = false;
         std::cout << "[INFO  ] Exiting shutdown state" << std::endl;
     }
@@ -181,10 +209,32 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
     _previousUnderAttack = (event == "UnderAttack");
     _previousLaunchDrone = (event == "LaunchDrone");
 
+    // Prevent mutilple "cargo scoop deployed" announcements
+    // Not reliable for EjectCargo though...
+    if (event == "LaunchDrone") {
+        _previousLaunchDrone = true;
+        std::cout << "[INFO  ] LaunchDrone event received, setting launch state." << std::endl;
+    }
+
+    if (event == "EjectCargo") {
+        _previousEjectCargo = true;
+        std::cout << "[INFO  ] EjectCargo event received, setting eject state." << std::endl;
+    }
+
+    // Reset voiceline reading when receiving the acknowledgment
+    // from "Cargo" event
+    if (_previousEjectCargo || _previousLaunchDrone) {
+        if (event == "Cargo") {
+            _previousEjectCargo = false;
+            _previousLaunchDrone = false;
+            std::cout << "[INFO  ] Cargo update received, resetting launch/eject state." << std::endl;
+        }
+    }
+
     auto it = _voiceJournal.find(event);
 
     if (it != _voiceJournal.end()) {
-        playVoiceline(it->second);
+        _voicePackManager.playJournalVoiceline(event, it->second);
     }
 
     const nlohmann::json json = nlohmann::json::parse(journalEntry);
@@ -311,10 +361,37 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
 
 void VoicePack::onSpecialEvent(SpecialEvent event)
 {
-    auto it = _voiceSpecial.find(specialEventToString(event));
+    _voicePackManager.playSpecialVoiceline(event, _voiceSpecial[event]);
+}
 
-    if (it != _voiceSpecial.end()) {
-        playVoiceline(it->second);
+
+void VoicePack::setVoiceStatusState(Vehicle vehicle, StatusEvent event, bool statusState, bool active)
+{
+    auto& it = _voiceStatusActive[vehicle][2 * event + (statusState ? 1 : 0)];
+
+    if (it != Undefined && it != MissingFile) {
+        it = active ? Active : Inactive;
+    }
+}
+
+
+void VoicePack::setVoiceJournalState(const std::string& event, bool active)
+{
+    auto it = _voiceJournalActive.find(event);
+ 
+    if (it != _voiceJournalActive.end() && 
+        it->second != Undefined && 
+        it->second != MissingFile) {
+        it->second = active ? Active : Inactive;
+    }
+}
+
+
+void VoicePack::setVoiceSpecialState(SpecialEvent event, bool active)
+{
+    auto& it = _voiceSpecialActive[event];
+    if (it != Undefined && it != MissingFile) {
+        it = active ? Active : Inactive;
     }
 }
 
@@ -381,14 +458,6 @@ void VoicePack::setCurrentVehicle(Vehicle vehicle)
 }
 
 
-void VoicePack::playVoiceline(const std::filesystem::path& path)
-{
-    if (!path.empty() && !_isShutdownState && !_isPriming) {
-        _player.addTrack(path);
-    }
-}
-
-
 void VoicePack::loadStatusConfig(
     const std::filesystem::path& basePath,
     const nlohmann::json& json,
@@ -405,10 +474,10 @@ void VoicePack::loadStatusConfig(
 
         for (auto& statusEntry : st.value().items()) {
             if (statusEntry.key() == "true") {
-                voiceStatus[2 * status.value() + 1] = resolvePath(basePath, statusEntry.value().get<std::string>());
+                voiceStatus[2 * status.value() + 1] = EliteFileUtil::resolvePath(basePath, statusEntry.value().get<std::string>());
             }
             else if (statusEntry.key() == "false") {
-                voiceStatus[2 * status.value() + 0] = resolvePath(basePath, statusEntry.value().get<std::string>());
+                voiceStatus[2 * status.value() + 0] = EliteFileUtil::resolvePath(basePath, statusEntry.value().get<std::string>());
             }
             else {
                 std::cout << "[WARN  ] Unknown status key: " << statusEntry.key() << "\n";
@@ -416,205 +485,3 @@ void VoicePack::loadStatusConfig(
         }
     }
 }
-
-
-std::filesystem::path VoicePack::resolvePath(
-    const std::filesystem::path& basePath,
-    const std::string& file)
-{
-    std::filesystem::path p(file);
-    return p.is_absolute() ? p : (basePath / p);
-}
-
-
-#ifdef BUILD_MEDICORP
-
-
-// ----------------------------------------------------------------------------
-// Medic Compliant class implementation
-// ----------------------------------------------------------------------------
-
-
-bool MedicCompliant::isCompliant()
-{
-    return correctIdentifier && !hasWeapons;
-}
-
-
-void MedicCompliant::setShipID(const std::string& shipIdent)
-{
-    std::string shipIdentLower = shipIdent;
-    std::transform(shipIdentLower.begin(), shipIdentLower.end(), shipIdentLower.begin(), ::tolower);
-
-    correctIdentifier = (shipIdentLower == "medic") || (shipIdentLower == "mdic");
-}
-
-
-void MedicCompliant::update(const std::string& event, const std::string& journalEntry) {
-    const nlohmann::json json = nlohmann::json::parse(journalEntry);
-
-    if (event == "Loadout") {
-        if (json.contains("ShipIdent")) {
-            const std::string shipIdent = json["ShipIdent"].get<std::string>();
-            setShipID(shipIdent);
-        }
-
-        if (json.contains("Modules")) {
-            const auto& modules = json["Modules"];
-            validateModules(modules);
-        }
-    }
-    else if (event == "SetUserShipName") {
-        if (json.contains("UserShipId")) {
-            const std::string shipIdent = json["UserShipId"].get<std::string>();
-            setShipID(shipIdent);
-        }
-    }
-}
-
-
-void MedicCompliant::validateModules(const nlohmann::json& modules)
-{
-    hasWeapons = false;
-
-    for (const auto& module : modules) {
-        if (module.contains("Slot")) {
-            const std::string slotName = module["Slot"].get<std::string>();
-
-            // Check for TinyHardpoint first, they can be legal
-            if (slotName.find("TinyHardpoint") != std::string::npos) {
-                if (module.contains("Item")) {
-                    const std::string item = module["Item"].get<std::string>();
-
-                    if (item.find("defence_turret") != std::string::npos) {
-                        hasWeapons = true;
-                    }
-                }
-            }
-            else if (slotName.find("Hardpoint") != std::string::npos) {
-                hasWeapons = true;
-                return;
-            }
-        }
-    }
-}
-
-
-// ----------------------------------------------------------------------------
-// Alta class implementation
-// ----------------------------------------------------------------------------
-
-
-Alta::Alta()
-    : _altaLoaded(false)
-{
-
-}
-
-
-void Alta::loadConfig(const char* filepath)
-{
-    // small hack to get the path of voicepack
-    std::filesystem::path path(filepath);
-    std::filesystem::path basePath;
-
-    if (path.is_absolute()) {
-        basePath = path.parent_path();
-    }
-    else {
-        basePath = std::filesystem::current_path() / path.parent_path();
-    }
-
-    _standardVoicePack.loadConfig(filepath);
-
-    // TODO: This is ultra hacky:
-    // Attempt to locate ALTA voicepack from the provided config file.
-    // In case the ALTA voicepack is not next to it, this will shamefully crash
-    // Also, prevent from reloading ALTA mehhh prevent crashing in case the user
-    // loads another voicepack with drag'n drop.
-    // I'll attempt something more elegant later, sorry folks!
-    if (!_altaLoaded) {
-        const std::filesystem::path altaVoicepack = basePath.parent_path() / "ALTA" / "ALTA.json";
-
-        _altaVoicePack.loadConfig(altaVoicepack.string().c_str());
-        _altaActive = false;
-        std::cout << "[INFO  ] ALTA voicepack loaded." << std::endl;
-
-        _altaLoaded = true;
-    }
-}
-
-
-void Alta::onStatusChanged(StatusEvent event, bool status)
-{
-    if (_altaActive) {
-        _altaVoicePack.onStatusChanged(event, status);
-    }
-    else {
-        _standardVoicePack.onStatusChanged(event, status);
-    }
-}
-
-
-void Alta::setJournalPreviousEvent(const std::string& event, const std::string& journalEntry)
-{
-    _medicCompliant.update(event, journalEntry);
-    const bool compliant = _medicCompliant.isCompliant();
-
-    // Check change of status
-    if (compliant != _altaActive) {
-        if (!_altaActive) {
-            // We are activating ALTA
-            std::cout << "[INFO  ] ALTA voicepack activated." << std::endl;
-            _altaVoicePack.transferSettings(_standardVoicePack);
-        }
-        else {
-            // We are deactivating ALTA
-            std::cout << "[INFO  ] Standard voicepack activated." << std::endl;
-            _standardVoicePack.transferSettings(_altaVoicePack);
-        }
-
-        _altaActive = compliant;
-    }
-
-    if (_altaActive) {
-        _altaVoicePack.setJournalPreviousEvent(event, journalEntry);
-    }
-    else {
-        _standardVoicePack.setJournalPreviousEvent(event, journalEntry);
-    }
-}
-
-
-void Alta::onJournalEvent(const std::string& event, const std::string& journalEntry)
-{
-    _medicCompliant.update(event, journalEntry);
-    const bool compliant = _medicCompliant.isCompliant();
-
-    // Check change of status
-    if (compliant != _altaActive) {
-        if (!_altaActive) {
-            // We are activating ALTA
-            std::cout << "[INFO  ] ALTA voicepack activated." << std::endl;
-            _altaVoicePack.transferSettings(_standardVoicePack);
-            _altaVoicePack.onSpecialEvent(Activating);
-        }
-        else {
-            // We are deactivating ALTA
-            std::cout << "[INFO  ] Standard voicepack activated." << std::endl;
-            _standardVoicePack.transferSettings(_altaVoicePack);
-            _altaVoicePack.onSpecialEvent(Deactivating);
-        }
-
-        _altaActive = compliant;
-    }
-
-    if (_altaActive) {
-        _altaVoicePack.onJournalEvent(event, journalEntry);
-    }
-    else {
-        _standardVoicePack.onJournalEvent(event, journalEntry);
-    }
-}
-
-#endif // BUILD_MEDICORP

@@ -2,7 +2,16 @@
 
 #include <PluginInterface.h>
 
+#include <string>
 #include <optional>
+
+
+enum VoiceTriggerStatus {
+    Active,
+    Inactive,
+    Undefined,
+    MissingFile
+};
 
 
 #define ENUM_VEHICULES(X)            \
@@ -37,23 +46,8 @@ enum Vehicle {
     N_Vehicles
 };
 
-const char* vehicleToString(Vehicle v)
-{
-    switch (v) {
-#define GEN_CASE(name) case name: return #name;
-        ENUM_VEHICULES(GEN_CASE)
-#undef GEN_CASE
-    default: return "Unknown";
-    }
-}
-
-std::optional<Vehicle> vehiculeFromString(const std::string& s)
-{
-#define GEN_IF(name) if (s == #name) return name;
-    ENUM_VEHICULES(GEN_IF)
-#undef GEN_IF
-    return std::nullopt;
-}
+const char* vehicleToString(Vehicle v);
+std::optional<Vehicle> vehiculeFromString(const std::string& s);
 
 // ----------------------------------------------------------------------------
 // SRV enum and conversion functions
@@ -71,23 +65,8 @@ const uint32_t SRV_MAX_CARGO[N_SRVTypes] = {
     2  // combat_multicrew_srv_01
 };
 
-const char* srvTypeToString(SRVType v)
-{
-    switch (v) {
-#define GEN_CASE(name) case name: return #name;
-        ENUM_SRV_TYPES(GEN_CASE)
-#undef GEN_CASE
-    default: return "Unknown";
-    }
-}
-
-std::optional<SRVType> srvTypeFromString(const std::string& s)
-{
-#define GEN_IF(name) if (s == #name) return name;
-    ENUM_SRV_TYPES(GEN_IF)
-#undef GEN_IF
-    return std::nullopt;
-}
+const char* srvTypeToString(SRVType v);
+std::optional<SRVType> srvTypeFromString(const std::string& s);
 
 // ----------------------------------------------------------------------------
 // SpecialEvent enum and conversion functions
@@ -100,44 +79,12 @@ enum SpecialEvent {
     N_SpecialEvents
 };
 
-const char* specialEventToString(SpecialEvent v)
-{
-    switch (v) {
-#define GEN_CASE(name) case name: return #name;
-        ENUM_SPECIAL_EVENTS(GEN_CASE)
-#undef GEN_CASE
-    default: return "Unknown";
-    }
-}
-
-std::optional<SpecialEvent> specialEventFromString(const std::string& s)
-{
-#define GEN_IF(name) if (s == #name) return name;
-    ENUM_SPECIAL_EVENTS(GEN_IF)
-#undef GEN_IF
-    return std::nullopt;
-}
+const char* specialEventToString(SpecialEvent v);
+std::optional<SpecialEvent> specialEventFromString(const std::string& s);
 
 // ----------------------------------------------------------------------------
 // Status conversion functions
 // ----------------------------------------------------------------------------
 
-std::optional<StatusEvent> statusFromString(const std::string& s)
-{
-#define GEN_IF(name) if (s == #name) return name;
-    STATUS_EVENTS(GEN_IF)
-#undef GEN_IF
-    return std::nullopt;
-}
-
-
-const char* statusToString(StatusEvent ev)
-{
-    switch (ev) {
-#define GEN_CASE(name) case name: return #name;
-        STATUS_EVENTS(GEN_CASE)
-#undef GEN_CASE
-    default: return "Unknown";
-    }
-}
-
+std::optional<StatusEvent> statusFromString(const std::string& s);
+const char* statusToString(StatusEvent ev);

@@ -1,7 +1,7 @@
 {
     "plugins": {
         "VoicePack": {
-            "config": "VoicePack/Aria/Aria.json"
+            "config": "VoicePack/config.json"
         }
     }
 }

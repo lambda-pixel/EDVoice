@@ -1,6 +1,10 @@
+# Previous CMakeLists for creating a pluging.
+# Keeping it if moving back voicepack as an independant plugin
+
 add_library(VoicePack SHARED
     VoicePack.cpp
     AudioPlayer.cpp
+    Enum.cpp
 )
 
 target_include_directories(VoicePack PRIVATE ../include)
