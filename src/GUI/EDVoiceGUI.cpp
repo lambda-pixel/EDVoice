@@ -95,9 +95,7 @@ void EDVoiceGUI::run()
         ImGui::NewFrame();
 
         beginMainWindow();
-
         voicePackGUI();
-
         endMainWindow();
 
         ImGui::Render();
@@ -244,29 +242,74 @@ void EDVoiceGUI::beginMainWindow()
 void EDVoiceGUI::endMainWindow()
 {
     ImGui::End();
+
+    ImGui::ShowDemoWindow();
 }
 
 
 void EDVoiceGUI::voicePackGUI()
 {
-#ifdef BUILD_MEDICORP
-#endif
     VoicePackManager& voicepack = _app.getVoicepack();
 
-    ImGui::SeparatorText("Status event voicelines");
-    ImGui::PushID("Status");
-    voicePackStatusGUI(voicepack);
-    ImGui::PopID();
+    //ImGui::ListBoxHeader("Voicepack settings");
+    int selectedVoicePackIdx = voicepack.getCurrentVoicePackIndex();
 
-    ImGui::SeparatorText("Special events voicelines");
-    ImGui::PushID("Special");
-    voicePackSpecialEventGUI(voicepack);
-    ImGui::PopID();
+    if (ImGui::BeginCombo("Standard Voicepack", voicepack.getInstalledVoicePacks()[selectedVoicePackIdx].c_str())) {
+        for (size_t n = 0; n < voicepack.getInstalledVoicePacks().size(); n++) {
+            const bool is_selected = (selectedVoicePackIdx == (int)n);
 
-    ImGui::SeparatorText("Journal events voicelines");
-    ImGui::PushID("Journal");
-    voicePackJourmalEventGUI(voicepack);
-    ImGui::PopID();
+            if (ImGui::Selectable(voicepack.getInstalledVoicePacks()[n].c_str(), is_selected)) {
+                selectedVoicePackIdx = (int)n;
+                voicepack.loadVoicePackByIndex(selectedVoicePackIdx);
+            }
+            if (is_selected) {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+        ImGui::EndCombo();
+    }
+
+#ifdef BUILD_MEDICORP
+    ImGui::Text("MediCorp Compliant: %s", _app.getVoicepack().isAltaCompliant() ? "Yes" : "No");
+#endif
+
+    ImGui::Spacing();
+
+    //ImGui::SeparatorText("Status event voicelines");
+    //
+    //if (ImGui::CollapsingHeader("Voicepack selection", ImGuiTreeNodeFlags_DefaultOpen)) {
+    //    static char voicepackName[128] = "";
+    //    strncpy(voicepackName, voicepack.getCurrentVoicePack().c_str(), sizeof(voicepackName));
+    //    ImGui::InputText("Voicepack name", voicepackName, sizeof(voicepackName));
+    //    ImGui::SameLine();
+    //    if (ImGui::Button("Load##Voicepack")) {
+    //        try {
+    //            voicepack.loadVoicePack(voicepackName);
+    //        }
+    //        catch (const std::runtime_error& e) {
+    //            MessageBoxA(_hwnd, e.what(), "Error loading voicepack", MB_OK | MB_ICONERROR);
+    //        }
+    //    }
+    //    ImGui::Text("Currently loaded: %s", voicepack.getCurrentVoicePack().c_str());
+    //}
+
+    if (ImGui::CollapsingHeader("Status event voicelines", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::PushID("Status");
+        voicePackStatusGUI(voicepack);
+        ImGui::PopID();
+    }
+
+    if (ImGui::CollapsingHeader("Special events voicelines", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::PushID("Special");
+        voicePackSpecialEventGUI(voicepack);
+        ImGui::PopID();
+    }
+
+    if (ImGui::CollapsingHeader("Journal events voicelines", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::PushID("Journal");
+        voicePackJourmalEventGUI(voicepack);
+        ImGui::PopID();
+    }
 }
 
 

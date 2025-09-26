@@ -3,7 +3,7 @@
 #include "MedicComlpiant.h"
 
 
-bool MedicCompliant::isCompliant()
+bool MedicCompliant::isCompliant() const
 {
     return correctIdentifier && !hasWeapons;
 }

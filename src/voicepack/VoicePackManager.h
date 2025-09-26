@@ -23,6 +23,8 @@ public:
     void loadConfig(const char* filepath);
     void saveConfig() const;
 
+    void loadVoicePackByIndex(size_t index);
+
     void onStatusChanged(StatusEvent event, bool status);
     void setJournalPreviousEvent(const std::string& event, const std::string& journalEntry);
     void onJournalEvent(const std::string& event, const std::string& journalEntry);
@@ -30,6 +32,7 @@ public:
     VoicePack& getStandardVoicePack() { return _standardVoicePack; }
 #ifdef BUILD_MEDICORP
     VoicePack& getMedicVoicePack() { return _medicVoicePack; }
+    bool isAltaCompliant() const { return _medicCompliant.isCompliant(); }
 #endif
 
     static size_t indexFromStatusEvent(StatusEvent event, bool status) {
@@ -48,8 +51,10 @@ public:
     void setVoiceJournalState(const std::string& event, bool active);
     void setVoiceSpecialState(SpecialEvent event, bool active);
 
-private:
+    const std::vector<std::string>& getInstalledVoicePacks() const { return _installedVoicePacksNames; }
+    size_t getCurrentVoicePackIndex() const { return _currentVoicePackIndex; }
 
+private:
     void updateVoicePackSettings(VoicePack& voicepack);
 
     std::filesystem::path _configPath;
@@ -67,6 +72,10 @@ private:
     // name, path (the same string as in the config)
     std::map<std::string, std::string> _installedVoicePacks;
     std::map<std::string, std::filesystem::path> _installedVoicePacksAbsolutePath;
+
+    // Everything except the MedicCorp ALTA voicepack
+    std::vector<std::string> _installedVoicePacksNames;
+    size_t _currentVoicePackIndex = 0;
 
     // As determined by the config file
     std::array<std::array<VoiceTriggerStatus, 2 * StatusEvent::N_StatusEvents>, N_Vehicles> _configVoiceStatusActive;

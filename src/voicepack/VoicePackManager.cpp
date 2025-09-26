@@ -67,6 +67,10 @@ void VoicePackManager::loadConfig(const char* filepath)
                 // We keep the path the same as in the config file
                 _installedVoicePacks[vp.key()] = value;
                 _installedVoicePacksAbsolutePath[vp.key()] = vpPath;
+
+                // Keep a list of installed voicepacks names
+                _installedVoicePacksNames.push_back(vp.key());
+
                 std::cout << "[INFO  ] Found installed voicepack: " << vp.key() << " at " << vpPath << std::endl;
             }
             else {
@@ -74,6 +78,34 @@ void VoicePackManager::loadConfig(const char* filepath)
             }
         }
     }
+
+#ifdef BUILD_MEDICORP
+    // Load medic voicepack
+    // Must be done before the standard voicepack:
+    // We are removing the ALTA voicepack from the list of installed voicepacks and later rely on the index
+    if (json.contains("medicVoicePack")) {
+        const std::string& defaultVP = json["medicVoicePack"].get<std::string>();
+        const auto& it = _installedVoicePacksAbsolutePath.find(defaultVP);
+
+        if (it != _installedVoicePacksAbsolutePath.end()) {
+            std::cout << "[INFO  ] Loading default voicepack: " << defaultVP << std::endl;
+            _medicVoicePack.loadConfig(it->second);
+
+            // Renove ALTA from the list of installed voicepacks
+            const auto& itInstalledVP = std::find(_installedVoicePacksNames.begin(), _installedVoicePacksNames.end(), defaultVP);
+            if (itInstalledVP != _installedVoicePacksNames.end()) {
+                _installedVoicePacksNames.erase(itInstalledVP);
+            }
+            else {
+                // Shall not happen
+                assert(0);
+            }
+        }
+        else {
+            std::cerr << "[ERR   ] Cannot find default voicepack: " << defaultVP << std::endl;
+        }
+    }
+#endif
 
     // Load standard voicepack
     if (json.contains("defaultVoicePack")) {
@@ -83,27 +115,21 @@ void VoicePackManager::loadConfig(const char* filepath)
         if (it != _installedVoicePacksAbsolutePath.end()) {
             std::cout << "[INFO  ] Loading default voicepack: " << defaultVP << std::endl;
             _standardVoicePack.loadConfig(it->second);
+
+            // Set current voicepack index
+            const auto& itInstalledVP = std::find(_installedVoicePacksNames.begin(), _installedVoicePacksNames.end(), defaultVP);
+            if (itInstalledVP != _installedVoicePacksNames.end()) {
+                _currentVoicePackIndex = std::distance(_installedVoicePacksNames.begin(), itInstalledVP);
+            }
+            else {
+                // Shall not happen
+                assert(0);
+            }
         }
         else {
             std::cerr << "[ERR   ] Cannot find default voicepack: " << defaultVP << std::endl;
         }
     }
-
-#ifdef BUILD_MEDICORP
-    // Load medic voicepack
-    if (json.contains("medicVoicePack")) {
-        const std::string& defaultVP = json["medicVoicePack"].get<std::string>();
-        const auto& it = _installedVoicePacksAbsolutePath.find(defaultVP);
-
-        if (it != _installedVoicePacksAbsolutePath.end()) {
-            std::cout << "[INFO  ] Loading default voicepack: " << defaultVP << std::endl;
-            _medicVoicePack.loadConfig(it->second);
-        }
-        else {
-            std::cerr << "[ERR   ] Cannot find default voicepack: " << defaultVP << std::endl;
-        }
-    }
-#endif
 
     // Load activation status
     if (json.contains("activeVoiceActions")) {
@@ -189,6 +215,8 @@ void VoicePackManager::loadConfig(const char* filepath)
 #ifdef BUILD_MEDICORP
     updateVoicePackSettings(_medicVoicePack);
 #endif
+
+    assert(_currentVoicePackIndex < _installedVoicePacksNames.size());
 }
 
 
@@ -277,6 +305,31 @@ void VoicePackManager::saveConfig() const
     std::ofstream file(_configPath);
     file << std::setw(4) << json << std::endl;
     file.close();
+}
+
+
+void VoicePackManager::loadVoicePackByIndex(size_t index)
+{
+    if (index >= _installedVoicePacksNames.size()) {
+        throw std::runtime_error("Cannot load voicepack: index out of range");
+    }
+    if (index == _currentVoicePackIndex) {
+        // Nothing to do
+        return;
+    }
+
+    const std::string& vpName = _installedVoicePacksNames[index];
+    const auto& it = _installedVoicePacksAbsolutePath.find(vpName);
+
+    if (it == _installedVoicePacksAbsolutePath.end()) {
+        throw std::runtime_error("Cannot load voicepack: cannot find voicepack " + vpName);
+    }
+
+    std::cout << "[INFO  ] Loading voicepack: " << vpName << std::endl;
+    _standardVoicePack.loadConfig(it->second);
+    _currentVoicePackIndex = index;
+
+    updateVoicePackSettings(_standardVoicePack);
 }
 
 

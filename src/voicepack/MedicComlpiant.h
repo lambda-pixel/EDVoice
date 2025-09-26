@@ -8,7 +8,7 @@
 class MedicCompliant
 {
 public:
-    bool isCompliant();
+    bool isCompliant() const;
 
     void setShipID(const std::string& shipIdent);
 
