@@ -1,6 +1,7 @@
 set(VOICEPACK_DIR ${CMAKE_CURRENT_SOURCE_DIR}/voicepack)
 set(ASSETS_DEST ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 set(DEFAULT_JSON ${CMAKE_CURRENT_SOURCE_DIR}/default.json)
+set(VOICEPACK_JSON ${VOICEPACK_DIR}/config.json)
 
 file(GLOB_RECURSE ASSETS_FILES "${VOICEPACK_DIR}/*")
 
@@ -23,6 +24,12 @@ if(BUILD_MEDICORP)
             FILES_MATCHING PATTERN "*")
 endif()
 
-install(FILES ${DEFAULT_JSON}
-        DESTINATION config
+install(FILES 
+    ${DEFAULT_JSON}
+    DESTINATION config
+)
+
+install(FILES 
+    ${VOICEPACK_JSON}
+    DESTINATION config/VoicePack
 )
