@@ -609,7 +609,7 @@ void EDVoiceGUI::w32CreateWindow(int nShowCmd)
         WINDOW_TITLE,
         w32Style(),
         CW_USEDEFAULT, CW_USEDEFAULT,
-        _mainScale * 1280, _mainScale * 720,
+        _mainScale * 640, _mainScale * 700,
         nullptr,
         nullptr,
         nullptr,
@@ -621,7 +621,19 @@ void EDVoiceGUI::w32CreateWindow(int nShowCmd)
         ::DwmExtendFrameIntoClientArea(_hwnd, &shadow_state[_borderlessWindow ? 1 : 0]);
     }
 
-    ::SetWindowPos(_hwnd, nullptr, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE);
+    // Center window to the screen
+    RECT rc;
+    GetWindowRect(_hwnd, &rc);
+    int winWidth = rc.right - rc.left;
+    int winHeight = rc.bottom - rc.top;
+
+    int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+    int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+
+    int x = (screenWidth - winWidth) / 2;
+    int y = (screenHeight - winHeight) / 2;
+
+    ::SetWindowPos(_hwnd, nullptr, x, y, 0, 0, SWP_FRAMECHANGED | SWP_NOSIZE);
     ::ShowWindow(_hwnd, nShowCmd);
     ::UpdateWindow(_hwnd);
 }
