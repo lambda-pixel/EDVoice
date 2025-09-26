@@ -30,7 +30,6 @@ private:
     void voicePackJourmalEventGUI(VoicePackManager& voicepack);
     void voicePackSpecialEventGUI(VoicePackManager& voicepack);
 
-
     static const char* prettyPrintStatusState(StatusEvent status, bool activated);
     static const char* prettyPrintVehicle(Vehicle vehicle);
     static const char* prettyPrintSpecialEvent(SpecialEvent event);
@@ -45,6 +44,7 @@ private:
     bool w32IsMaximized();
     void w32AdjustMaximizedClientRect(RECT& rect);
     LRESULT w32HitTest(POINT cursor) const;
+    std::string w32OpenFileName(const char* title, const char* initialDir, const char* filter, bool multiSelect);
 
     EDVoiceApp _app;
     VkAdapter _vkAdapter;
@@ -57,4 +57,7 @@ private:
 
     HWND _hwnd;
     HINSTANCE _hInstance;
+
+    bool _hasError = false;
+    std::string _logErrStr;
 };

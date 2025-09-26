@@ -6,8 +6,7 @@
 #include "../util/EliteFileUtil.h"
 
 VoicePackManager::VoicePackManager()
-    : _altaLoaded(false)
-    , _standardVoicePack(*this)
+    : _standardVoicePack(*this)
 #ifdef BUILD_MEDICORP
     , _medicVoicePack(*this)
 #endif
@@ -128,6 +127,16 @@ void VoicePackManager::loadConfig(const char* filepath)
         }
         else {
             std::cerr << "[ERR   ] Cannot find default voicepack: " << defaultVP << std::endl;
+
+            // Try again with the first installed voicepack
+            if (!_installedVoicePacksNames.empty()) {
+                std::cout << "[INFO  ] Loading first installed voicepack: " << _installedVoicePacksNames[0] << std::endl;
+                _standardVoicePack.loadConfig(_installedVoicePacksAbsolutePath[_installedVoicePacksNames[0]]);
+                _currentVoicePackIndex = 0;
+            }
+            else {
+                throw std::runtime_error("No installed voicepacks found");
+            }
         }
     }
 
@@ -330,6 +339,31 @@ void VoicePackManager::loadVoicePackByIndex(size_t index)
     _currentVoicePackIndex = index;
 
     updateVoicePackSettings(_standardVoicePack);
+}
+
+
+size_t VoicePackManager::addVoicePack(const std::string& name, const std::string& path)
+{
+    if (name.empty() || path.empty()) {
+        throw std::runtime_error("Cannot add voicepack: name or path is empty");
+    }
+
+    if (_installedVoicePacks.find(name) != _installedVoicePacks.end()) {
+        throw std::runtime_error("Cannot add voicepack: voicepack with the same name already exists");
+    }
+    
+    const std::filesystem::path vpPath = EliteFileUtil::resolvePath(_configPath.parent_path(), path);
+    
+    if (!std::filesystem::exists(vpPath)) {
+        throw std::runtime_error("Cannot add voicepack: cannot find voicepack at " + vpPath.string());
+    }
+
+    _installedVoicePacks[name] = path;
+    _installedVoicePacksAbsolutePath[name] = vpPath;
+    _installedVoicePacksNames.push_back(name);
+    std::cout << "[INFO  ] Added new voicepack: " << name << " at " << vpPath << std::endl;
+
+    return _installedVoicePacksNames.size() - 1;
 }
 
 

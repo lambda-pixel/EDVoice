@@ -24,6 +24,7 @@ public:
     void saveConfig() const;
 
     void loadVoicePackByIndex(size_t index);
+    size_t addVoicePack(const std::string& name, const std::string& path);
 
     void onStatusChanged(StatusEvent event, bool status);
     void setJournalPreviousEvent(const std::string& event, const std::string& journalEntry);
@@ -91,9 +92,6 @@ private:
 
     bool _isShutdownState = false;
     bool _isPriming = false;
-
-    // TODO: this is an ungly hack to prevent reloading ALTA after first load
-    bool _altaLoaded;
 };
 
 

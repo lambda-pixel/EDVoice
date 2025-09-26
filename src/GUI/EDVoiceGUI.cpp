@@ -5,6 +5,7 @@
 #include <windows.h>
 #include <windowsx.h>
 #include <dwmapi.h>
+#include <commdlg.h>
 
 #include <imgui.h>
 #include <backends/imgui_impl_win32.h>
@@ -97,6 +98,19 @@ void EDVoiceGUI::run()
         beginMainWindow();
         voicePackGUI();
         endMainWindow();
+
+        if (_hasError) {
+            ImGui::OpenPopup("Error");
+        }
+
+        if (ImGui::BeginPopupModal("Error")) {
+            ImGui::Text("Changing voicepack failed, index is out of bounds");
+            if (ImGui::Button("OK")) {
+                _hasError = false;
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
 
         ImGui::Render();
         ImDrawData* draw_data = ImGui::GetDrawData();
@@ -242,8 +256,6 @@ void EDVoiceGUI::beginMainWindow()
 void EDVoiceGUI::endMainWindow()
 {
     ImGui::End();
-
-    ImGui::ShowDemoWindow();
 }
 
 
@@ -251,16 +263,32 @@ void EDVoiceGUI::voicePackGUI()
 {
     VoicePackManager& voicepack = _app.getVoicepack();
 
-    //ImGui::ListBoxHeader("Voicepack settings");
     int selectedVoicePackIdx = voicepack.getCurrentVoicePackIndex();
 
-    if (ImGui::BeginCombo("Standard Voicepack", voicepack.getInstalledVoicePacks()[selectedVoicePackIdx].c_str())) {
+#ifdef BUILD_MEDICORP
+    const char* defaultVoicepackLabel = "Standard Voicepack";
+#else
+    const char* defaultVoicepackLabel = "Current Voicepack";
+#endif
+    ImGui::Text(defaultVoicepackLabel);
+    ImGui::SameLine();
+    if (ImGui::BeginCombo(
+            "##ComboVoicePack",
+            voicepack.getInstalledVoicePacks()[selectedVoicePackIdx].c_str(),
+            ImGuiComboFlags_WidthFitPreview)) {
         for (size_t n = 0; n < voicepack.getInstalledVoicePacks().size(); n++) {
             const bool is_selected = (selectedVoicePackIdx == (int)n);
 
             if (ImGui::Selectable(voicepack.getInstalledVoicePacks()[n].c_str(), is_selected)) {
                 selectedVoicePackIdx = (int)n;
-                voicepack.loadVoicePackByIndex(selectedVoicePackIdx);
+
+                try {
+                    voicepack.loadVoicePackByIndex(selectedVoicePackIdx);
+                }
+                catch (const std::runtime_error& e) {
+                    _logErrStr = "Changing voicepack failed:\nthe index is out of bounds";
+                    _hasError = true;
+                }
             }
             if (is_selected) {
                 ImGui::SetItemDefaultFocus();
@@ -269,29 +297,32 @@ void EDVoiceGUI::voicePackGUI()
         ImGui::EndCombo();
     }
 
+    ImGui::SameLine();
+    if (ImGui::Button("Add")) {
+        const std::string newVoicePack = w32OpenFileName(
+            "Select voicepack file", 
+            "", 
+            "json files\0*.json\0", 
+            false);
+
+        if (!newVoicePack.empty()) {
+            try {
+                std::string& voicepackName = std::filesystem::path(newVoicePack).stem().string();
+                size_t idxNewVoicePack = voicepack.addVoicePack(voicepackName, newVoicePack);
+                voicepack.loadVoicePackByIndex(idxNewVoicePack);
+            }
+            catch (const std::runtime_error& e) {
+                _logErrStr = "Could not load the voicepack:\n a voicepack with the same name already exists";
+                _hasError = true;
+            }
+        }
+    }
+
 #ifdef BUILD_MEDICORP
     ImGui::Text("MediCorp Compliant: %s", _app.getVoicepack().isAltaCompliant() ? "Yes" : "No");
 #endif
 
     ImGui::Spacing();
-
-    //ImGui::SeparatorText("Status event voicelines");
-    //
-    //if (ImGui::CollapsingHeader("Voicepack selection", ImGuiTreeNodeFlags_DefaultOpen)) {
-    //    static char voicepackName[128] = "";
-    //    strncpy(voicepackName, voicepack.getCurrentVoicePack().c_str(), sizeof(voicepackName));
-    //    ImGui::InputText("Voicepack name", voicepackName, sizeof(voicepackName));
-    //    ImGui::SameLine();
-    //    if (ImGui::Button("Load##Voicepack")) {
-    //        try {
-    //            voicepack.loadVoicePack(voicepackName);
-    //        }
-    //        catch (const std::runtime_error& e) {
-    //            MessageBoxA(_hwnd, e.what(), "Error loading voicepack", MB_OK | MB_ICONERROR);
-    //        }
-    //    }
-    //    ImGui::Text("Currently loaded: %s", voicepack.getCurrentVoicePack().c_str());
-    //}
 
     if (ImGui::CollapsingHeader("Status event voicelines", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::PushID("Status");
@@ -786,4 +817,28 @@ LRESULT EDVoiceGUI::w32HitTest(POINT cursor) const
         }
         default: return HTNOWHERE;
     }
+}
+
+
+std::string EDVoiceGUI::w32OpenFileName(const char* title, const char* initialDir, const char* filter, bool multiSelect)
+{
+    OPENFILENAMEA ofn = { 0 };
+    char fileBuffer[MAX_PATH * 4] = { 0 };
+
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = _hwnd;
+    ofn.lpstrTitle = title;
+    ofn.lpstrInitialDir = initialDir;
+    ofn.lpstrFilter = filter;
+    ofn.nFilterIndex = 1;
+    ofn.lpstrFile = fileBuffer;
+    ofn.nMaxFile = sizeof(fileBuffer);
+    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+    if (multiSelect)
+        ofn.Flags |= OFN_ALLOWMULTISELECT;
+
+    if (GetOpenFileNameA(&ofn)) {
+        return std::string(fileBuffer);
+    }
+    return {};
 }
