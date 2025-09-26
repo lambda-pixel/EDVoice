@@ -31,7 +31,7 @@ if (BUILD_MEDICORP)
 endif()
 
 # For now force medicorp define
-target_compile_definitions(EDVoice PRIVATE BUILD_MEDICORP)
+# target_compile_definitions(EDVoice PRIVATE BUILD_MEDICORP)
 
 
 install(TARGETS EDVoice

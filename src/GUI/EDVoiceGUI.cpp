@@ -242,13 +242,14 @@ void EDVoiceGUI::endMainWindow()
 void EDVoiceGUI::voicePackGUI()
 {
 #ifdef BUILD_MEDICORP
+#endif
     VoicePackManager& voicepack = _app.getVoicepack();
 
     ImGui::SeparatorText("Status event voicelines");
     ImGui::PushID("Status");
     voicePackStatusGUI(voicepack);
     ImGui::PopID();
-    
+
     ImGui::SeparatorText("Special events voicelines");
     ImGui::PushID("Special");
     voicePackSpecialEventGUI(voicepack);
@@ -258,8 +259,6 @@ void EDVoiceGUI::voicePackGUI()
     ImGui::PushID("Journal");
     voicePackJourmalEventGUI(voicepack);
     ImGui::PopID();
-#else
-#endif
 }
 
 

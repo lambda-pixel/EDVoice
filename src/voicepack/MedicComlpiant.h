@@ -1,9 +1,9 @@
 #pragma once
 
+#ifdef BUILD_MEDICORP
+
 #include <string>
 #include <json.hpp>
-
-#ifdef BUILD_MEDICORP
 
 class MedicCompliant
 {

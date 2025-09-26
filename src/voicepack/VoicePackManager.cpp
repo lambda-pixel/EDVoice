@@ -8,7 +8,9 @@
 VoicePackManager::VoicePackManager()
     : _altaLoaded(false)
     , _standardVoicePack(*this)
+#ifdef BUILD_MEDICORP
     , _medicVoicePack(*this)
+#endif
 {
 }
 
@@ -87,6 +89,7 @@ void VoicePackManager::loadConfig(const char* filepath)
         }
     }
 
+#ifdef BUILD_MEDICORP
     // Load medic voicepack
     if (json.contains("medicVoicePack")) {
         const std::string& defaultVP = json["medicVoicePack"].get<std::string>();
@@ -100,6 +103,7 @@ void VoicePackManager::loadConfig(const char* filepath)
             std::cerr << "[ERR   ] Cannot find default voicepack: " << defaultVP << std::endl;
         }
     }
+#endif
 
     // Load activation status
     if (json.contains("activeVoiceActions")) {
@@ -206,9 +210,11 @@ void VoicePackManager::saveConfig() const
         if (vp.second == _standardVoicePack.getVoicePackPath().string()) {
             json["defaultVoicePack"] = vp.first;
         }
+#ifdef BUILD_MEDICORP
         if (vp.second == _medicVoicePack.getVoicePackPath().string()) {
             json["medicVoicePack"] = vp.first;
         }
+#endif
     }
 
     // Active voice actions
@@ -281,12 +287,16 @@ void VoicePackManager::onStatusChanged(StatusEvent event, bool status)
         return;
     }
 
+#ifdef BUILD_MEDICORP
     if (_altaActive) {
         _medicVoicePack.onStatusChanged(event, status);
     }
     else {
         _standardVoicePack.onStatusChanged(event, status);
     }
+#else
+    _standardVoicePack.onStatusChanged(event, status);
+#endif
 }
 
 
@@ -294,6 +304,7 @@ void VoicePackManager::setJournalPreviousEvent(const std::string& event, const s
 {
     _isPriming = true;
 
+#ifdef BUILD_MEDICORP
     _medicCompliant.update(event, journalEntry);
     const bool compliant = _medicCompliant.isCompliant();
 
@@ -319,6 +330,9 @@ void VoicePackManager::setJournalPreviousEvent(const std::string& event, const s
     else {
         _standardVoicePack.setJournalPreviousEvent(event, journalEntry);
     }
+#else
+    _standardVoicePack.setJournalPreviousEvent(event, journalEntry);
+#endif
 
     _isPriming = false;
 }
@@ -335,6 +349,7 @@ void VoicePackManager::onJournalEvent(const std::string& event, const std::strin
         std::cout << "[INFO  ] Exiting shutdown state" << std::endl;
     }
 
+#ifdef BUILD_MEDICORP
     _medicCompliant.update(event, journalEntry);
     const bool compliant = _medicCompliant.isCompliant();
 
@@ -362,6 +377,9 @@ void VoicePackManager::onJournalEvent(const std::string& event, const std::strin
     else {
         _standardVoicePack.onJournalEvent(event, journalEntry);
     }
+#else
+    _standardVoicePack.onJournalEvent(event, journalEntry);
+#endif
 }
 
 

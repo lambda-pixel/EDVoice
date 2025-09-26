@@ -1,3 +1,5 @@
+#ifdef BUILD_MEDICORP
+
 #include "MedicComlpiant.h"
 
 
@@ -64,3 +66,5 @@ void MedicCompliant::validateModules(const nlohmann::json& modules)
         }
     }
 }
+
+#endif
