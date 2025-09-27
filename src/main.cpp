@@ -31,9 +31,50 @@ int WINAPI wWinMain(
     return 0;
 }
 
+#else
+#include <windows.h>
+#include <fcntl.h>
+#include <io.h>
+
+int WINAPI wWinMain(
+    _In_ HINSTANCE hInstance,
+    _In_opt_ HINSTANCE hPrevInstance,
+    _In_ LPWSTR lpCmdLine,
+    _In_ int nShowCmd)
+{
+    // --- Créer une console ---
+    AllocConsole();
+
+    // Rediriger stdout, stderr et stdin vers la console
+    FILE* fp;
+    freopen_s(&fp, "CONOUT$", "w", stdout);
+    freopen_s(&fp, "CONOUT$", "w", stderr);
+    freopen_s(&fp, "CONIN$", "r", stdin);
+
+    std::cout << "Console initialized ✅" << std::endl;
+
+    // --- Parsing arguments ---
+    LPWSTR* szArgList;
+    int argCount;
+    szArgList = CommandLineToArgvW(GetCommandLine(), &argCount);
+
+    const std::filesystem::path execPath = std::filesystem::path(szArgList[0]).parent_path();
+    const std::filesystem::path configFile = execPath / "config" / "default.json";
+
+    // --- Lancer ton GUI ---
+    EDVoiceGUI gui(execPath, configFile, hInstance, nShowCmd);
+    gui.run();
+
+    // --- Libérer la console à la fermeture ---
+    FreeConsole();
+    return 0;
+}
+
+#endif 
+
 // ----------------------------------------------------------------------------
 
-#else
+#if 0
 
 int main(int argc, char* argv[])
 {

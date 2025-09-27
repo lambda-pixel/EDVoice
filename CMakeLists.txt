@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.15)
 
 project(EDVoice)
 
@@ -17,6 +17,8 @@ set(CPACK_PACKAGE_NAME "EDVoice")
 set(CPACK_PACKAGE_VENDOR "Siegfried Origin")
 set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY OFF)
 set(CPACK_GENERATOR "ZIP")
+
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 execute_process(
     COMMAND git describe --tags --abbrev=0
