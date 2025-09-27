@@ -13,6 +13,7 @@ add_executable(EDVoice WIN32
     voicepack/Enum.cpp
     voicepack/AudioPlayer.cpp
     voicepack/VoicePack.cpp
+    voicepack/VoiceLine.cpp
     voicepack/VoicePackManager.cpp
     voicepack/MedicCompliant.cpp
 

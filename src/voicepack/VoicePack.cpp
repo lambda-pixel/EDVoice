@@ -5,7 +5,6 @@
 #include <json.hpp>
 
 #include "VoicePackManager.h"
-#include "../util/EliteFileUtil.h"
 
 
 VoicePack::VoicePack(VoicePackManager& voicepackManager)
@@ -26,10 +25,10 @@ void VoicePack::loadConfig(const std::filesystem::path& filepath)
 
     // Clear current configuration
     for (auto& vs : _voiceStatus) {
-        vs.fill(std::filesystem::path());
+        vs.fill(VoiceLine());
     }
     
-    _voiceSpecial.fill(std::filesystem::path());
+    _voiceSpecial.fill(VoiceLine());
     _voiceJournal.clear();
 
     for (auto& va : _voiceStatusActive) {
@@ -79,7 +78,7 @@ void VoicePack::loadConfig(const std::filesystem::path& filepath)
         // Parse journal
         if (json.contains("event")) {
             for (auto& je : json["event"].items()) {
-                _voiceJournal[je.key()] = EliteFileUtil::resolvePath(basePath, je.value().get<std::string>());
+                _voiceJournal[je.key()] = VoiceLine(basePath, je.value());
             }
         }
 
@@ -90,7 +89,7 @@ void VoicePack::loadConfig(const std::filesystem::path& filepath)
 
                 if (se.has_value()) {
                     if (*se != SpecialEvent::N_SpecialEvents) {
-                        _voiceSpecial[*se] = EliteFileUtil::resolvePath(basePath, je.value().get<std::string>());
+                        _voiceSpecial[*se].loadFromJson(basePath, je.value());
                     }
                 }
             }
@@ -109,11 +108,15 @@ void VoicePack::loadConfig(const std::filesystem::path& filepath)
 
             for (size_t v = 0; v < N_Vehicles; v++) {
                 if (!_voiceStatus[v][index].empty()) {
-                    if (!std::filesystem::exists(_voiceStatus[v][index])) {
-                        std::cout << "[ERR   ] Missing file for status '" << eventName << "' (" << state << ") vehicle '" << vehicleToString((Vehicle)v) << "': " << _voiceStatus[v][index] << std::endl;
-                        _voiceStatus[v][index].clear();
-                        _voiceStatusActive[v][index] = MissingFile;
+                    const bool hasMissingFiles = _voiceStatus[v][index].removeMissingFiles();
+
+                    if (hasMissingFiles) {
+                        std::cout << "[ERR   ] Missing file for status '" << eventName << "' (" << state << ") vehicle '" << vehicleToString((Vehicle)v) << std::endl;
                     }
+
+                    if (_voiceStatus[v][index].empty()) {
+                        _voiceStatusActive[v][index] = MissingFile;
+                    }                    
                     else {
                         _voiceStatusActive[v][index] = Active;
                     }
@@ -125,14 +128,26 @@ void VoicePack::loadConfig(const std::filesystem::path& filepath)
         }
     }
 
-    for (auto& [event, path] : _voiceJournal) {
-        if (!path.empty() && !std::filesystem::exists(path)) {
-            std::cerr << "[ERR   ] Missing file for event '" << event << "': " << path << std::endl;
-            path.clear();
-            _voiceJournalActive[event] = MissingFile;
-        }
+    for (auto& [eventName, voicelines] : _voiceJournal) {
+        if (!voicelines.empty()) {
+            const bool hasMissingFiles = voicelines.removeMissingFiles();
 
-        _voiceJournalActive[event] = Active;
+            if (hasMissingFiles) {
+                std::cerr << "[ERR   ] Missing file for event '" << eventName << std::endl;
+            }
+
+            if (voicelines.empty()) {
+                _voiceJournalActive[eventName] = MissingFile;
+            }
+            else {
+                _voiceJournalActive[eventName] = Active;
+            }
+        }
+        else {
+            // Should not happen
+            assert(0);
+            _voiceJournalActive[eventName] = Undefined;
+        }
     }
 
     for (size_t iSpecial = 0; iSpecial < SpecialEvent::N_SpecialEvents; iSpecial++) {
@@ -140,9 +155,13 @@ void VoicePack::loadConfig(const std::filesystem::path& filepath)
         auto& path = _voiceSpecial[iSpecial];
 
         if (!path.empty()) {
-            if (!std::filesystem::exists(path)) {
-                std::cerr << "[ERR   ] Missing file for special '" << eventName << "': " << path << std::endl;
-                path.clear();
+            const bool hasMissingFiles = path.removeMissingFiles();
+
+            if (hasMissingFiles) {
+                std::cerr << "[ERR   ] Missing file for special '" << eventName << std::endl;
+            }
+
+            if (path.empty()) {
                 _voiceSpecialActive[iSpecial] = MissingFile;
             }
             else {
@@ -173,7 +192,9 @@ void VoicePack::onStatusChanged(StatusEvent event, bool status)
 
     const size_t index = 2 * event + (status ? 1 : 0);
 
-    _voicePackManager.playStatusVoiceline(_currVehicle, event, status, _voiceStatus[_currVehicle][index]);
+    if (_voiceStatusActive[_currVehicle][index] == Active) {
+        _voicePackManager.playStatusVoiceline(_currVehicle, event, status, _voiceStatus[_currVehicle][index].getRandomFilePath());
+    }
 }
 
 
@@ -233,8 +254,8 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
 
     auto it = _voiceJournal.find(event);
 
-    if (it != _voiceJournal.end()) {
-        _voicePackManager.playJournalVoiceline(event, it->second);
+    if (it != _voiceJournal.end() && _voiceJournalActive[event] == Active) {
+        _voicePackManager.playJournalVoiceline(event, it->second.getRandomFilePath());
     }
 
     const nlohmann::json json = nlohmann::json::parse(journalEntry);
@@ -361,7 +382,9 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
 
 void VoicePack::onSpecialEvent(SpecialEvent event)
 {
-    _voicePackManager.playSpecialVoiceline(event, _voiceSpecial[event]);
+    if (_voiceSpecialActive[event] == Active) {
+        _voicePackManager.playSpecialVoiceline(event, _voiceSpecial[event].getRandomFilePath());
+    }
 }
 
 
@@ -461,7 +484,7 @@ void VoicePack::setCurrentVehicle(Vehicle vehicle)
 void VoicePack::loadStatusConfig(
     const std::filesystem::path& basePath,
     const nlohmann::json& json,
-    std::array<std::filesystem::path, 2 * StatusEvent::N_StatusEvents>& voiceStatus)
+    std::array<VoiceLine, 2 * StatusEvent::N_StatusEvents>& voiceStatus)
 {
     for (auto& st : json.items()) {
         const std::optional<StatusEvent> status = statusFromString(st.key());
@@ -474,10 +497,10 @@ void VoicePack::loadStatusConfig(
 
         for (auto& statusEntry : st.value().items()) {
             if (statusEntry.key() == "true") {
-                voiceStatus[2 * status.value() + 1] = EliteFileUtil::resolvePath(basePath, statusEntry.value().get<std::string>());
+                voiceStatus[2 * status.value() + 1].loadFromJson(basePath, statusEntry.value());
             }
             else if (statusEntry.key() == "false") {
-                voiceStatus[2 * status.value() + 0] = EliteFileUtil::resolvePath(basePath, statusEntry.value().get<std::string>());
+                voiceStatus[2 * status.value() + 0].loadFromJson(basePath, statusEntry.value());
             }
             else {
                 std::cout << "[WARN  ] Unknown status key: " << statusEntry.key() << "\n";
