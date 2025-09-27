@@ -90,7 +90,11 @@ public:
     VoicePackManager& getVoicepack() { return _voicepack; }
 
 private:
+#ifdef _WIN32
     void fileWatcherThread(HANDLE hStop);
+#else
+    void fileWatcherThread();
+#endif
 
     void loadPlugin(const std::filesystem::path& path);
     void unloadPlugin(LoadedPlugin& plugin);
@@ -109,7 +113,10 @@ private:
     VoicePackManager _voicepack;
 
     std::thread _watcherThread;
+
+#ifdef _WIN32
     HANDLE _hStop;
+#else
+    bool _hStop = false;
+#endif
 };
-
-

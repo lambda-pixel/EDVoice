@@ -1,6 +1,8 @@
 #pragma once
 
+#ifdef _WIN32
 #include <windows.h>
+#endif
 #include "Vulkan/VkAdapter.h"
 
 #include <filesystem>
@@ -10,10 +12,18 @@
 class EDVoiceGUI
 {
 public:
+
+#ifdef _WIN32
     EDVoiceGUI(
         const std::filesystem::path& exec_path,
         const std::filesystem::path& config,
         HINSTANCE hInstance, int nShowCmd);
+#else
+    EDVoiceGUI(
+        const std::filesystem::path& exec_path,
+        const std::filesystem::path& config);
+#endif
+
     ~EDVoiceGUI();
 
     void run();
@@ -34,6 +44,21 @@ private:
     static const char* prettyPrintVehicle(Vehicle vehicle);
     static const char* prettyPrintSpecialEvent(SpecialEvent event);
 
+    EDVoiceApp _app;
+    VkAdapter _vkAdapter;
+
+    bool _imGuiInitialized = false;
+    float _mainScale = 1.f;
+    bool _borderlessWindow = true;
+    float _titlebarHeight = 32.f;
+    float _totalButtonWidth = 3 * 32.f;
+
+    bool _hasError = false;
+    std::string _logErrStr;
+
+    std::filesystem::path _imGuiIniPath;
+
+#ifdef _WIN32
     // WIN32 stuff for working with borderless windows
     // see https://github.com/melak47/BorderlessWindow/tree/main
     static LRESULT CALLBACK w32WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -46,20 +71,9 @@ private:
     LRESULT w32HitTest(POINT cursor) const;
     std::string w32OpenFileName(const char* title, const char* initialDir, const char* filter, bool multiSelect);
 
-    EDVoiceApp _app;
-    VkAdapter _vkAdapter;
-
-    bool _imGuiInitialized = false;
-    float _mainScale = 1.f;
-    bool _borderlessWindow = true;
-    float _titlebarHeight = 32.f;
-    float _totalButtonWidth = 3 * 32.f;
-
     HWND _hwnd;
     HINSTANCE _hInstance;
-
-    bool _hasError = false;
-    std::string _logErrStr;
-
-    std::filesystem::path _imGuiIniPath;
+#else
+    // TODO
+#endif
 };

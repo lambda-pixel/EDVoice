@@ -1,13 +1,51 @@
 ﻿#include "EDVoiceApp.h"
 
 #include <iostream>
-#include <conio.h>
+#ifdef _WIN32
+#else
+    #include <sys/inotify.h>
+    #include <unistd.h>
+    #include <limits.h>
+#endif
 
 #include <json.hpp>
 
 #include "util/EliteFileUtil.h"
 #define __STDC_WANT_LIB_EXT1__ 1
 #include <cstring>
+
+#ifdef _WIN32
+    #include <conio.h>
+#else
+#include <termios.h>
+#include <fcntl.h>
+
+int kbhit() {
+    termios oldt, newt;
+    int ch;
+    int oldf;
+
+    tcgetattr(STDIN_FILENO, &oldt);
+    newt = oldt;
+    newt.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+    oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+    fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+
+    ch = getchar();
+
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+    fcntl(STDIN_FILENO, F_SETFL, oldf);
+
+    if (ch != EOF) {
+        ungetc(ch, stdin);
+        return 1;
+    }
+
+    return 0;
+}
+
+#endif
 
 // Ugly hack for now but whatever...
 static void loadConfigVP(const char* filepath, void* ctx)
@@ -37,9 +75,10 @@ extern "C" {
         callbacks->setJournalPreviousEvent = setJournalPreviousEventVP;
         callbacks->onJournalEvent = onJournalEventVP;
         callbacks->ctx = voicepack;
-        strncpy_s(callbacks->name, sizeof(callbacks->name), "VoicePack", ((size_t)-1));
-        strncpy_s(callbacks->versionStr, sizeof(callbacks->versionStr), "0.3", ((size_t)-1));
-        strncpy_s(callbacks->author, sizeof(callbacks->author), "Siegfried-Origin", ((size_t)-1));
+
+        std::strncpy(callbacks->name, "VoicePack", sizeof(callbacks->name) - 1);
+        std::strncpy(callbacks->versionStr, "0.3", sizeof(callbacks->name) - 1);
+        std::strncpy(callbacks->author, "Siegfried-Origin", sizeof(callbacks->name) - 1);
     }
     void unregisterPluginVP()
     {
@@ -148,12 +187,19 @@ EDVoiceApp::EDVoiceApp(
     _statusWatcher.start();
 
     // Start monitoring file change
+#ifdef _WIN32
     _hStop = CreateEvent(nullptr, TRUE, FALSE, nullptr);
 
     _watcherThread = std::thread(
         &EDVoiceApp::fileWatcherThread,
         this,
         _hStop);
+#else
+    _watcherThread = std::thread(
+        &EDVoiceApp::fileWatcherThread,
+        this
+    );
+#endif
 }
 
 
@@ -163,9 +209,14 @@ EDVoiceApp::~EDVoiceApp()
         unloadPlugin(plugin);
     }
 
+#ifdef _WIN32
     SetEvent(_hStop);
     _watcherThread.join();
     CloseHandle(_hStop);
+#else
+    _hStop = false;
+    _watcherThread.join();
+#endif
 }
 
 
@@ -176,17 +227,26 @@ void EDVoiceApp::run()
     while (true) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
+#ifdef _WIN32
         if (_kbhit()) {
             SetEvent(_hStop);
             std::cout << "Exiting..." << std::endl;
             break;
         }
+#else
+        if (kbhit()) {
+            _hStop = true;
+            std::cout << "Exiting..." << std::endl;
+            break;
+        }
+#endif
     }
 
     std::cout << "Goodbye!" << std::endl;
 }
 
 
+#ifdef _WIN32
 void EDVoiceApp::fileWatcherThread(HANDLE hStop)
 {
     const std::filesystem::path userProfile = EliteFileUtil::getUserProfile();
@@ -301,6 +361,14 @@ void EDVoiceApp::fileWatcherThread(HANDLE hStop)
     CloseHandle(ov.hEvent);
     CloseHandle(hDir);
 }
+#else
+void EDVoiceApp::fileWatcherThread()
+{
+    while (!_hStop) {
+        // TODO Linux
+    }
+}
+#endif
 
 
 void EDVoiceApp::loadPlugin(const std::filesystem::path& path)

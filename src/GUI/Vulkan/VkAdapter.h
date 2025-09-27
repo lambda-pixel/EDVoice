@@ -1,9 +1,13 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
-// WIN32 specific
-#include <Windows.h>
-#include <vulkan/vulkan_win32.h>
+
+#ifdef _WIN32
+    #include <Windows.h>
+    #include <vulkan/vulkan_win32.h>
+#else
+    #include <SDL3/SDL_vulkan.h>
+#endif
 
 #include <vector>
 
@@ -26,10 +30,17 @@ public:
     ~VkAdapter();
 
     // WIN32 specific
+#ifdef _WIN32
     void initDevice(
         HINSTANCE hInstance, HWND hwnd,
         const std::vector<char*>& deviceExtensions = {}
     );
+#else
+    void initDevice(
+        SDL_Window* window,
+        const std::vector<char*>& deviceExtensions = {}
+    );
+#endif
 
     VkInstance getInstance() const { return _instance; }
     VkPhysicalDevice getPhysicalDevice() const { return _physicalDevice; }

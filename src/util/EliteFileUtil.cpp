@@ -2,7 +2,9 @@
 
 #include "EliteFileUtil.h"
 
+#ifdef _WIN32
 #include <shlobj.h>
+#endif
 
 #ifdef min
 #undef min
@@ -10,7 +12,11 @@
 
 bool EliteFileUtil::isJournalFile(const std::filesystem::path& path)
 {
+#ifdef _WIN32
     const std::wstring filename = path.filename();
+#else
+    const std::wstring filename = path.filename().wstring();
+#endif
 
     return filename.rfind(L"Journal.", 0) == 0 && path.extension() == L".log";
 }
@@ -40,7 +46,11 @@ std::filesystem::path EliteFileUtil::getLatestJournal(const std::filesystem::pat
 
 bool EliteFileUtil::isStatusFile(const std::filesystem::path& path)
 {
+#ifdef _WIN32
     const std::wstring filename = path.filename();
+#else
+    const std::wstring filename = path.filename().wstring();
+#endif
 
     return filename == L"Status.json";
 }
@@ -54,6 +64,7 @@ std::filesystem::path EliteFileUtil::getStatusFile(const std::filesystem::path& 
 
 std::filesystem::path EliteFileUtil::getSavedGamesPath()
 {
+#ifdef _WIN32
     PWSTR path = NULL;
     std::wstring result;
 
@@ -61,6 +72,10 @@ std::filesystem::path EliteFileUtil::getSavedGamesPath()
         result = path;
     }
     CoTaskMemFree(path);
+#else
+    // TODO Linux
+    std::filesystem::path result;
+#endif
 
     return result;
 }

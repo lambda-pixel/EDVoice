@@ -4,7 +4,7 @@ add_executable(EDVoice WIN32
     util/EliteFileUtil.cpp
     watchers/JournalWatcher.cpp
     watchers/StatusWatcher.cpp
-    
+
     GUI/EDVoiceGUI.cpp
     GUI/Vulkan/VkAdapter.cpp
     GUI/Vulkan/Swapchain.cpp
@@ -28,6 +28,11 @@ target_compile_definitions(EDVoice PRIVATE UNICODE _UNICODE)
 if (BUILD_MEDICORP)
     target_compile_definitions(EDVoice PRIVATE BUILD_MEDICORP)
     message(STATUS "Building with MediCorp support")
+endif()
+
+if (NOT WIN32)
+    find_package(SDL3)
+    target_link_libraries(EDVoice PRIVATE SDL3::SDL3)
 endif()
 
 # target_compile_definitions(EDVoice PRIVATE BUILD_MEDICORP)

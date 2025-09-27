@@ -6,6 +6,7 @@
 #include "AudioPlayer.h"
 
 
+#ifdef _WIN32
 void STDMETHODCALLTYPE PlayerCallback::OnMediaPlayerEvent(MFP_EVENT_HEADER* pEventHeader)
 {
     if (pEventHeader->eEventType == MFP_EVENT_TYPE_PLAYBACK_ENDED) {
@@ -88,7 +89,7 @@ AudioPlayer::~AudioPlayer()
 }
 
 
-void AudioPlayer::addTrack(const std::wstring& path)
+void AudioPlayer::addTrack(const std::filesystem::path& path)
 {
     // Avoid queue twice the same track or overflow the queue
     if (_trackQueue.has(path) || _trackQueue.size() > 4) {
@@ -123,13 +124,13 @@ void AudioPlayer::messageLoop()
     while (!_stopThread && GetMessage(&msg, NULL, 0, 0)) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
-        
+
         if (msg.message == WM_USER + 1) {
             // Go to next track
             if (!_trackQueue.empty() && _playerCallback->finished) {
                 const std::wstring track = _trackQueue.front();
                 _trackQueue.pop();
-                
+
                 IMFPMediaItem* pMediaItem = nullptr;
                 hr = _pPlayer->CreateMediaItemFromURL(track.c_str(), TRUE, NULL, &pMediaItem);
 
@@ -144,3 +145,26 @@ void AudioPlayer::messageLoop()
     }
 }
 
+#else
+
+// TODO Linux
+
+AudioPlayer::AudioPlayer() {}
+
+AudioPlayer::~AudioPlayer() {}
+
+void AudioPlayer::addTrack(const std::filesystem::path& path)
+{
+
+}
+
+float AudioPlayer::getVolume() const {
+    return _volume;
+}
+
+void AudioPlayer::setVolume(float volume)
+{
+    _volume = volume;
+}
+
+#endif

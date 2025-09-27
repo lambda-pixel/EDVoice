@@ -8,7 +8,7 @@
 // GUI
 // ----------------------------------------------------------------------------
 
-#if 1
+#ifdef _WIN32
 #include <windows.h>
 
 int WINAPI wWinMain(
@@ -27,7 +27,7 @@ int WINAPI wWinMain(
     EDVoiceGUI gui(execPath, configFile, hInstance, nShowCmd);
 
     gui.run();
-    
+
     return 0;
 }
 

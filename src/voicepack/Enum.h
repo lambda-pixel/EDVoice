@@ -4,6 +4,7 @@
 
 #include <string>
 #include <optional>
+#include <cstdint>
 
 
 enum VoiceTriggerStatus {
@@ -12,7 +13,6 @@ enum VoiceTriggerStatus {
     Undefined,
     MissingFile
 };
-
 
 #define ENUM_VEHICULES(X)            \
     X(Ship)                          \

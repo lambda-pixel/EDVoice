@@ -59,7 +59,7 @@ VkAdapter::~VkAdapter()
 
     // createRenderPass
     vkDestroyRenderPass(_device, _renderPass, nullptr);
-    
+
     // createFramebuffer
     for (size_t i = 0; i < _framebuffer.size(); i++) {
         vkDestroyFramebuffer(_device, _framebuffer[i], nullptr);
@@ -79,14 +79,18 @@ VkAdapter::~VkAdapter()
     vkDestroyInstance(_instance, nullptr);
 }
 
-
 void VkAdapter::initDevice(
+#ifdef _WIN32
     HINSTANCE hInstance, HWND hwnd,
+#else
+    SDL_Window* window,
+#endif
     const std::vector<char*>& deviceExtensions)
 {
     std::vector<char*> extensions(deviceExtensions);
     extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
+#ifdef _WIN32
     // Create a Vulkan surface (WIN32 specific)
     const VkWin32SurfaceCreateInfoKHR surfaceCreateInfo = {
         VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR, nullptr, // sType, pNext
@@ -96,6 +100,9 @@ void VkAdapter::initDevice(
     };
 
     vkCreateWin32SurfaceKHR(_instance, &surfaceCreateInfo, nullptr, &_surface);
+#else
+    SDL_Vulkan_CreateSurface(window, _instance, nullptr, &_surface);
+#endif
 
     // Find a suitable physical device
     uint32_t nPhysicalDevices;

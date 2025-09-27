@@ -1,17 +1,20 @@
 ﻿#include "EDVoiceGUI.h"
 
 #include <stdexcept>
-
-#include <windows.h>
-#include <windowsx.h>
-#include <dwmapi.h>
-#include <commdlg.h>
-
 #include <imgui.h>
-#include <backends/imgui_impl_win32.h>
-#define VK_USE_PLATFORM_WIN32_KHR
-#include <backends/imgui_impl_vulkan.h>
 
+#ifdef _WIN32
+    #include <windowsx.h>
+    #include <dwmapi.h>
+    #include <commdlg.h>
+
+    #include <backends/imgui_impl_win32.h>
+    #define VK_USE_PLATFORM_WIN32_KHR
+#else
+    #include <backends/imgui_impl_sdl3.h>
+#endif
+
+#include <backends/imgui_impl_vulkan.h>
 
 const wchar_t CLASS_NAME[] = L"EDVoice";
 #ifdef BUILD_MEDICORP
@@ -25,13 +28,19 @@ const char WINDOW_TITLE_STD[] = "EDVoice";
 #include "roboto.cpp"
 
 EDVoiceGUI::EDVoiceGUI(
+#ifdef _WIN32
     const std::filesystem::path& exec_path,
-    const std::filesystem::path& config, 
+    const std::filesystem::path& config,
     HINSTANCE hInstance, int nShowCmd)
+#else
+    const std::filesystem::path& exec_path,
+    const std::filesystem::path& config)
+#endif
     : _app(exec_path, config)
     , _vkAdapter({ VK_KHR_SURFACE_EXTENSION_NAME, "VK_KHR_win32_surface" })
     , _imGuiIniPath(config.parent_path() / "imgui.ini")
 {
+#ifdef _WIN32
     // ImGui initialization
     ImGui_ImplWin32_EnableDpiAwareness();
     _mainScale = ImGui_ImplWin32_GetDpiScaleForMonitor(MonitorFromPoint(POINT{ 0, 0 }, MONITOR_DEFAULTTOPRIMARY));
@@ -39,7 +48,9 @@ EDVoiceGUI::EDVoiceGUI(
     // Win32 stuff
     w32CreateWindow(nShowCmd);
     _vkAdapter.initDevice(hInstance, _hwnd);
-
+#else
+    // TODO Linux
+#endif
     // Setup ImGui
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -49,7 +60,7 @@ EDVoiceGUI::EDVoiceGUI(
 
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-    
+
     ImGui::StyleColorsDark();
 
     // Scaling
@@ -57,8 +68,11 @@ EDVoiceGUI::EDVoiceGUI(
     style.ScaleAllSizes(_mainScale);
     style.FontScaleDpi = _mainScale;
 
+#ifdef _WIN32
     ImGui_ImplWin32_Init(_hwnd);
-
+#else
+    // TODO Linux
+#endif
     ImFont* font = io.Fonts->AddFontFromMemoryCompressedTTF(Roboto_compressed_data, Roboto_compressed_size, _mainScale * 20.f);
 
     resize();
@@ -68,13 +82,18 @@ EDVoiceGUI::EDVoiceGUI(
 EDVoiceGUI::~EDVoiceGUI()
 {
     vkDeviceWaitIdle(_vkAdapter.getDevice());
-    
+
     ImGui::SaveIniSettingsToDisk(_imGuiIniPath.string().c_str());
     ImGui_ImplVulkan_Shutdown();
+
+#ifdef _WIN32
     ImGui_ImplWin32_Shutdown();
 
     DestroyWindow(_hwnd);
     UnregisterClassW(CLASS_NAME, _hInstance);
+#else
+    // TODO Linux
+#endif
 }
 
 
@@ -85,6 +104,7 @@ void EDVoiceGUI::run()
 
     while (!quit)
     {
+#ifdef _WIN32
         MSG msg;
         while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
         {
@@ -98,6 +118,7 @@ void EDVoiceGUI::run()
 
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplWin32_NewFrame();
+#endif
         ImGui::NewFrame();
 
         beginMainWindow();
@@ -206,6 +227,7 @@ void EDVoiceGUI::beginMainWindow()
         ImGui::Text(WINDOW_TITLE_STD);
         ImGui::PopFont();
 
+#ifdef _WIN32
         // Minimize & Resize buttons
         ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(255, 255, 255, 20));
@@ -228,7 +250,7 @@ void EDVoiceGUI::beginMainWindow()
             if (ImGui::Button("x", buttonSize)) { PostMessage(_hwnd, WM_CLOSE, 0, 0); }
         }
         ImGui::PopStyleColor(3);
-
+#endif
         // Title separator
         ImU32 col = ImGui::GetColorU32(ImGuiCol_Separator);
 
@@ -303,11 +325,12 @@ void EDVoiceGUI::voicePackGUI()
     }
 
     ImGui::SameLine();
+#ifdef _WIN32
     if (ImGui::Button("Add")) {
         const std::string newVoicePack = w32OpenFileName(
-            "Select voicepack file", 
-            "", 
-            "json files\0*.json\0", 
+            "Select voicepack file",
+            "",
+            "json files\0*.json\0",
             false);
 
         if (!newVoicePack.empty()) {
@@ -322,6 +345,7 @@ void EDVoiceGUI::voicePackGUI()
             }
         }
     }
+#endif
 
     //ImGui::SameLine();
     float volume = voicepack.getVolume();
@@ -449,7 +473,7 @@ void EDVoiceGUI::voicePackJourmalEventGUI(VoicePackManager& voicepack)
                 if (active != (triggerStatus == Active)) {
                     voicepack.setVoiceJournalState(voiceItem.first, active);
                 }
-            
+
                 ImGui::TableNextColumn();
                 ImGui::Text(voiceItem.first.c_str());
             }
@@ -489,7 +513,7 @@ void EDVoiceGUI::voicePackSpecialEventGUI(VoicePackManager& voicepack)
                 if (active != (triggerStatus == Active)) {
                     voicepack.setVoiceSpecialState((SpecialEvent)iEvent, active);
                 }
-            
+
                 ImGui::TableNextColumn();
                 ImGui::Text(prettyPrintSpecialEvent((SpecialEvent)iEvent));
             }
@@ -575,6 +599,7 @@ const char* EDVoiceGUI::prettyPrintSpecialEvent(SpecialEvent event)
 }
 
 
+#ifdef _WIN32
 // ----------------------------------------------------------------------------
 // WIN32 specific mess
 // ----------------------------------------------------------------------------
@@ -863,3 +888,5 @@ std::string EDVoiceGUI::w32OpenFileName(const char* title, const char* initialDi
     }
     return {};
 }
+
+#endif
