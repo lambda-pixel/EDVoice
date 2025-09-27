@@ -27,8 +27,11 @@ bool VoiceLine::empty() const
 }
 
 
-const std::filesystem::path& VoiceLine::getRandomFilePath()
+const std::filesystem::path& VoiceLine::getNextVoiceline()
 {
+    _hasBeenPlayedOnce = true;
+    _lastPlayed = std::chrono::steady_clock::now();
+
     if (_filepath.size() == 0) {
         // This is an error, shall not happen, silently ignore
         assert(0);
@@ -52,23 +55,6 @@ const std::filesystem::path& VoiceLine::getRandomFilePath()
 
     // Fallback, should not reach here
     return _filepath.back();
-}
-
-
-void VoiceLine::computeCDF()
-{
-    _cdf.clear();
-    float sum = 0.0f;
-
-    for (const auto& p : _probabilities) {
-        sum += p;
-        _cdf.push_back(sum);
-    }
-
-    // Normalize CDF
-    for (auto& c : _cdf) {
-        c /= sum;
-    }
 }
 
 
@@ -176,4 +162,34 @@ bool VoiceLine::removeMissingFiles()
     }
 
     return recompute;
+}
+
+
+bool VoiceLine::hasCooledDown() const
+{
+    if (!_hasBeenPlayedOnce || _cooldownMs == 0.f) {
+        return true;
+    }
+
+    const auto now = std::chrono::steady_clock::now();
+    const auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(now - _lastPlayed).count();
+
+    return elapsedMs >= _cooldownMs;
+}
+
+
+void VoiceLine::computeCDF()
+{
+    _cdf.clear();
+    float sum = 0.0f;
+
+    for (const auto& p : _probabilities) {
+        sum += p;
+        _cdf.push_back(sum);
+    }
+
+    // Normalize CDF
+    for (auto& c : _cdf) {
+        c /= sum;
+    }
 }

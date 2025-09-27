@@ -16,6 +16,7 @@ add_executable(EDVoice WIN32
     voicepack/VoiceLine.cpp
     voicepack/VoicePackManager.cpp
     voicepack/MedicCompliant.cpp
+    voicepack/VoicePackUtil.cpp
 
     ../assets/edvoice.rc
 )

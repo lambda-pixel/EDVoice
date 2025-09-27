@@ -5,7 +5,7 @@
 #include <json.hpp>
 
 #include "VoicePackManager.h"
-
+#include "VoicePackUtil.h"
 
 VoicePack::VoicePack(VoicePackManager& voicepackManager)
     : _voicePackManager(voicepackManager)
@@ -14,7 +14,12 @@ VoicePack::VoicePack(VoicePackManager& voicepackManager)
     , _currShipCargo(0)
     , _maxSRVCargo(0)
     , _currSRVCargo(0)
+    , _medicAcceptedPods({ "occupiedcryopod", "damagedescapepod" })
     , _previousUnderAttack(false)
+    , _previousLaunchDrone(false)
+    , _previousEjectCargo(false)
+    , _isShutdownState(false)
+    , _isPriming(false)
 {
 }
 
@@ -192,8 +197,9 @@ void VoicePack::onStatusChanged(StatusEvent event, bool status)
 
     const size_t index = 2 * event + (status ? 1 : 0);
 
-    if (_voiceStatusActive[_currVehicle][index] == Active) {
-        _voicePackManager.playStatusVoiceline(_currVehicle, event, status, _voiceStatus[_currVehicle][index].getRandomFilePath());
+    if (_voiceStatusActive[_currVehicle][index] == Active &&
+        _voiceStatus[_currVehicle][index].hasCooledDown()) {
+        _voicePackManager.playStatusVoiceline(_currVehicle, event, status, _voiceStatus[_currVehicle][index].getNextVoiceline());
     }
 }
 
@@ -209,6 +215,9 @@ void VoicePack::setJournalPreviousEvent(const std::string& event, const std::str
               << ", SRV cargo: " << _currSRVCargo << "/" << _maxSRVCargo
         << std::endl;
 }
+
+
+
 
 
 void VoicePack::onJournalEvent(const std::string& event, const std::string& journalEntry)
@@ -254,8 +263,9 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
 
     auto it = _voiceJournal.find(event);
 
-    if (it != _voiceJournal.end() && _voiceJournalActive[event] == Active) {
-        _voicePackManager.playJournalVoiceline(event, it->second.getRandomFilePath());
+    if (it != _voiceJournal.end() && _voiceJournalActive[event] == Active &&
+        it->second.hasCooledDown()) {
+        _voicePackManager.playJournalVoiceline(event, it->second.getNextVoiceline());
     }
 
     const nlohmann::json json = nlohmann::json::parse(journalEntry);
@@ -299,10 +309,10 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
             const std::string cargoType = json["Type"].get<std::string>();
 
             // We've collected an escape pod!
-            if (cargoType == "occupiedcryopod"
-                || cargoType == "damagedescapepod"
+            if (VoicePackUtil::compareStrings(cargoType, _medicAcceptedPods)
                 // TODO Just in case... I don't know all the types like Thargoids pods
-                || cargoType.find("pod") != std::string::npos) {
+                || cargoType.find("pod") != std::string::npos
+                || cargoType.find("Pod") != std::string::npos) {
                 onSpecialEvent(CollectPod);
             }
         }
@@ -382,8 +392,13 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
 
 void VoicePack::onSpecialEvent(SpecialEvent event)
 {
-    if (_voiceSpecialActive[event] == Active) {
-        _voicePackManager.playSpecialVoiceline(event, _voiceSpecial[event].getRandomFilePath());
+    if (_isPriming || _isShutdownState) {
+        return;
+    }
+
+    if (_voiceSpecialActive[event] == Active &&
+        _voiceSpecial[event].hasCooledDown()) {
+        _voicePackManager.playSpecialVoiceline(event, _voiceSpecial[event].getNextVoiceline());
     }
 }
 

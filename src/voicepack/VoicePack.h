@@ -89,8 +89,10 @@ private:
     uint32_t _maxSRVCargo = 0;
     uint32_t _currSRVCargo = 0;
 
+    std::vector<std::string> _medicAcceptedPods = { "occupiedcryopod", "damagedescapepod" };
+
     // Uggly hack to prevent multiple "under attack" announcements
-    bool _previousUnderAttack;
+    bool _previousUnderAttack = false;
     bool _previousLaunchDrone = false;
     bool _previousEjectCargo = false;
 
