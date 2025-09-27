@@ -297,7 +297,7 @@ void EDVoiceGUI::voicePackGUI()
 #else
     const char* defaultVoicepackLabel = "Current Voicepack";
 #endif
-    ImGui::Text(defaultVoicepackLabel);
+    ImGui::Text("%s", defaultVoicepackLabel);
     ImGui::SameLine();
     if (ImGui::BeginCombo(
             "##ComboVoicePack",
@@ -435,7 +435,7 @@ void EDVoiceGUI::voicePackStatusGUI(VoicePackManager& voicepack) {
                     }
 
                     ImGui::TableNextColumn();
-                    ImGui::Text(prettyPrintStatusState((StatusEvent)iEvent, statusState));
+                    ImGui::Text("%s", prettyPrintStatusState((StatusEvent)iEvent, statusState));
                 }
             }
         }
@@ -475,7 +475,7 @@ void EDVoiceGUI::voicePackJourmalEventGUI(VoicePackManager& voicepack)
                 }
 
                 ImGui::TableNextColumn();
-                ImGui::Text(voiceItem.first.c_str());
+                ImGui::Text("%s", voiceItem.first.c_str());
             }
         }
 
@@ -515,7 +515,7 @@ void EDVoiceGUI::voicePackSpecialEventGUI(VoicePackManager& voicepack)
                 }
 
                 ImGui::TableNextColumn();
-                ImGui::Text(prettyPrintSpecialEvent((SpecialEvent)iEvent));
+                ImGui::Text("%s", prettyPrintSpecialEvent((SpecialEvent)iEvent));
             }
         }
 

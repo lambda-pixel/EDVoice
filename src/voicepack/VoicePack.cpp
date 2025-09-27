@@ -28,7 +28,7 @@ void VoicePack::loadConfig(const std::filesystem::path& filepath)
     for (auto& vs : _voiceStatus) {
         vs.fill(std::filesystem::path());
     }
-    
+
     _voiceSpecial.fill(std::filesystem::path());
     _voiceJournal.clear();
 
@@ -300,7 +300,7 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
     }
     else if (event == "LaunchSRV") {
         setCurrentVehicle(Vehicle::SRV);
-        
+
         if (json.contains("SRVType") && srvTypeFromString(json["SRVType"])) {
             const SRVType srvType = srvTypeFromString(json["SRVType"]).value();
             _maxSRVCargo = SRV_MAX_CARGO[srvType];
@@ -378,9 +378,9 @@ void VoicePack::setVoiceStatusState(Vehicle vehicle, StatusEvent event, bool sta
 void VoicePack::setVoiceJournalState(const std::string& event, bool active)
 {
     auto it = _voiceJournalActive.find(event);
- 
-    if (it != _voiceJournalActive.end() && 
-        it->second != Undefined && 
+
+    if (it != _voiceJournalActive.end() &&
+        it->second != Undefined &&
         it->second != MissingFile) {
         it->second = active ? Active : Inactive;
     }
@@ -453,6 +453,8 @@ void VoicePack::setCurrentVehicle(Vehicle vehicle)
         case OnFoot:
             std::cout << "[INFO  ] Now on foot" << std::endl;
             break;
+        case N_Vehicles:
+            std::cout << "[INFO  ] Vehicle unknwon" << std::endl;
         }
     }
 }

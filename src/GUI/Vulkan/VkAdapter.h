@@ -25,7 +25,7 @@ struct CurrFrameInfo {
 class VkAdapter
 {
 public:
-    VkAdapter(const std::vector<char*>& instanceExtensions = {});
+    VkAdapter(const std::vector<const char*>& instanceExtensions = {});
 
     ~VkAdapter();
 
@@ -33,12 +33,12 @@ public:
 #ifdef _WIN32
     void initDevice(
         HINSTANCE hInstance, HWND hwnd,
-        const std::vector<char*>& deviceExtensions = {}
+        const std::vector<const char*>& deviceExtensions = {}
     );
 #else
     void initDevice(
         SDL_Window* window,
-        const std::vector<char*>& deviceExtensions = {}
+        const std::vector<const char*>& deviceExtensions = {}
     );
 #endif
 

@@ -1,5 +1,3 @@
-#pragma once
-
 #include "EliteFileUtil.h"
 
 #ifdef _WIN32

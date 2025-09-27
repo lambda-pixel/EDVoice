@@ -1,9 +1,8 @@
-#pragma once
+#include "AudioPlayer.h"
 
 #include <iostream>
 #include <string>
 #include <thread>
-#include "AudioPlayer.h"
 
 
 #ifdef _WIN32

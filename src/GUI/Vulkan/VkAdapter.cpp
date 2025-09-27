@@ -6,7 +6,7 @@
 #include "VkUtil.h"
 
 
-VkAdapter::VkAdapter(const std::vector<char*>& instanceExtensions)
+VkAdapter::VkAdapter(const std::vector<const char*>& instanceExtensions)
     : _instance(VK_NULL_HANDLE)
     , _physicalDevice(VK_NULL_HANDLE)
     , _device(VK_NULL_HANDLE)
@@ -85,9 +85,9 @@ void VkAdapter::initDevice(
 #else
     SDL_Window* window,
 #endif
-    const std::vector<char*>& deviceExtensions)
+    const std::vector<const char*>& deviceExtensions)
 {
-    std::vector<char*> extensions(deviceExtensions);
+    std::vector<const char*> extensions(deviceExtensions);
     extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
 #ifdef _WIN32
