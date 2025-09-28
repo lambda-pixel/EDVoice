@@ -105,7 +105,7 @@ EDVoiceApp::EDVoiceApp(
         }
     }
 
-    //// Now, register manually the voicepack
+    // Now, register manually the voicepack
     _plugins.push_back(LoadedPlugin{});
     LoadedPlugin& voice = _plugins.back();
     voice.handle = nullptr;
