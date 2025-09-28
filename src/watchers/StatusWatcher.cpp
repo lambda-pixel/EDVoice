@@ -9,6 +9,10 @@ StatusWatcher::StatusWatcher(
     const std::filesystem::path& filename)
     : _statusFile(filename)
 {
+    if (!std::filesystem::exists(filename)) {
+        throw std::runtime_error("Cannot find status file: " + filename.string() + ". Did you lanch the game previously?");
+    }
+
     std::wcout << L"[INFO  ] Monitoring: " << filename << std::endl;
 
     _previousFlags = getFlags();

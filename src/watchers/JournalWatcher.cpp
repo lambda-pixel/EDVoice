@@ -9,6 +9,10 @@ JournalWatcher::JournalWatcher(const std::filesystem::path& filename)
     , _currJournalFile(filename)
     , _stopForceUpdate(false)
 {
+    if (!std::filesystem::exists(filename)) {
+        throw std::runtime_error("Cannot find journal file: " + filename.string() + ". Did you lanch the game previously?");
+    }
+
     std::wcout << L"[INFO  ] Monitoring: " << _currJournalPath << std::endl;
 }
 
