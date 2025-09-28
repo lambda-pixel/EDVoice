@@ -2,14 +2,22 @@
 #include <filesystem>
 
 #include "EDVoiceApp.h"
-#include "GUI/EDVoiceGUI.h"
+
+#include <conio.h>
+#include <windows.h>
+
+void run_failback_cli(
+    const std::filesystem::path& execPath,
+    const std::filesystem::path& configFile);
+
+#ifdef GUI_MODE
 
 // ----------------------------------------------------------------------------
 // GUI
 // ----------------------------------------------------------------------------
 
-#if 1
-#include <windows.h>
+#include <sstream>
+#include "GUI/EDVoiceGUI.h"
 
 int WINAPI wWinMain(
     _In_ HINSTANCE hInstance,
@@ -24,17 +32,51 @@ int WINAPI wWinMain(
     const std::filesystem::path execPath = std::filesystem::path(szArgList[0]).parent_path();
     const std::filesystem::path configFile = execPath / "config" / "default.json";
 
-    EDVoiceGUI gui(execPath, configFile, hInstance, nShowCmd);
+    std::ostringstream local;
+    std::cout.rdbuf(local.rdbuf());
+    std::cerr.rdbuf(local.rdbuf());
 
-    gui.run();
-    
+    bool failbackMode = false;
+
+    try {
+        EDVoiceGUI gui(execPath, configFile, hInstance, nShowCmd);
+        gui.run();
+    } catch (const std::exception& e) {
+        std::cerr << "[FATAL ] Exception: " << e.what() << std::endl;
+        failbackMode = true;
+    } catch (...) {
+        std::cerr << "[FATAL ] Exception unknown" << std::endl;
+        failbackMode = true;
+    }
+
+    if (failbackMode) {
+        std::ofstream out("EDVoiceCrash.log", std::ios::app);
+        out << local.str();
+        out.close();
+
+        // Clear WM_QUIT messages
+        MSG msg;
+
+        while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+            if (msg.message == WM_QUIT) continue;
+
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+
+        MessageBoxA(NULL, "Could not load the GUI. A Log file EDVoiceCrash.log was created. Please send it for bug review.\nTrying to launch in failback mode...\no7", "EDVoice", MB_OK | MB_ICONERROR);
+        
+        run_failback_cli(execPath, configFile);
+    }
+
     return 0;
 }
 
-#else
-#include <windows.h>
-#include <fcntl.h>
-#include <io.h>
+#else // !GUI_MODE
+
+// ----------------------------------------------------------------------------
+// Console mode
+// ----------------------------------------------------------------------------
 
 int WINAPI wWinMain(
     _In_ HINSTANCE hInstance,
@@ -42,58 +84,59 @@ int WINAPI wWinMain(
     _In_ LPWSTR lpCmdLine,
     _In_ int nShowCmd)
 {
-    // --- Créer une console ---
+    LPWSTR* szArgList;
+    int argCount;
+    szArgList = CommandLineToArgvW(GetCommandLine(), &argCount);
+
+    const std::filesystem::path execPath = std::filesystem::path(szArgList[0]).parent_path();
+    const std::filesystem::path configFile = execPath / "config" / "default.json";
+
+    run_failback_cli(execPath, configFile);
+
+    return 0;
+}
+
+#endif
+
+
+LRESULT CALLBACK w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    switch (msg) {
+        case WM_CLOSE:
+            ::DestroyWindow(hWnd);
+            return 0;
+
+        case WM_DESTROY:
+            ::PostQuitMessage(0);
+            return 0;
+    }
+
+    return ::DefWindowProcW(hWnd, msg, wParam, lParam);
+}
+
+
+void run_failback_cli(
+    const std::filesystem::path& execPath,
+    const std::filesystem::path& configFile)
+{
     AllocConsole();
 
-    // Rediriger stdout, stderr et stdin vers la console
     FILE* fp;
     freopen_s(&fp, "CONOUT$", "w", stdout);
     freopen_s(&fp, "CONOUT$", "w", stderr);
     freopen_s(&fp, "CONIN$", "r", stdin);
 
-    std::cout << "Console initialized ✅" << std::endl;
-
-    // --- Parsing arguments ---
-    LPWSTR* szArgList;
-    int argCount;
-    szArgList = CommandLineToArgvW(GetCommandLine(), &argCount);
-
-    const std::filesystem::path execPath = std::filesystem::path(szArgList[0]).parent_path();
-    const std::filesystem::path configFile = execPath / "config" / "default.json";
-
-    // --- Lancer ton GUI ---
-    EDVoiceGUI gui(execPath, configFile, hInstance, nShowCmd);
-    gui.run();
-
-    // --- Libérer la console à la fermeture ---
-    FreeConsole();
-    return 0;
-}
-
-#endif 
-
-// ----------------------------------------------------------------------------
-
-#if 0
-
-int main(int argc, char* argv[])
-{
-    const std::filesystem::path execPath = std::filesystem::path(argv[0]).parent_path();
-    // Load default config or the one specified in command line
-    std::filesystem::path configFile;
-
-    if (argc < 2) {
-        std::cout << "Using default configuration" << std::endl;
-        configFile = std::filesystem::current_path() / "config" / "default.json";
-    }
-    else {
-        configFile = argv[1];
-    }
-
     EDVoiceApp app(execPath, configFile);
 
-    app.run();
+    MSG msg;
+    HWND hConsole = GetConsoleWindow();
 
-    return 0;
+    while (IsWindow(hConsole) && GetMessage(&msg, NULL, 0, 0)) {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+        hConsole = GetConsoleWindow(); // Update in case the console is closed
+    }
+
+    FreeConsole();
 }
-#endif
+
