@@ -80,7 +80,6 @@ EDVoiceGUI::~EDVoiceGUI()
 
 void EDVoiceGUI::run()
 {
-    bool show_demo_window = true;
     bool quit = false;
 
     while (!quit)
@@ -635,7 +634,7 @@ LRESULT CALLBACK EDVoiceGUI::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPAR
         }
 
         case WM_DESTROY: {
-            PostQuitMessage(0);
+            ::PostQuitMessage(0);
             return 0;
         }
 
