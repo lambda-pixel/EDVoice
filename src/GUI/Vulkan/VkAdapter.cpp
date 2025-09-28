@@ -2,6 +2,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <cassert>
+#include <string>
 
 #include "VkUtil.h"
 
@@ -44,39 +45,37 @@ VkAdapter::VkAdapter(const std::vector<char*>& instanceExtensions)
         instanceExtensions.data()                           // ppEnabledExtensionNames
     };
 
-    VkResult res = vkCreateInstance(&instanceCreateInfo, nullptr, &_instance);
-
-    if (res != VK_SUCCESS) {
-        fprintf(stderr, "[vulkan] Error: VkResult = %d\n", res);
-    }
+    VK_THROW_IF_FAILED(vkCreateInstance(&instanceCreateInfo, nullptr, &_instance));
 }
 
 
 VkAdapter::~VkAdapter()
 {
-    vkDeviceWaitIdle(_device);
-    delete _swapchain;
+    if (_device != VK_NULL_HANDLE) {
+        vkDeviceWaitIdle(_device);
+        delete _swapchain;
 
-    // createRenderPass
-    vkDestroyRenderPass(_device, _renderPass, nullptr);
-    
-    // createFramebuffer
-    for (size_t i = 0; i < _framebuffer.size(); i++) {
-        vkDestroyFramebuffer(_device, _framebuffer[i], nullptr);
+        // createRenderPass
+        vkDestroyRenderPass(_device, _renderPass, nullptr);
+
+        // createFramebuffer
+        for (size_t i = 0; i < _framebuffer.size(); i++) {
+            vkDestroyFramebuffer(_device, _framebuffer[i], nullptr);
+        }
+
+        // createCommandBuffer
+        vkDestroyCommandPool(_device, _commandPool, nullptr);
+
+        for (const VkFence& fence : _fenceCommandBuffer) {
+            vkDestroyFence(_device, fence, nullptr);
+        }
+
+        // initDevice
+        vkDestroySurfaceKHR(_instance, _surface, nullptr);
+
+        vkDestroyDevice(_device, nullptr);
+        vkDestroyInstance(_instance, nullptr);
     }
-
-    // createCommandBuffer
-    vkDestroyCommandPool(_device, _commandPool, nullptr);
-
-    for (const VkFence& fence : _fenceCommandBuffer) {
-        vkDestroyFence(_device, fence, nullptr);
-    }
-
-    // initDevice
-    vkDestroySurfaceKHR(_instance, _surface, nullptr);
-
-    vkDestroyDevice(_device, nullptr);
-    vkDestroyInstance(_instance, nullptr);
 }
 
 
@@ -95,7 +94,7 @@ void VkAdapter::initDevice(
         hwnd                                                      // hwnd
     };
 
-    vkCreateWin32SurfaceKHR(_instance, &surfaceCreateInfo, nullptr, &_surface);
+    VK_THROW_IF_FAILED(vkCreateWin32SurfaceKHR(_instance, &surfaceCreateInfo, nullptr, &_surface));
 
     // Find a suitable physical device
     uint32_t nPhysicalDevices;
@@ -168,7 +167,7 @@ void VkAdapter::initDevice(
         nullptr                                                 // VkPhysicalDeviceFeatures
     };
 
-    vkCreateDevice(_physicalDevice, &deviceCreateInfo, nullptr, &_device);
+    VK_THROW_IF_FAILED(vkCreateDevice(_physicalDevice, &deviceCreateInfo, nullptr, &_device));
     vkGetDeviceQueue(_device, _iQueueFamily, 0, &_queue);
 
     _swapchain = new Swapchain(_physicalDevice, _device, _surface);
@@ -254,7 +253,7 @@ void VkAdapter::renderFrame()
             1, &_currFrameInfo.semaphoreRenderReady // signalSemaphores
         };
 
-        vkQueueSubmit(_queue, 1, &submitInfo, _fenceCommandBuffer[iSwapchainImage]);
+        VK_THROW_IF_FAILED(vkQueueSubmit(_queue, 1, &submitInfo, _fenceCommandBuffer[iSwapchainImage]));
     }
 }
 
@@ -295,7 +294,7 @@ void VkAdapter::createFramebuffer()
             _swapchain->width(), _swapchain->height(), 1            // width, height, layers
         };
 
-        vkCreateFramebuffer(_device, &framebufferCreateInfo, nullptr, &_framebuffer[i]);
+        VK_THROW_IF_FAILED(vkCreateFramebuffer(_device, &framebufferCreateInfo, nullptr, &_framebuffer[i]));
     }
 }
 
@@ -340,7 +339,7 @@ void VkAdapter::createRenderPass()
         0, nullptr                                              // dependencies
     };
 
-    vkCreateRenderPass(_device, &renderPassCreateInfo, nullptr, &_renderPass);
+    VK_THROW_IF_FAILED(vkCreateRenderPass(_device, &renderPassCreateInfo, nullptr, &_renderPass));
 }
 
 
@@ -360,7 +359,7 @@ void VkAdapter::createCommandBuffer()
         _iQueueFamily                                           // queueFamilyIdx
     };
 
-    vkCreateCommandPool(_device, &commandPoolCreateInfo, nullptr, &_commandPool);
+    VK_THROW_IF_FAILED(vkCreateCommandPool(_device, &commandPoolCreateInfo, nullptr, &_commandPool));
 
     const VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
         VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, nullptr,    // sType, pNext
@@ -370,7 +369,7 @@ void VkAdapter::createCommandBuffer()
     };
 
     _commandBuffer.resize(_swapchain->nSwapchainImages());
-    vkAllocateCommandBuffers(_device, &commandBufferAllocateInfo, _commandBuffer.data());
+    VK_THROW_IF_FAILED(vkAllocateCommandBuffers(_device, &commandBufferAllocateInfo, _commandBuffer.data()));
 
     const VkFenceCreateInfo fenceCreateInfo = {
         VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, nullptr, VK_FENCE_CREATE_SIGNALED_BIT
@@ -379,6 +378,6 @@ void VkAdapter::createCommandBuffer()
     _fenceCommandBuffer.resize(_swapchain->nSwapchainImages());
 
     for (size_t i = 0; i < _swapchain->nSwapchainImages(); i++) {
-        vkCreateFence(_device, &fenceCreateInfo, nullptr, &_fenceCommandBuffer[i]);
+        VK_THROW_IF_FAILED(vkCreateFence(_device, &fenceCreateInfo, nullptr, &_fenceCommandBuffer[i]));
     }
 }
