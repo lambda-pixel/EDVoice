@@ -367,10 +367,63 @@ void EDVoiceApp::fileWatcherThread(HANDLE hStop)
 #else
 void EDVoiceApp::fileWatcherThread()
 {
-    while (!_hStop) {
-        // TODO Linux
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    const std::filesystem::path userProfile = EliteFileUtil::getUserProfile();
+
+    const int inotifyFd = inotify_init1(IN_NONBLOCK);
+
+    if (inotifyFd < 0) {
+        std::cerr << "[ERR   ] inotify_init1 failed." << std::endl;
+        return;
     }
+
+    int watchFd = inotify_add_watch(inotifyFd, userProfile.c_str(), IN_MODIFY);
+
+    if (watchFd < 0) {
+        std::cerr << "[ERR   ] inotify_add_watch failed on: " << userProfile << std::endl;
+        close(inotifyFd);
+        return;
+    }
+
+    constexpr size_t bufSize = 1024 * (sizeof(struct inotify_event) + NAME_MAX + 1);
+    char buffer[bufSize];
+
+    while (!_hStop) {
+        const int length = read(inotifyFd, buffer, bufSize);
+
+        if (length < 0) {
+            if (errno == EAGAIN || errno == EINTR) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                continue;
+            }
+            std::cerr << "[ERR   ] inotify read failed." << std::endl;
+            break;
+        }
+
+        int i = 0;
+        while (i < length) {
+            struct inotify_event* event = reinterpret_cast<struct inotify_event*>(&buffer[i]);
+
+            if (event->len > 0 && (event->mask & IN_MODIFY)) {
+                std::string filename(event->name);
+                std::filesystem::path fullpath = userProfile / filename;
+
+                if (EliteFileUtil::isStatusFile(filename)) {
+                    _statusWatcher.update();
+                }
+                else if (EliteFileUtil::isJournalFile(filename)) {
+                    _journalWatcher.update(fullpath);
+                }
+                else {
+                    std::cout << "[INFO  ] Ignored file change: " << filename << std::endl;
+                }
+            }
+
+            i += sizeof(struct inotify_event) + event->len;
+        }
+    }
+
+    inotify_rm_watch(inotifyFd, watchFd);
+    close(inotifyFd);
 }
 #endif
 
