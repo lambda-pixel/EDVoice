@@ -11,6 +11,8 @@
     #include <backends/imgui_impl_win32.h>
     #define VK_USE_PLATFORM_WIN32_KHR
 #else
+    #include <SDL3/SDL.h>
+    #include <SDL3/SDL_vulkan.h>
     #include <backends/imgui_impl_sdl3.h>
 #endif
 
@@ -71,6 +73,13 @@ EDVoiceGUI::EDVoiceGUI(
 #ifdef _WIN32
     ImGui_ImplWin32_Init(_hwnd);
 #else
+    SDL_Window* window = SDL_CreateWindow(
+        "EDVoice",
+        800, 600,
+        SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE
+    );
+
+    ImGui_ImplSDL3_InitForVulkan(window);
     // TODO Linux
 #endif
     ImFont* font = io.Fonts->AddFontFromMemoryCompressedTTF(

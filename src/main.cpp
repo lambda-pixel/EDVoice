@@ -3,6 +3,8 @@
 
 #include "EDVoiceApp.h"
 
+#ifdef _WIN32
+
 #include <conio.h>
 #include <windows.h>
 
@@ -65,7 +67,7 @@ int WINAPI wWinMain(
         }
 
         MessageBoxA(NULL, "Could not load the GUI. A Log file EDVoiceCrash.log was created. Please send it for bug review.\nTrying to launch in failback mode...\no7", "EDVoice", MB_OK | MB_ICONERROR);
-        
+
         run_failback_cli(execPath, configFile);
     }
 
@@ -140,3 +142,35 @@ void run_failback_cli(
     FreeConsole();
 }
 
+#else // !_WIN32
+
+#include "GUI/EDVoiceGUI.h"
+#include <SDL3/SDL.h>
+
+int main(int argc, char* argv[])
+{
+    const std::filesystem::path execPath = std::filesystem::path(argv[0]).parent_path();
+    const std::filesystem::path configFile = execPath / "config" / "default.json";
+
+    SDL_Init(SDL_INIT_VIDEO);
+
+    try {
+        EDVoiceGUI app(execPath, configFile);
+        app.run();
+    } catch (const std::exception& e) {
+        SDL_ShowSimpleMessageBox(
+            SDL_MESSAGEBOX_ERROR,
+            "Could not start EDVoice",
+            e.what(), NULL);
+    } catch (...) {
+        SDL_ShowSimpleMessageBox(
+            SDL_MESSAGEBOX_ERROR,
+            "Could not start EDVoice",
+            "Unknown error", NULL);}
+
+    SDL_Quit();
+
+    return 0;
+}
+
+#endif // _WIN32
