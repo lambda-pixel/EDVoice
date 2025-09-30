@@ -77,8 +77,8 @@ extern "C" {
         callbacks->ctx = voicepack;
 
         std::strncpy(callbacks->name, "VoicePack", sizeof(callbacks->name) - 1);
-        std::strncpy(callbacks->versionStr, "0.3", sizeof(callbacks->name) - 1);
-        std::strncpy(callbacks->author, "Siegfried-Origin", sizeof(callbacks->name) - 1);
+        std::strncpy(callbacks->versionStr, "0.3", sizeof(callbacks->versionStr) - 1);
+        std::strncpy(callbacks->author, "Siegfried-Origin", sizeof(callbacks->author) - 1);
     }
     void unregisterPluginVP()
     {
