@@ -35,6 +35,6 @@ private:
     std::ifstream _currJournalFile;
     std::vector<JournalListener*> _listeners;
 
-    bool _stopForceUpdate;
+    std::atomic<bool> _stopForceUpdate;
     std::thread _forcedUpdateThread;
 };

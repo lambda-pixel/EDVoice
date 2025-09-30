@@ -1,7 +1,7 @@
 #include "Swapchain.h"
+#include "VkUtil.h"
 
 #include <stdexcept>
-
 
 Swapchain::Swapchain(
     VkPhysicalDevice physicalDevice,
@@ -64,7 +64,7 @@ void Swapchain::updateSwapchain()
     }
 
     if (!formatFound) {
-        throw std::runtime_error("Failed to create swapchain: could not find a suitable format");
+        throw std::runtime_error("[VULKAN] Failed to create swapchain: could not find a suitable format");
     }
 
     _format = _swapchainFormat.format;
@@ -89,7 +89,7 @@ void Swapchain::updateSwapchain()
         VK_NULL_HANDLE//_swapchain                                              // oldSwapchain
     };
 
-    vkCreateSwapchainKHR(_device, &swapchainCreateInfo, nullptr, &_swapchain);
+    VK_THROW_IF_FAILED(vkCreateSwapchainKHR(_device, &swapchainCreateInfo, nullptr, &_swapchain));
 
     // Get images
     vkGetSwapchainImagesKHR(_device, _swapchain, &_nSwapchainImages, nullptr);
@@ -150,7 +150,7 @@ void Swapchain::initSwapchainResources()
             }
         };
 
-        vkCreateImageView(_device, &imageViewCreateInfo, nullptr, &_swapchainImageViews[i]);
+        VK_THROW_IF_FAILED(vkCreateImageView(_device, &imageViewCreateInfo, nullptr, &_swapchainImageViews[i]));
     }
 
     // Create synchronization tools
@@ -162,8 +162,8 @@ void Swapchain::initSwapchainResources()
     _semaphoreRenderReady.resize(_nSwapchainImages);
 
     for (uint32_t i = 0; i < _nSwapchainImages; i++) {
-        vkCreateSemaphore(_device, &semaphoreCreateInfo, nullptr, &_semaphoreImageAcquired[i]);
-        vkCreateSemaphore(_device, &semaphoreCreateInfo, nullptr, &_semaphoreRenderReady[i]);
+        VK_THROW_IF_FAILED(vkCreateSemaphore(_device, &semaphoreCreateInfo, nullptr, &_semaphoreImageAcquired[i]));
+        VK_THROW_IF_FAILED(vkCreateSemaphore(_device, &semaphoreCreateInfo, nullptr, &_semaphoreRenderReady[i]));
     }
 }
 

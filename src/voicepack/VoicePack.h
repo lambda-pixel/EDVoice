@@ -9,6 +9,7 @@
 #include <json.hpp>
 
 #include "Enum.h"
+#include "VoiceLine.h"
 
 class VoicePackManager;
 
@@ -65,15 +66,15 @@ private:
     static void loadStatusConfig(
         const std::filesystem::path& basePath,
         const nlohmann::json& json,
-        std::array<std::filesystem::path, 2 * StatusEvent::N_StatusEvents>& voiceStatus
+        std::array<VoiceLine, 2 * StatusEvent::N_StatusEvents>& voiceStatus
     );
 
     std::filesystem::path _configPath;
     VoicePackManager& _voicePackManager;
 
-    std::array<std::array<std::filesystem::path, 2 * StatusEvent::N_StatusEvents>, N_Vehicles> _voiceStatus;
-    std::map<std::string, std::filesystem::path> _voiceJournal;
-    std::array<std::filesystem::path, N_SpecialEvents> _voiceSpecial;
+    std::array<std::array<VoiceLine, 2 * StatusEvent::N_StatusEvents>, N_Vehicles> _voiceStatus;
+    std::map<std::string, VoiceLine> _voiceJournal;
+    std::array<VoiceLine, N_SpecialEvents> _voiceSpecial;
 
     std::array<std::array<VoiceTriggerStatus, 2 * StatusEvent::N_StatusEvents>, N_Vehicles> _voiceStatusActive;
     std::map<std::string, VoiceTriggerStatus> _voiceJournalActive;
@@ -88,8 +89,10 @@ private:
     uint32_t _maxSRVCargo = 0;
     uint32_t _currSRVCargo = 0;
 
+    std::vector<std::string> _medicAcceptedPods = { "occupiedcryopod", "damagedescapepod" };
+
     // Uggly hack to prevent multiple "under attack" announcements
-    bool _previousUnderAttack;
+    bool _previousUnderAttack = false;
     bool _previousLaunchDrone = false;
     bool _previousEjectCargo = false;
 

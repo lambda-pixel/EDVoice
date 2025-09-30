@@ -25,7 +25,7 @@ const wchar_t WINDOW_TITLE[] = L"EDVoice";
 const char WINDOW_TITLE_STD[] = "EDVoice";
 #endif
 
-#include "roboto.cpp"
+#include "inter.cpp"
 
 EDVoiceGUI::EDVoiceGUI(
 #ifdef _WIN32
@@ -73,7 +73,10 @@ EDVoiceGUI::EDVoiceGUI(
 #else
     // TODO Linux
 #endif
-    ImFont* font = io.Fonts->AddFontFromMemoryCompressedTTF(Roboto_compressed_data, Roboto_compressed_size, _mainScale * 20.f);
+    ImFont* font = io.Fonts->AddFontFromMemoryCompressedTTF(
+        inter_compressed_data,
+        inter_compressed_size,
+        _mainScale * 20.f);
 
     resize();
 }
@@ -99,7 +102,6 @@ EDVoiceGUI::~EDVoiceGUI()
 
 void EDVoiceGUI::run()
 {
-    bool show_demo_window = true;
     bool quit = false;
 
     while (!quit)
@@ -660,7 +662,7 @@ LRESULT CALLBACK EDVoiceGUI::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPAR
         }
 
         case WM_DESTROY: {
-            PostQuitMessage(0);
+            ::PostQuitMessage(0);
             return 0;
         }
 

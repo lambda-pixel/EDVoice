@@ -49,7 +49,10 @@
                 "false": "sounds/Srv_DriveAssist_Off.mp3"                
             },
             "Srv_Handbrake": {
-                "true": "sounds/Srv_Handbrake_On.mp3"
+                "true": {
+                    "files": [ "sounds/Srv_Handbrake_On.mp3" ],
+                    "cooldown": 10000
+                }
             }
         }
     },
@@ -75,6 +78,15 @@
         "AutoPilot_Touchdown": "sounds/Touchdown.mp3",
         "Activating": "sounds/Activating.mp3",
         "Deactivating": "sounds/Deactivating.mp3",
-        "CollectPod": "sounds/GetPod.mp3"
+        "CollectPod": {
+            "files": [
+                "sounds/GetPod.mp3",
+                "sounds/GetPod1.mp3",
+                "sounds/GetPod2.mp3",
+                "sounds/GetPod3.mp3",
+                "sounds/GetPod4.mp3"
+            ],
+            "cooldown": 30000
+        }
     }
 }
