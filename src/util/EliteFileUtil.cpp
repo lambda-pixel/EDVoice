@@ -2,6 +2,10 @@
 
 #ifdef _WIN32
 #include <shlobj.h>
+#else
+#include <unistd.h>
+#include <sys/types.h>
+#include <pwd.h>
 #endif
 
 #ifdef min
@@ -72,7 +76,11 @@ std::filesystem::path EliteFileUtil::getSavedGamesPath()
     CoTaskMemFree(path);
 #else
     // TODO Linux
-    std::filesystem::path result;
+    struct passwd *pw = getpwuid(getuid());
+    const std::string homedir = pw->pw_dir;
+
+    std::filesystem::path result = std::filesystem::path(homedir) /    
+        ".local"/"share"/"Steam"/"steamapps"/"compatdata"/"359320"/"pfx"/"drive_c"/"users"/"steamuser"/"Saved Games";
 #endif
 
     return result;

@@ -1,8 +1,12 @@
 #pragma once
 
 #ifdef _WIN32
-#include <windows.h>
+    #include <windows.h>
+#else
+    #include <SDL3/SDL.h>
+    #include <SDL3/SDL_vulkan.h>
 #endif
+
 #include "Vulkan/VkAdapter.h"
 
 #include <filesystem>
@@ -74,6 +78,6 @@ private:
     HWND _hwnd;
     HINSTANCE _hInstance;
 #else
-    // TODO
+    SDL_Window* _sdlWindow;
 #endif
 };

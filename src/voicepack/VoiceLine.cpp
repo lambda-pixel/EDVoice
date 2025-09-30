@@ -1,5 +1,6 @@
 #include "VoiceLine.h"
 #include <cassert>
+#include <cstdint>
 
 #include "../util/EliteFileUtil.h"
 
@@ -23,7 +24,7 @@ int VoiceLine::getCooldownMs() const
 
 bool VoiceLine::empty() const
 {
-    return !_filepath.size() > 0;
+    return _filepath.size() == 0;
 }
 
 
