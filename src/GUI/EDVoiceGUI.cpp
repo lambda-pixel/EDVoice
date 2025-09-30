@@ -36,8 +36,8 @@ EDVoiceGUI::EDVoiceGUI(
     const std::filesystem::path& exec_path,
     const std::filesystem::path& config)
 #endif
-    : _app(exec_path, config)
-    , _vkAdapter({ VK_KHR_SURFACE_EXTENSION_NAME, "VK_KHR_win32_surface" })
+    : _app(new EDVoiceApp(exec_path, config))
+    , _vkAdapter()
     , _imGuiIniPath(config.parent_path() / "imgui.ini")
 {
 #ifdef _WIN32
@@ -49,18 +49,23 @@ EDVoiceGUI::EDVoiceGUI(
     w32CreateWindow(nShowCmd);
     _vkAdapter.initDevice(hInstance, _hwnd);
 #else
+    SDL_WindowFlags window_flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
+
     SDL_Window* window = SDL_CreateWindow(
         "EDVoice",
-        800, 600,
-        SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE
+        _mainScale * 640, _mainScale * 700,
+        window_flags
     );
 
-    ImGui_ImplSDL3_InitForVulkan(window);
-#endif
+    _vkAdapter.initDevice(window);
 
+    SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+    SDL_ShowWindow(window);
+#endif
     // Setup ImGui
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     io.IniFilename = NULL;
     ImGui::LoadIniSettingsFromDisk(_imGuiIniPath.string().c_str());
@@ -106,11 +111,22 @@ EDVoiceGUI::~EDVoiceGUI()
     ImGui_ImplSDL3_Shutdown();
     SDL_DestroyWindow(_sdlWindow);
 #endif
+
+    delete _app;
 }
 
 
 void EDVoiceGUI::run()
 {
+#ifndef _WIN32
+    const int TARGET_FPS = 60;
+    const int FRAME_DELAY_MS = 1000 / TARGET_FPS;
+
+    Uint64 now = SDL_GetPerformanceCounter();
+    Uint64 last = 0;
+    double deltaTime = 0;
+#endif
+
     bool quit = false;
 
     while (!quit)
@@ -130,19 +146,33 @@ void EDVoiceGUI::run()
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplWin32_NewFrame();
 #else
+        if (deltaTime < FRAME_DELAY_MS) {
+            SDL_Delay((Uint32)(FRAME_DELAY_MS - deltaTime));
+        }
+
         SDL_Event event;
 
         while(SDL_PollEvent(&event)) {
             ImGui_ImplSDL3_ProcessEvent(&event);
 
-            if (event.type == SDL_EVENT_QUIT) {
-                quit = true;
-            }
-            if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED &&
-                event.window.windowID == SDL_GetWindowID(_sdlWindow)) {
-                quit = true;
+            switch (event.type) {
+                case SDL_EVENT_QUIT:
+                    quit = true;
+                    break;
+
+                case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+                    if (event.window.windowID == SDL_GetWindowID(_sdlWindow)) {
+                        quit = true;
+                    }
+                    break;
+
+                default:
+                    break;
             }
         }
+
+        ImGui_ImplVulkan_NewFrame();
+        ImGui_ImplSDL3_NewFrame();
 #endif
         ImGui::NewFrame();
 
@@ -313,7 +343,7 @@ void EDVoiceGUI::endMainWindow()
 
 void EDVoiceGUI::voicePackGUI()
 {
-    VoicePackManager& voicepack = _app.getVoicepack();
+    VoicePackManager& voicepack = _app->getVoicepack();
 
     size_t selectedVoicePackIdx = voicepack.getCurrentVoicePackIndex();
 

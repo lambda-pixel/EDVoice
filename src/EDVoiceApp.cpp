@@ -215,7 +215,9 @@ EDVoiceApp::~EDVoiceApp()
     CloseHandle(_hStop);
 #else
     _hStop = false;
-    _watcherThread.join();
+    if (_watcherThread.joinable()) {
+        _watcherThread.join();
+    }
 #endif
 }
 

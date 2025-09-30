@@ -48,7 +48,7 @@ private:
     static const char* prettyPrintVehicle(Vehicle vehicle);
     static const char* prettyPrintSpecialEvent(SpecialEvent event);
 
-    EDVoiceApp _app;
+    EDVoiceApp* _app;
     VkAdapter _vkAdapter;
 
     bool _imGuiInitialized = false;

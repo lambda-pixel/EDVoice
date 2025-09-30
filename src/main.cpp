@@ -152,7 +152,7 @@ int main(int argc, char* argv[])
     const std::filesystem::path execPath = std::filesystem::path(argv[0]).parent_path();
     const std::filesystem::path configFile = execPath / "config" / "default.json";
 
-    SDL_Init(SDL_INIT_VIDEO);
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD);
 
     try {
         EDVoiceGUI app(execPath, configFile);
@@ -166,7 +166,8 @@ int main(int argc, char* argv[])
         SDL_ShowSimpleMessageBox(
             SDL_MESSAGEBOX_ERROR,
             "Could not start EDVoice",
-            "Unknown error", NULL);}
+            "Unknown error", NULL);
+    }
 
     SDL_Quit();
 

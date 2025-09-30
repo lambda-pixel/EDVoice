@@ -35,18 +35,18 @@ target_link_libraries(EDVoice PRIVATE imgui)
 target_compile_definitions(EDVoice PRIVATE UNICODE _UNICODE)
 
 # CLI version without GUI
-add_executable(EDVoice-cli WIN32 ${EDVOICE_SOURCES})
+# add_executable(EDVoice-cli WIN32 ${EDVOICE_SOURCES})
 
-target_include_directories(EDVoice-cli PRIVATE ../3rdparty)
-target_include_directories(EDVoice-cli PRIVATE ../plugins/include)
+# target_include_directories(EDVoice-cli PRIVATE ../3rdparty)
+# target_include_directories(EDVoice-cli PRIVATE ../plugins/include)
 
-target_compile_definitions(EDVoice-cli PRIVATE UNICODE _UNICODE)
+# target_compile_definitions(EDVoice-cli PRIVATE UNICODE _UNICODE)
 
 if (BUILD_MEDICORP)
     message(STATUS "Building with MediCorp support")
 
     target_compile_definitions(EDVoice PRIVATE BUILD_MEDICORP)
-    target_compile_definitions(EDVoice-cli PRIVATE BUILD_MEDICORP)
+    # target_compile_definitions(EDVoice-cli PRIVATE BUILD_MEDICORP)
 endif()
 
 if (NOT WIN32)
@@ -55,7 +55,7 @@ if (NOT WIN32)
 endif()
 
 # target_compile_definitions(EDVoice PRIVATE BUILD_MEDICORP)
-# target_compile_definitions(EDVoice PRIVATE VULKAN_DEBUG_LAYER)
+target_compile_definitions(EDVoice PRIVATE VULKAN_DEBUG_LAYER)
 
-install(TARGETS EDVoice EDVoice-cli
-        RUNTIME DESTINATION .)
+# install(TARGETS EDVoice EDVoice-cli
+        # RUNTIME DESTINATION .)

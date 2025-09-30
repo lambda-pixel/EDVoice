@@ -36,13 +36,26 @@ VkAdapter::VkAdapter(const std::vector<const char*>& instanceExtensions)
     enabledLayerNames.push_back("VK_LAYER_KHRONOS_validation");
 #endif
 
+    std::vector<const char*> extensions(instanceExtensions);
+#ifdef _WIN32
+    extensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
+    extensions.push_back("VK_KHR_win32_surface");
+#else
+    uint32_t nInstanceExt;
+    const char* const* instanceExt = SDL_Vulkan_GetInstanceExtensions(&nInstanceExt);
+
+    for (size_t i = 0; i < nInstanceExt; i++) {
+        extensions.push_back(instanceExt[i]);
+    }
+#endif
+
     const VkInstanceCreateInfo instanceCreateInfo = {
         VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO, nullptr, 0, // sType, pNext, flags
         &applicationInfo,                                   // pApplicationInfo
         static_cast<uint32_t>(enabledLayerNames.size()),
         enabledLayerNames.data(),                           // ppEnabledLayerNames
-        (uint32_t)instanceExtensions.size(),
-        instanceExtensions.data()                           // ppEnabledExtensionNames
+        (uint32_t)extensions.size(),
+        extensions.data()                                   // ppEnabledExtensionNames
     };
 
     VK_THROW_IF_FAILED(vkCreateInstance(&instanceCreateInfo, nullptr, &_instance));
