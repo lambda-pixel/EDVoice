@@ -40,9 +40,11 @@ private:
 
     void voicePackGUI();
 
-    void voicePackStatusGUI(VoicePackManager& voicepack);
-    void voicePackJourmalEventGUI(VoicePackManager& voicepack);
-    void voicePackSpecialEventGUI(VoicePackManager& voicepack);
+    void voicePackStatusGUI();
+    void voicePackJourmalEventGUI();
+    void voicePackSpecialEventGUI();
+
+    void voicePackOpenDialogGUI();
 
     static const char* prettyPrintStatusState(StatusEvent status, bool activated);
     static const char* prettyPrintVehicle(Vehicle vehicle);
@@ -78,6 +80,8 @@ private:
     HWND _hwnd;
     HINSTANCE _hInstance;
 #else
+    static void SDLCALL sdlCallbackOpenFile(void* userdata, const char* const* filelist, int filter);
+
     SDL_Window* _sdlWindow;
 #endif
 };

@@ -62,6 +62,7 @@ EDVoiceGUI::EDVoiceGUI(
     SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     SDL_ShowWindow(window);
 #endif
+
     // Setup ImGui
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -380,29 +381,11 @@ void EDVoiceGUI::voicePackGUI()
     }
 
     ImGui::SameLine();
-#ifdef _WIN32
+
     if (ImGui::Button("Add")) {
-        const std::string newVoicePack = w32OpenFileName(
-            "Select voicepack file",
-            "",
-            "json files\0*.json\0",
-            false);
-
-        if (!newVoicePack.empty()) {
-            try {
-                std::string& voicepackName = std::filesystem::path(newVoicePack).stem().string();
-                size_t idxNewVoicePack = voicepack.addVoicePack(voicepackName, newVoicePack);
-                voicepack.loadVoicePackByIndex(idxNewVoicePack);
-            }
-            catch (const std::runtime_error& e) {
-                _logErrStr = e.what();
-                _hasError = true;
-            }
-        }
+        voicePackOpenDialogGUI();
     }
-#endif
 
-    //ImGui::SameLine();
     float volume = voicepack.getVolume();
     ImGui::SliderFloat("Volume", &volume, 0.f, 1.f, "%.2f");
 
@@ -418,25 +401,28 @@ void EDVoiceGUI::voicePackGUI()
 
     if (ImGui::CollapsingHeader("Status event voicelines", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::PushID("Status");
-        voicePackStatusGUI(voicepack);
+        voicePackStatusGUI();
         ImGui::PopID();
     }
 
     if (ImGui::CollapsingHeader("Special events voicelines", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::PushID("Special");
-        voicePackSpecialEventGUI(voicepack);
+        voicePackSpecialEventGUI();
         ImGui::PopID();
     }
 
     if (ImGui::CollapsingHeader("Journal events voicelines", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::PushID("Journal");
-        voicePackJourmalEventGUI(voicepack);
+        voicePackJourmalEventGUI();
         ImGui::PopID();
     }
 }
 
 
-void EDVoiceGUI::voicePackStatusGUI(VoicePackManager& voicepack) {
+void EDVoiceGUI::voicePackStatusGUI()
+{
+    VoicePackManager& voicepack = _app->getVoicepack();
+
     const std::array<std::array<VoiceTriggerStatus, 2 * StatusEvent::N_StatusEvents>, N_Vehicles>& statusActive = voicepack.getVoiceStatusActive();
     static ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter;
 
@@ -500,8 +486,10 @@ void EDVoiceGUI::voicePackStatusGUI(VoicePackManager& voicepack) {
 }
 
 
-void EDVoiceGUI::voicePackJourmalEventGUI(VoicePackManager& voicepack)
+void EDVoiceGUI::voicePackJourmalEventGUI()
 {
+    VoicePackManager& voicepack = _app->getVoicepack();
+
     const std::map<std::string, VoiceTriggerStatus>& eventItems = voicepack.getVoiceJournalActive();
 
     static ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter;
@@ -539,8 +527,10 @@ void EDVoiceGUI::voicePackJourmalEventGUI(VoicePackManager& voicepack)
 }
 
 
-void EDVoiceGUI::voicePackSpecialEventGUI(VoicePackManager& voicepack)
+void EDVoiceGUI::voicePackSpecialEventGUI()
 {
+    VoicePackManager& voicepack = _app->getVoicepack();
+
     // TODO: shitty copy paste... but works for now :(
     const std::array<VoiceTriggerStatus, N_SpecialEvents>& eventItems = voicepack.getVoiceSpecialActive();
 
@@ -576,6 +566,44 @@ void EDVoiceGUI::voicePackSpecialEventGUI(VoicePackManager& voicepack)
 
         ImGui::EndTable();
     }
+}
+
+
+void EDVoiceGUI::voicePackOpenDialogGUI()
+{
+    VoicePackManager& voicepack = _app->getVoicepack();
+
+#ifdef _WIN32
+    const std::string newVoicePack = w32OpenFileName(
+        "Select voicepack file",
+        "",
+        "JSON file\0*.json\0",
+        false);
+
+    if (!newVoicePack.empty()) {
+        try {
+            std::string& voicepackName = std::filesystem::path(newVoicePack).stem().string();
+            size_t idxNewVoicePack = voicepack.addVoicePack(voicepackName, newVoicePack);
+            voicepack.loadVoicePackByIndex(idxNewVoicePack);
+        }
+        catch (const std::runtime_error& e) {
+            _logErrStr = e.what();
+            _hasError = true;
+        }
+    }
+#else
+    const SDL_DialogFileFilter filters[] = {
+        { "JSON file",  "json" }
+    };
+
+    SDL_ShowOpenFileDialog(
+        sdlCallbackOpenFile,
+        this,
+        _sdlWindow,
+        filters, 1,
+        NULL,
+        false);
+#endif
 }
 
 
@@ -942,6 +970,35 @@ std::string EDVoiceGUI::w32OpenFileName(const char* title, const char* initialDi
         return std::string(fileBuffer);
     }
     return {};
+}
+
+#else
+
+void SDLCALL EDVoiceGUI::sdlCallbackOpenFile(void* userdata, const char* const* filelist, int filter)
+{
+    EDVoiceGUI* obj = (EDVoiceGUI*)userdata;
+    VoicePackManager& voicepack = obj->_app->getVoicepack();
+
+    if (!filelist) {
+        obj->_logErrStr = SDL_GetError();
+        obj->_hasError = true;
+        SDL_Log("An error occured: %s", SDL_GetError());
+        return;
+    } else if (!*filelist) {
+        SDL_Log("The user did not select any file.");
+        SDL_Log("Most likely, the dialog was canceled.");
+        return;
+    }
+
+    while (*filelist) {
+        const std::string newVoicePack = *filelist;
+        const std::string voicepackName = std::filesystem::path(newVoicePack).stem().string();
+        const size_t idxNewVoicePack = voicepack.addVoicePack(voicepackName, newVoicePack);
+        voicepack.loadVoicePackByIndex(idxNewVoicePack);
+
+        SDL_Log("Full path to selected file: '%s'", *filelist);
+        filelist++;
+    }
 }
 
 #endif
