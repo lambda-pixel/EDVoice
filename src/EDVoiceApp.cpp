@@ -195,6 +195,7 @@ EDVoiceApp::EDVoiceApp(
         this,
         _hStop);
 #else
+    _hStop = false;
     _watcherThread = std::thread(
         &EDVoiceApp::fileWatcherThread,
         this
@@ -214,7 +215,7 @@ EDVoiceApp::~EDVoiceApp()
     _watcherThread.join();
     CloseHandle(_hStop);
 #else
-    _hStop = false;
+    _hStop = true;
     if (_watcherThread.joinable()) {
         _watcherThread.join();
     }
@@ -368,6 +369,7 @@ void EDVoiceApp::fileWatcherThread()
 {
     while (!_hStop) {
         // TODO Linux
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
 }
 #endif
