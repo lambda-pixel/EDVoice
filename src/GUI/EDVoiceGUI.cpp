@@ -49,18 +49,19 @@ EDVoiceGUI::EDVoiceGUI(
     w32CreateWindow(nShowCmd);
     _vkAdapter.initDevice(hInstance, _hwnd);
 #else
+    // SDL_WINDOW_BORDERLESS
     SDL_WindowFlags window_flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
 
-    SDL_Window* window = SDL_CreateWindow(
+    _sdlWindow = SDL_CreateWindow(
         "EDVoice",
         _mainScale * 640, _mainScale * 700,
         window_flags
     );
 
-    _vkAdapter.initDevice(window);
+    _vkAdapter.initDevice(_sdlWindow);
 
-    SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
-    SDL_ShowWindow(window);
+    SDL_SetWindowPosition(_sdlWindow, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+    SDL_ShowWindow(_sdlWindow);
 #endif
 
     // Setup ImGui
@@ -84,7 +85,7 @@ EDVoiceGUI::EDVoiceGUI(
 #ifdef _WIN32
     ImGui_ImplWin32_Init(_hwnd);
 #else
-    ImGui_ImplSDL3_InitForVulkan(window);
+    ImGui_ImplSDL3_InitForVulkan(_sdlWindow);
 #endif
 
     ImFont* font = io.Fonts->AddFontFromMemoryCompressedTTF(
