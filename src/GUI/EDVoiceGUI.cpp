@@ -49,16 +49,20 @@ EDVoiceGUI::EDVoiceGUI(
     w32CreateWindow(nShowCmd);
     _vkAdapter.initDevice(hInstance, _hwnd);
 #else
-    _mainScale = 1.f;
-
-    // SDL_WINDOW_BORDERLESS
-    SDL_WindowFlags window_flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
+    SDL_WindowFlags window_flags = 
+        SDL_WINDOW_VULKAN |
+        SDL_WINDOW_RESIZABLE |
+        // SDL_WINDOW_HIDDEN |
+        SDL_WINDOW_HIGH_PIXEL_DENSITY |
+        SDL_WINDOW_BORDERLESS;
 
     _sdlWindow = SDL_CreateWindow(
         "EDVoice",
-        _mainScale * 640, _mainScale * 700,
+        640, 700,
         window_flags
     );
+
+    _mainScale = SDL_GetWindowPixelDensity(_sdlWindow);
 
     _vkAdapter.initDevice(_sdlWindow);
 
@@ -172,11 +176,21 @@ void EDVoiceGUI::run()
                     break;
                     
                 case SDL_EVENT_WINDOW_RESIZED:
-                    int width, height;
-                    SDL_GetWindowSizeInPixels(_sdlWindow, &width, &height);
-                    _vkAdapter.resized(width, height);
+                    {
+                        int width, height;
+                        SDL_GetWindowSizeInPixels(_sdlWindow, &width, &height);
+                        _vkAdapter.resized(width, height);
+                    }
                     break;
 
+                case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
+                    {
+                        _mainScale = SDL_GetWindowDisplayScale(_sdlWindow);
+                        int width, height;
+                        SDL_GetWindowSizeInPixels(_sdlWindow, &width, &height);
+                        _vkAdapter.resized(width, height);
+                    }
+                    break;
                 default:
                     break;
             }
@@ -293,17 +307,16 @@ void EDVoiceGUI::beginMainWindow()
         ImGui::Text(WINDOW_TITLE_STD);
         ImGui::PopFont();
 
-#ifdef _WIN32
         // Minimize & Resize buttons
         ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(255, 255, 255, 20));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(255, 255, 255, 50));
         {
             ImGui::SetCursorPos(ImVec2(pViewport->Size.x - 3 * buttonWidth, 0.));
-            if (ImGui::Button("-", buttonSize)) { PostMessage(_hwnd, WM_SYSCOMMAND, SC_MINIMIZE, 0); }
+            if (ImGui::Button("-", buttonSize)) { minimizeWindow(); }
 
             ImGui::SetCursorPos(ImVec2(pViewport->Size.x - 2 * buttonWidth, 0.));
-            if (ImGui::Button("+", buttonSize)) { PostMessage(_hwnd, WM_SYSCOMMAND, IsZoomed(_hwnd) ? SC_RESTORE : SC_MAXIMIZE, 0); }
+            if (ImGui::Button("+", buttonSize)) { maximizeRestoreWindow(); }
         }
         ImGui::PopStyleColor(3);
 
@@ -313,10 +326,10 @@ void EDVoiceGUI::beginMainWindow()
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(255, 0, 0, 255));
         {
             ImGui::SetCursorPos(ImVec2(pViewport->Size.x - buttonWidth, 0.));
-            if (ImGui::Button("x", buttonSize)) { PostMessage(_hwnd, WM_CLOSE, 0, 0); }
+            if (ImGui::Button("x", buttonSize)) { closeWindow(); }
         }
         ImGui::PopStyleColor(3);
-#endif
+
         // Title separator
         ImU32 col = ImGui::GetColorU32(ImGuiCol_Separator);
 
@@ -1072,3 +1085,43 @@ void SDLCALL EDVoiceGUI::sdlCallbackOpenFile(void* userdata, const char* const* 
 }
 
 #endif
+
+
+void EDVoiceGUI::minimizeWindow()
+{
+#ifdef _WIN32
+    PostMessage(_hwnd, WM_SYSCOMMAND, SC_MINIMIZE, 0);
+#else
+    SDL_MinimizeWindow(_sdlWindow);
+#endif
+}
+
+
+void EDVoiceGUI::maximizeRestoreWindow()
+{
+#ifdef _WIN32
+    PostMessage(_hwnd, WM_SYSCOMMAND, IsZoomed(_hwnd) ? SC_RESTORE : SC_MAXIMIZE, 0);
+#else
+    if (_isMaximized) {
+        SDL_RestoreWindow(_sdlWindow);
+    } else {
+        SDL_MaximizeWindow(_sdlWindow);
+    }
+
+    _isMaximized = !_isMaximized;
+#endif
+}
+
+
+void EDVoiceGUI::closeWindow()
+{
+#ifdef _WIN32
+    PostMessage(_hwnd, WM_CLOSE, 0, 0);
+#else
+    SDL_Event event;
+    SDL_zero(event);
+    event.type = SDL_EVENT_QUIT;
+    event.window.windowID = SDL_GetWindowID(_sdlWindow);
+    SDL_PushEvent(&event);
+#endif
+}

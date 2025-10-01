@@ -84,5 +84,10 @@ private:
     static void SDLCALL sdlCallbackOpenFile(void* userdata, const char* const* filelist, int filter);
 
     SDL_Window* _sdlWindow;
+    bool _isMaximized = false;
 #endif
+
+    void minimizeWindow();
+    void maximizeRestoreWindow();
+    void closeWindow();
 };
