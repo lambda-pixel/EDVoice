@@ -102,6 +102,7 @@ void VkAdapter::initDevice(
     std::vector<const char*> extensions(deviceExtensions);
     extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
+    int width, height;
 #ifdef _WIN32
     // Create a Vulkan surface (WIN32 specific)
     const VkWin32SurfaceCreateInfoKHR surfaceCreateInfo = {
@@ -112,12 +113,16 @@ void VkAdapter::initDevice(
     };
 
     vkCreateWin32SurfaceKHR(_instance, &surfaceCreateInfo, nullptr, &_surface);
+    
+    RECT rect;
+    ::GetClientRect(hwnd, &rect);
+    width = rect.right - rect.left;
+    height = rect.bottom - rect.top;
 #else
     SDL_Vulkan_CreateSurface(window, _instance, nullptr, &_surface);
     
     // WTF... I have to call GetWindowSize first and then GetWindowSizeInPixel just for
     // lord Wayland. Damn
-    int width, height;
     SDL_GetWindowSize(window, &width, &height);
 #endif
 
@@ -286,6 +291,8 @@ void VkAdapter::presentFrame()
 
 void VkAdapter::resized(uint32_t width, uint32_t height)
 {
+    if (!_swapchain) return;
+
     vkDeviceWaitIdle(_device);
 
     _swapchain->updateSwapchain(width, height);

@@ -728,11 +728,10 @@ LRESULT CALLBACK EDVoiceGUI::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPAR
         auto& window = *window_ptr;
 
         switch (msg) {
-        
             case WM_SIZE: {
                 UINT width = LOWORD(lParam);
                 UINT height = HIWORD(lParam);
-                _vkAdapter->resized(width, height);
+                window._vkAdapter.resized(width, height);
             }
             break;
 
