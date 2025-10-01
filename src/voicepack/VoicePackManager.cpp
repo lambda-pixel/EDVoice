@@ -378,7 +378,7 @@ size_t VoicePackManager::addVoicePack(const std::string& name, const std::filesy
         throw std::runtime_error("Cannot add voicepack: cannot find voicepack at " + vpPath.string());
     }
 
-    _installedVoicePacks[name] = path;
+    _installedVoicePacks[name] = path.string();
     _installedVoicePacksAbsolutePath[name] = vpPath;
     _installedVoicePacksNames.push_back(name);
     std::cout << "[INFO  ] Added new voicepack: " << name << " at " << vpPath << std::endl;

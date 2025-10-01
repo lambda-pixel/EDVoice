@@ -95,8 +95,7 @@ std::filesystem::path EliteFileUtil::getUserProfile()
 
 std::filesystem::path EliteFileUtil::resolvePath(
     const std::filesystem::path& basePath,
-    const std::string& file)
+    const std::filesystem::path& file)
 {
-    std::filesystem::path p(file);
-    return p.is_absolute() ? p : (basePath / p);
+    return file.is_absolute() ? file : (basePath / file);
 }
