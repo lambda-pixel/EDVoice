@@ -61,6 +61,7 @@ EDVoiceGUI::EDVoiceGUI(
     _vkAdapter.initDevice(_sdlWindow);
 
     SDL_SetWindowPosition(_sdlWindow, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+    SDL_SetWindowHitTest(_sdlWindow, sdlHitTest, this);
     SDL_ShowWindow(_sdlWindow);
 #endif
 
@@ -974,6 +975,21 @@ std::string EDVoiceGUI::w32OpenFileName(const char* title, const char* initialDi
 }
 
 #else
+
+SDL_HitTestResult SDLCALL EDVoiceGUI::sdlHitTest(SDL_Window *win, const SDL_Point *area, void *data)
+{
+    EDVoiceGUI* obj = (EDVoiceGUI*)data;
+    assert(win == obj->_sdlWindow);
+
+    std::cout << area->x << " " << area->y;
+
+    if (area->y < obj->_titlebarHeight) {
+        return SDL_HITTEST_DRAGGABLE;
+    }
+
+    return SDL_HITTEST_NORMAL;
+}
+
 
 void SDLCALL EDVoiceGUI::sdlCallbackOpenFile(void* userdata, const char* const* filelist, int filter)
 {

@@ -80,6 +80,7 @@ private:
     HWND _hwnd;
     HINSTANCE _hInstance;
 #else
+    static SDL_HitTestResult SDLCALL sdlHitTest(SDL_Window *win, const SDL_Point *area, void *data);
     static void SDLCALL sdlCallbackOpenFile(void* userdata, const char* const* filelist, int filter);
 
     SDL_Window* _sdlWindow;
