@@ -49,6 +49,8 @@ EDVoiceGUI::EDVoiceGUI(
     w32CreateWindow(nShowCmd);
     _vkAdapter.initDevice(hInstance, _hwnd);
 #else
+    _mainScale = 1.f;
+
     // SDL_WINDOW_BORDERLESS
     SDL_WindowFlags window_flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
 
@@ -167,6 +169,12 @@ void EDVoiceGUI::run()
                     if (event.window.windowID == SDL_GetWindowID(_sdlWindow)) {
                         quit = true;
                     }
+                    break;
+                    
+                case SDL_EVENT_WINDOW_RESIZED:
+                    int width, height;
+                    SDL_GetWindowSizeInPixels(_sdlWindow, &width, &height);
+                    _vkAdapter.resized(width, height);
                     break;
 
                 default:
@@ -707,59 +715,67 @@ LRESULT CALLBACK EDVoiceGUI::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPAR
         auto& window = *window_ptr;
 
         switch (msg) {
-        case WM_NCCALCSIZE: {
-            if (wParam == TRUE && window._borderlessWindow) {
-                auto& params = *reinterpret_cast<NCCALCSIZE_PARAMS*>(lParam);
-                window.w32AdjustMaximizedClientRect(params.rgrc[0]);
+        
+            case WM_SIZE: {
+                UINT width = LOWORD(lParam);
+                UINT height = HIWORD(lParam);
+                _vkAdapter->resized(width, height);
+            }
+            break;
+
+            case WM_NCCALCSIZE: {
+                if (wParam == TRUE && window._borderlessWindow) {
+                    auto& params = *reinterpret_cast<NCCALCSIZE_PARAMS*>(lParam);
+                    window.w32AdjustMaximizedClientRect(params.rgrc[0]);
+                    return 0;
+                }
+                break;
+            }
+            case WM_NCHITTEST: {
+                // When we have no border or title bar, we need to perform our
+                // own hit testing to allow resizing and moving.
+                if (window._borderlessWindow) {
+                    LRESULT hitResult = window.w32HitTest(POINT{
+                        GET_X_LPARAM(lParam),
+                        GET_Y_LPARAM(lParam)
+                        });
+
+                    if (hitResult) {
+                        return hitResult;
+                    }
+                }
+                break;
+            }
+            case WM_NCACTIVATE: {
+                if (!window.w32CompositionEnabled()) {
+                    // Prevents window frame reappearing on window activation
+                    // in "basic" theme, where no aero shadow is present.
+                    return 1;
+                }
+                break;
+            }
+
+            case WM_CLOSE: {
+                ::DestroyWindow(hWnd);
                 return 0;
             }
-            break;
-        }
-        case WM_NCHITTEST: {
-            // When we have no border or title bar, we need to perform our
-            // own hit testing to allow resizing and moving.
-            if (window._borderlessWindow) {
-                LRESULT hitResult = window.w32HitTest(POINT{
-                    GET_X_LPARAM(lParam),
-                    GET_Y_LPARAM(lParam)
-                    });
 
-                if (hitResult) {
-                    return hitResult;
+            case WM_DESTROY: {
+                ::PostQuitMessage(0);
+                return 0;
+            }
+
+            case WM_KEYDOWN:
+            case WM_SYSKEYDOWN: {
+                switch (wParam) {
+                //case VK_F8: { window.borderless_drag = !window.borderless_drag;        return 0; }
+                //case VK_F9: { window.borderless_resize = !window.borderless_resize;    return 0; }
+                //case VK_F10: { window.set_borderless(!window._borderlessWindow);               return 0; }
+                case VK_F10: { window.w32SetBorderless(!window._borderlessWindow);               return 0; }
+                //case VK_F11: { window.set_borderless_shadow(!window.borderless_shadow); return 0; }
                 }
+                break;
             }
-            break;
-        }
-        case WM_NCACTIVATE: {
-            if (!window.w32CompositionEnabled()) {
-                // Prevents window frame reappearing on window activation
-                // in "basic" theme, where no aero shadow is present.
-                return 1;
-            }
-            break;
-        }
-
-        case WM_CLOSE: {
-            ::DestroyWindow(hWnd);
-            return 0;
-        }
-
-        case WM_DESTROY: {
-            ::PostQuitMessage(0);
-            return 0;
-        }
-
-        case WM_KEYDOWN:
-        case WM_SYSKEYDOWN: {
-            switch (wParam) {
-            //case VK_F8: { window.borderless_drag = !window.borderless_drag;        return 0; }
-            //case VK_F9: { window.borderless_resize = !window.borderless_resize;    return 0; }
-            //case VK_F10: { window.set_borderless(!window._borderlessWindow);               return 0; }
-            case VK_F10: { window.w32SetBorderless(!window._borderlessWindow);               return 0; }
-            //case VK_F11: { window.set_borderless_shadow(!window.borderless_shadow); return 0; }
-            }
-            break;
-        }
         }
     }
 
@@ -981,13 +997,50 @@ SDL_HitTestResult SDLCALL EDVoiceGUI::sdlHitTest(SDL_Window *win, const SDL_Poin
     EDVoiceGUI* obj = (EDVoiceGUI*)data;
     assert(win == obj->_sdlWindow);
 
+    int width, height;
+    SDL_GetWindowSize(obj->_sdlWindow, &width, &height);
+
+    const int borderX = 8; // Horizontal resize border thickness in pixels
+    const int borderY = 8; // Vertical resize border thickness in pixels
+
+    int x = area->x;
+    int y = area->y;
+
+    enum RegionMask {
+        client = 0b0000,
+        left   = 0b0001,
+        right  = 0b0010,
+        top    = 0b0100,
+        bottom = 0b1000,
+    };
+
+    int result =
+        ((x < borderX) ? left : 0) |
+        ((x >= (width - borderX)) ? right : 0) |
+        ((y < borderY) ? top : 0) |
+        ((y >= (height - borderY)) ? bottom : 0);
+
     std::cout << area->x << " " << area->y;
 
-    if (area->y < obj->_titlebarHeight) {
-        return SDL_HITTEST_DRAGGABLE;
+    switch (result) {
+        case left:              return SDL_HITTEST_RESIZE_LEFT;
+        case right:             return SDL_HITTEST_RESIZE_RIGHT;
+        case top:               return SDL_HITTEST_RESIZE_TOP;
+        case bottom:            return SDL_HITTEST_RESIZE_BOTTOM;
+        case top | left:        return SDL_HITTEST_RESIZE_TOPLEFT;
+        case top | right:       return SDL_HITTEST_RESIZE_TOPRIGHT;
+        case bottom | left:     return SDL_HITTEST_RESIZE_BOTTOMLEFT;
+        case bottom | right:    return SDL_HITTEST_RESIZE_BOTTOMRIGHT;
+        case client: {
+            // Title bar area — allow dragging the window
+            if (y < obj->_titlebarHeight && x < (width - obj->_totalButtonWidth)) {
+                return SDL_HITTEST_DRAGGABLE;
+            } else {
+                return SDL_HITTEST_NORMAL;
+            }
+        }
+        default:                return SDL_HITTEST_NORMAL;
     }
-
-    return SDL_HITTEST_NORMAL;
 }
 
 

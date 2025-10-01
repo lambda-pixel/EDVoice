@@ -56,6 +56,8 @@ public:
     void renderFrame();
     void presentFrame();
 
+    void resized(uint32_t width, uint32_t height);
+
 private:
     void createFramebuffer();
     void createRenderPass();

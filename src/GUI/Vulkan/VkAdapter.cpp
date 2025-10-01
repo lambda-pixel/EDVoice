@@ -54,7 +54,7 @@ VkAdapter::VkAdapter(const std::vector<const char*>& instanceExtensions)
         &applicationInfo,                                   // pApplicationInfo
         static_cast<uint32_t>(enabledLayerNames.size()),
         enabledLayerNames.data(),                           // ppEnabledLayerNames
-        (uint32_t)extensions.size(),
+        static_cast<uint32_t>(extensions.size()),
         extensions.data()                                   // ppEnabledExtensionNames
     };
 
@@ -114,6 +114,11 @@ void VkAdapter::initDevice(
     vkCreateWin32SurfaceKHR(_instance, &surfaceCreateInfo, nullptr, &_surface);
 #else
     SDL_Vulkan_CreateSurface(window, _instance, nullptr, &_surface);
+    
+    // WTF... I have to call GetWindowSize first and then GetWindowSizeInPixel just for
+    // lord Wayland. Damn
+    int width, height;
+    SDL_GetWindowSize(window, &width, &height);
 #endif
 
     // Find a suitable physical device
@@ -190,11 +195,14 @@ void VkAdapter::initDevice(
     VK_THROW_IF_FAILED(vkCreateDevice(_physicalDevice, &deviceCreateInfo, nullptr, &_device));
     vkGetDeviceQueue(_device, _iQueueFamily, 0, &_queue);
 
-    _swapchain = new Swapchain(_physicalDevice, _device, _surface);
+    _swapchain = new Swapchain(_physicalDevice, _device, _surface, width, height);
 
     createRenderPass();
-    createFramebuffer();
-    createCommandBuffer();
+
+    if (_swapchain->valid()) {
+        createFramebuffer();
+        createCommandBuffer();
+    }
 }
 
 
@@ -241,16 +249,6 @@ VkCommandBuffer VkAdapter::startNewFrame()
 
         return _commandBuffer[iSwapchainImage];
     }
-    else if (acquired == VK_SUBOPTIMAL_KHR ||
-        acquired == VK_ERROR_OUT_OF_DATE_KHR) {
-        // TODO: Maybe a bit overkill but works for now
-        vkDeviceWaitIdle(_device);
-
-        // Swapchain was updated, we need to update other resources
-        createRenderPass();
-        createFramebuffer();
-        createCommandBuffer();
-    }
 
     return VK_NULL_HANDLE;
 }
@@ -282,6 +280,21 @@ void VkAdapter::presentFrame()
 {
     if (_currFrameInfo.acquired) {
         _swapchain->present(_queue, _fenceCommandBuffer[_currFrameInfo.iSwapchainImage]);
+    }
+}
+
+
+void VkAdapter::resized(uint32_t width, uint32_t height)
+{
+    vkDeviceWaitIdle(_device);
+
+    _swapchain->updateSwapchain(width, height);
+
+    // Swapchain was updated, we need to update other resources
+    if (_swapchain->valid()) {
+        createRenderPass();
+        createFramebuffer();
+        createCommandBuffer();
     }
 }
 

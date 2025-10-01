@@ -55,7 +55,7 @@ if (NOT WIN32)
 endif()
 
 # target_compile_definitions(EDVoice PRIVATE BUILD_MEDICORP)
-target_compile_definitions(EDVoice PRIVATE VULKAN_DEBUG_LAYER)
+# target_compile_definitions(EDVoice PRIVATE VULKAN_DEBUG_LAYER)
 
 # install(TARGETS EDVoice EDVoice-cli
         # RUNTIME DESTINATION .)
