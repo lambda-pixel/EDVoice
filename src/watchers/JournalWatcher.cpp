@@ -20,6 +20,7 @@ JournalWatcher::JournalWatcher(const std::filesystem::path& filename)
 JournalWatcher::~JournalWatcher()
 {
     _stopForceUpdate = true;
+    
     if (_forcedUpdateThread.joinable()) {
         _forcedUpdateThread.join();
     }

@@ -8,6 +8,7 @@
 StatusWatcher::StatusWatcher(
     const std::filesystem::path& filename)
     : _statusFile(filename)
+    , _stopForceUpdate(false)
 {
     if (!std::filesystem::exists(filename)) {
         throw std::runtime_error("Cannot find status file: " + filename.string() + ". Did you lanch the game previously?");
@@ -19,6 +20,16 @@ StatusWatcher::StatusWatcher(
 }
 
 
+StatusWatcher::~StatusWatcher()
+{
+    _stopForceUpdate = true;
+    
+    if (_forcedUpdateThread.joinable()) {
+        _forcedUpdateThread.join();
+    }
+}
+
+
 void StatusWatcher::addListener(StatusListener* listener)
 {
     _listeners.push_back(listener);
@@ -27,7 +38,7 @@ void StatusWatcher::addListener(StatusListener* listener)
 
 void StatusWatcher::start()
 {
-    // This does nothing but makes API consistent with JournalWatcher
+    _forcedUpdateThread = std::thread(&StatusWatcher::forcedUpdate, this);
 }
 
 
@@ -135,4 +146,14 @@ void StatusWatcher::printChangedBits(uint32_t flags)
         }
     }
     std::cout << std::endl;
+}
+
+
+void StatusWatcher::forcedUpdate() {
+    // We need to regularly load the file to avoid miss in the WIN32 monitoring
+    // in case the file was not flushed to the disk.
+    while (!_stopForceUpdate) {
+        std::wifstream file(_statusFile, std::ios::in | std::ios::binary);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
 }
