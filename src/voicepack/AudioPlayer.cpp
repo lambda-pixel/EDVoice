@@ -4,8 +4,101 @@
 #include <string>
 #include <thread>
 
+#include <config.h>
 
-#ifdef _WIN32
+#ifdef USE_SDL_MIXER
+
+#include <SDL3_mixer/SDL_mixer.h>
+
+AudioPlayer::AudioPlayer()
+{
+    if (!MIX_Init()) {
+        throw std::runtime_error(SDL_GetError());
+    }
+
+    _pMixer = MIX_CreateMixerDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, NULL);
+    if (!_pMixer) { throw std::runtime_error(SDL_GetError()); }
+
+    _pMainTrack = MIX_CreateTrack(_pMixer);
+    if (!_pMainTrack) { throw std::runtime_error(SDL_GetError()); }
+
+    MIX_SetTrackStoppedCallback(_pMainTrack, trackStoppedCallback, this);
+}
+
+
+AudioPlayer::~AudioPlayer()
+{
+    MIX_DestroyTrack(_pMainTrack);
+    MIX_DestroyMixer(_pMixer);
+    MIX_Quit();
+}
+
+
+void AudioPlayer::addTrack(const std::filesystem::path& path)
+{
+    // TODO: optimization - this is not ideal, the decoding shall be done 
+    //       the at voicepack level once instead of decoding again and 
+    //       again the same track.
+    MIX_Audio* nextVoiceline = MIX_LoadAudio(_pMixer, path.c_str(), true);
+
+    if (!nextVoiceline) {
+        std::cerr << "[ERROR ] Could not load track: " << path << " " << SDL_GetError() << std::endl;
+        return;
+    }
+
+    _trackQueue.push(nextVoiceline);
+
+    // No track are currently playing, we'll start on our own the player
+    if (_trackQueue.size() == 1) {
+        MIX_Audio* nextAudio = _trackQueue.front();
+        MIX_SetTrackAudio(_pMainTrack, nextAudio);
+
+        if (!MIX_PlayTrack(_pMainTrack, 0)) {
+            std::cerr << "[ERROR ] Could not start track " << SDL_GetError() << std::endl;
+            MIX_DestroyAudio(_trackQueue.front());
+            _trackQueue.pop();
+        }
+    }
+}
+
+
+float AudioPlayer::getVolume() const
+{
+    return MIX_GetTrackGain(_pMainTrack);
+}
+
+
+void AudioPlayer::setVolume(float volume)
+{
+    MIX_SetTrackGain(_pMainTrack, volume);
+}
+
+
+void AudioPlayer::trackStoppedCallback(void* userdata, MIX_Track *track)
+{
+    AudioPlayer* obj = (AudioPlayer*)userdata;
+
+    // Pop the current track, no MIX_DestroyAudio, it is handled by the MIX_Track
+    obj->_trackQueue.pop();
+    MIX_SetTrackAudio(obj->_pMainTrack, NULL);
+
+    // Check if queue has additional tracks to play else do nothing,
+    // addTrack will handle the next track by itself
+    if (obj->_trackQueue.size() > 0) {
+        MIX_Audio* nextAudio = obj->_trackQueue.front();
+        MIX_SetTrackAudio(obj->_pMainTrack, nextAudio);
+
+        if (!MIX_PlayTrack(obj->_pMainTrack, 0)) {
+            std::cerr << "[ERROR ] Could not start track " << SDL_GetError() << std::endl;
+            MIX_DestroyAudio(obj->_trackQueue.front());
+            obj->_trackQueue.pop();
+        }
+    }
+}
+
+
+
+#else // USE_SDL_MIXER
 void STDMETHODCALLTYPE PlayerCallback::OnMediaPlayerEvent(MFP_EVENT_HEADER* pEventHeader)
 {
     if (pEventHeader->eEventType == MFP_EVENT_TYPE_PLAYBACK_ENDED) {
@@ -144,26 +237,4 @@ void AudioPlayer::messageLoop()
     }
 }
 
-#else
-
-// TODO Linux
-
-AudioPlayer::AudioPlayer() {}
-
-AudioPlayer::~AudioPlayer() {}
-
-void AudioPlayer::addTrack(const std::filesystem::path& path)
-{
-
-}
-
-float AudioPlayer::getVolume() const {
-    return _volume;
-}
-
-void AudioPlayer::setVolume(float volume)
-{
-    _volume = volume;
-}
-
-#endif
+#endif // USE_SDL_MIXER

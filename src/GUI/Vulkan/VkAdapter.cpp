@@ -32,7 +32,7 @@ VkAdapter::VkAdapter(const std::vector<const char*>& instanceExtensions)
     std::vector<const char*> enabledLayerNames;
 
 #ifdef VULKAN_DEBUG_LAYER
-    std::cout << "Enabling Vulkan validation layer" << std::endl;
+    std::cout << "[VULKAN] Enabling Vulkan validation layer" << std::endl;
     enabledLayerNames.push_back("VK_LAYER_KHRONOS_validation");
 #endif
 
@@ -165,7 +165,7 @@ void VkAdapter::initDevice(
                 _physicalDevice = device;
                 _iQueueFamily = iQueue;
 
-                std::cout << "Selected device: " << deviceProperties.deviceName << std::endl;
+                std::cout << "[VULKAN] Selected device: " << deviceProperties.deviceName << std::endl;
 
                 break;
             }
