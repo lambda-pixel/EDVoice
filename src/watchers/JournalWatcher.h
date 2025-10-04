@@ -4,6 +4,7 @@
 #include <fstream>
 #include <vector>
 #include <thread>
+#include <atomic>
 
 #include <PluginInterface.h>
 

@@ -99,8 +99,10 @@ typedef struct {
 } PluginCallbacks;
 
 // Each plugin must implement these functions to register its callbacks
+#ifdef _WIN32
 __declspec(dllexport) void registerPlugin(PluginCallbacks* callbacks);
 __declspec(dllexport) void unregisterPlugin();
+#endif
 
 #ifdef __cplusplus
 }
@@ -110,6 +112,7 @@ __declspec(dllexport) void unregisterPlugin();
 #include <cstring>
 #endif
 
+#ifdef _WIN32
 // Macro to define plugin registration boilerplate for EventLogger
 #define DECLARE_PLUGIN(ClassName, _name, _versionStr, _author) \
     static void loadConfig(const char* filepath, void* ctx) { \
@@ -141,3 +144,7 @@ __declspec(dllexport) void unregisterPlugin();
         delete g_plugin; \
     } \
     }
+#else
+// TODO Linux
+#define DECLARE_PLUGIN(ClassName, _name, _versionStr, _author)
+#endif

@@ -7,6 +7,7 @@ Swapchain::Swapchain(
     VkPhysicalDevice physicalDevice,
     VkDevice device,
     VkSurfaceKHR surface,
+    uint32_t width, uint32_t height,
     VkImageLayout optimalLayout)
     : _physicalDevice(physicalDevice)
     , _device(device)
@@ -14,7 +15,7 @@ Swapchain::Swapchain(
     , _surface(surface)
     , _swapchain(VK_NULL_HANDLE)
 {
-    updateSwapchain();
+    updateSwapchain(width, height);
 }
 
 
@@ -33,7 +34,7 @@ Swapchain::~Swapchain()
 }
 
 
-void Swapchain::updateSwapchain()
+void Swapchain::updateSwapchain(uint32_t width, uint32_t height)
 {
     // TODO: optimize using fences?
     vkDeviceWaitIdle(_device);
@@ -67,9 +68,17 @@ void Swapchain::updateSwapchain()
         throw std::runtime_error("[VULKAN] Failed to create swapchain: could not find a suitable format");
     }
 
+    // Great... worked seamlessly with WIN32 and X with
+    // surfaceCapabilities.currentExtent.width & height but somehow
+    // broken on this damn Wayland...
     _format = _swapchainFormat.format;
-    _width = surfaceCapabilities.currentExtent.width;
-    _height = surfaceCapabilities.currentExtent.height;
+    _width  = width;
+    _height = height;
+
+    if (_width == UINT32_MAX || _height == UINT32_MAX) {
+        // Wayland seems to return crazy value when creating the window
+        return;
+    }
 
     const VkSwapchainCreateInfoKHR swapchainCreateInfo = {
         VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR, nullptr, 0,// sType, pNext, flags
@@ -77,7 +86,7 @@ void Swapchain::updateSwapchain()
         surfaceCapabilities.minImageCount,                      // minImageCount
         _format,                                                // imageFormat
         _swapchainFormat.colorSpace,                            // imageColorSpace
-        surfaceCapabilities.currentExtent,                      // imageExtent
+        { _width, _height },//surfaceCapabilities.currentExtent,                      // imageExtent
         1,                                                      // imageArrayLayers
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,                    // imageUsage
         VK_SHARING_MODE_EXCLUSIVE,                              // imageSharingMode
@@ -110,6 +119,7 @@ void Swapchain::updateSwapchain()
     }
 
     _iCurrFrame = 0;
+    _valid = true;
 }
 
 
@@ -173,6 +183,10 @@ VkResult Swapchain::acquireNextImage(
     VkSemaphore* semaphoreImageAcquired,
     VkSemaphore* semaphoreRenderReady)
 {
+    if (!_valid) { 
+        return VK_ERROR_OUT_OF_DATE_KHR;
+    }
+
     if (_fenceRendered[_iCurrFrame] != VK_NULL_HANDLE) {
         vkWaitForFences(_device, 1, &_fenceRendered[_iCurrFrame], VK_TRUE, UINT64_MAX);
     }
@@ -189,7 +203,7 @@ VkResult Swapchain::acquireNextImage(
     switch (result) {
     case VK_SUBOPTIMAL_KHR:
     case VK_ERROR_OUT_OF_DATE_KHR:
-        updateSwapchain();
+        // updateSwapchain();
         break;
 
     case VK_SUCCESS:

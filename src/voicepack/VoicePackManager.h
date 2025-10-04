@@ -24,7 +24,7 @@ public:
     void saveConfig() const;
 
     void loadVoicePackByIndex(size_t index);
-    size_t addVoicePack(const std::string& name, const std::string& path);
+    size_t addVoicePack(const std::string& name, const std::filesystem::path& path);
 
     void onStatusChanged(StatusEvent event, bool status);
     void setJournalPreviousEvent(const std::string& event, const std::string& journalEntry);

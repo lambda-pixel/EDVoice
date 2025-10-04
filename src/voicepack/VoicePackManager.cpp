@@ -362,7 +362,7 @@ void VoicePackManager::loadVoicePackByIndex(size_t index)
 }
 
 
-size_t VoicePackManager::addVoicePack(const std::string& name, const std::string& path)
+size_t VoicePackManager::addVoicePack(const std::string& name, const std::filesystem::path& path)
 {
     if (name.empty() || path.empty()) {
         throw std::runtime_error("Cannot add voicepack: name or path is empty");
@@ -371,14 +371,14 @@ size_t VoicePackManager::addVoicePack(const std::string& name, const std::string
     if (_installedVoicePacks.find(name) != _installedVoicePacks.end()) {
         throw std::runtime_error("Cannot add voicepack: voicepack with the same name already exists");
     }
-    
+
     const std::filesystem::path vpPath = EliteFileUtil::resolvePath(_configPath.parent_path(), path);
-    
+
     if (!std::filesystem::exists(vpPath)) {
         throw std::runtime_error("Cannot add voicepack: cannot find voicepack at " + vpPath.string());
     }
 
-    _installedVoicePacks[name] = path;
+    _installedVoicePacks[name] = path.string();
     _installedVoicePacksAbsolutePath[name] = vpPath;
     _installedVoicePacksNames.push_back(name);
     std::cout << "[INFO  ] Added new voicepack: " << name << " at " << vpPath << std::endl;

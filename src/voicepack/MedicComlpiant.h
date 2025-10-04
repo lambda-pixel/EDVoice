@@ -1,5 +1,7 @@
 #pragma once
 
+#include <config.h>
+
 #ifdef BUILD_MEDICORP
 
 #include <string>

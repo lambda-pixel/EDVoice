@@ -1,44 +1,46 @@
 #pragma once
 
 #include <iostream>
-#include <string>
+#include <filesystem>
 #include <thread>
 #include <atomic>
 
-
-#include <windows.h>
-#include <mfplay.h>
-#include <mfapi.h>
-#include <mferror.h>
-
-#pragma comment(lib, "mfplat.lib")
-#pragma comment(lib, "mfplay.lib")
-#pragma comment(lib, "mf.lib")
-
+#include <config.h>
 #include "AtomicQueue.hpp"
 
+#ifdef USE_SDL_MIXER
+    #include <SDL3_mixer/SDL_mixer.h>
+#else
+    #include <windows.h>
+    #include <mfplay.h>
+    #include <mfapi.h>
+    #include <mferror.h>
 
-// ----------------------------------------------------------------------------
-// PlayerCallback implementatio
-// ----------------------------------------------------------------------------
+    #pragma comment(lib, "mfplat.lib")
+    #pragma comment(lib, "mfplay.lib")
+    #pragma comment(lib, "mf.lib")
 
-class PlayerCallback : public IMFPMediaPlayerCallback {
-    std::atomic<ULONG> _refCount{ 1 };
-public:
+    // ------------------------------------------------------------------------
+    // PlayerCallback implementatio
+    // ------------------------------------------------------------------------
 
-    PlayerCallback(DWORD threadId)
-        : _threadId(threadId) {
-    }
+    class PlayerCallback : public IMFPMediaPlayerCallback {
+        std::atomic<ULONG> _refCount{ 1 };
+    public:
 
-    bool finished = true;
-    DWORD _threadId;
+        PlayerCallback(DWORD threadId)
+            : _threadId(threadId) {
+        }
 
-    void STDMETHODCALLTYPE OnMediaPlayerEvent(MFP_EVENT_HEADER* pEventHeader) override;
-    STDMETHODIMP QueryInterface(REFIID riid, void** ppv) override;
-    STDMETHODIMP_(ULONG) AddRef() override;
-    STDMETHODIMP_(ULONG) Release() override;
-};
+        bool finished = true;
+        DWORD _threadId;
 
+        void STDMETHODCALLTYPE OnMediaPlayerEvent(MFP_EVENT_HEADER* pEventHeader) override;
+        STDMETHODIMP QueryInterface(REFIID riid, void** ppv) override;
+        STDMETHODIMP_(ULONG) AddRef() override;
+        STDMETHODIMP_(ULONG) Release() override;
+    };
+#endif // USE_SDL_MIXER
 
 
 class AudioPlayer
@@ -48,21 +50,29 @@ public:
 
     ~AudioPlayer();
 
-    void addTrack(const std::wstring& path);
+    void addTrack(const std::filesystem::path& path);
 
     float getVolume() const;
     void setVolume(float volume);
 
 private:
-    void messageLoop();
-
     std::atomic<bool> _stopThread{ false };
     std::thread _eventThread;
-    AtomicQueue<std::wstring> _trackQueue;
 
-// win32 stuff
+#ifdef USE_SDL_MIXER
+    static void SDLCALL trackStoppedCallback(void* userdata, MIX_Track *track);
+
+    MIX_Mixer* _pMixer;
+    MIX_Track* _pMainTrack;
+
+    AtomicQueue<MIX_Audio*> _trackQueue;
+#else
+    void messageLoop();
+
     IMFPMediaPlayer* _pPlayer = nullptr;
     PlayerCallback* _playerCallback = nullptr;
+    AtomicQueue<std::filesystem::path> _trackQueue;
+#endif // USE_SDL_MIXER
 
     float _volume = 1.f;
 };

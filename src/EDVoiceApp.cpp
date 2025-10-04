@@ -1,13 +1,51 @@
 ﻿#include "EDVoiceApp.h"
 
 #include <iostream>
-#include <conio.h>
+#ifdef _WIN32
+#else
+    #include <sys/inotify.h>
+    #include <unistd.h>
+    #include <limits.h>
+#endif
 
 #include <json.hpp>
 
 #include "util/EliteFileUtil.h"
 #define __STDC_WANT_LIB_EXT1__ 1
 #include <cstring>
+
+#ifdef _WIN32
+    #include <conio.h>
+#else
+#include <termios.h>
+#include <fcntl.h>
+
+int kbhit() {
+    termios oldt, newt;
+    int ch;
+    int oldf;
+
+    tcgetattr(STDIN_FILENO, &oldt);
+    newt = oldt;
+    newt.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+    oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+    fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+
+    ch = getchar();
+
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+    fcntl(STDIN_FILENO, F_SETFL, oldf);
+
+    if (ch != EOF) {
+        ungetc(ch, stdin);
+        return 1;
+    }
+
+    return 0;
+}
+
+#endif
 
 // Ugly hack for now but whatever...
 static void loadConfigVP(const char* filepath, void* ctx)
@@ -37,9 +75,10 @@ extern "C" {
         callbacks->setJournalPreviousEvent = setJournalPreviousEventVP;
         callbacks->onJournalEvent = onJournalEventVP;
         callbacks->ctx = voicepack;
-        strncpy_s(callbacks->name, sizeof(callbacks->name), "VoicePack", ((size_t)-1));
-        strncpy_s(callbacks->versionStr, sizeof(callbacks->versionStr), "0.3", ((size_t)-1));
-        strncpy_s(callbacks->author, sizeof(callbacks->author), "Siegfried-Origin", ((size_t)-1));
+
+        std::strncpy(callbacks->name, "VoicePack", sizeof(callbacks->name) - 1);
+        std::strncpy(callbacks->versionStr, "0.3", sizeof(callbacks->versionStr) - 1);
+        std::strncpy(callbacks->author, "Siegfried-Origin", sizeof(callbacks->author) - 1);
     }
     void unregisterPluginVP()
     {
@@ -148,12 +187,20 @@ EDVoiceApp::EDVoiceApp(
     _statusWatcher.start();
 
     // Start monitoring file change
+#ifdef _WIN32
     _hStop = CreateEvent(nullptr, TRUE, FALSE, nullptr);
 
     _watcherThread = std::thread(
         &EDVoiceApp::fileWatcherThread,
         this,
         _hStop);
+#else
+    _hStop = false;
+    _watcherThread = std::thread(
+        &EDVoiceApp::fileWatcherThread,
+        this
+    );
+#endif
 }
 
 
@@ -163,9 +210,16 @@ EDVoiceApp::~EDVoiceApp()
         unloadPlugin(plugin);
     }
 
+#ifdef _WIN32
     SetEvent(_hStop);
     _watcherThread.join();
     CloseHandle(_hStop);
+#else
+    _hStop = true;
+    if (_watcherThread.joinable()) {
+        _watcherThread.join();
+    }
+#endif
 }
 
 
@@ -176,17 +230,26 @@ void EDVoiceApp::run()
     while (true) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
+#ifdef _WIN32
         if (_kbhit()) {
             SetEvent(_hStop);
             std::cout << "Exiting..." << std::endl;
             break;
         }
+#else
+        if (kbhit()) {
+            _hStop = true;
+            std::cout << "Exiting..." << std::endl;
+            break;
+        }
+#endif
     }
 
     std::cout << "Goodbye!" << std::endl;
 }
 
 
+#ifdef _WIN32
 void EDVoiceApp::fileWatcherThread(HANDLE hStop)
 {
     const std::filesystem::path userProfile = EliteFileUtil::getUserProfile();
@@ -301,6 +364,68 @@ void EDVoiceApp::fileWatcherThread(HANDLE hStop)
     CloseHandle(ov.hEvent);
     CloseHandle(hDir);
 }
+#else
+void EDVoiceApp::fileWatcherThread()
+{
+    const std::filesystem::path userProfile = EliteFileUtil::getUserProfile();
+
+    const int inotifyFd = inotify_init1(IN_NONBLOCK);
+
+    if (inotifyFd < 0) {
+        std::cerr << "[ERR   ] inotify_init1 failed." << std::endl;
+        return;
+    }
+
+    int watchFd = inotify_add_watch(inotifyFd, userProfile.c_str(), IN_MODIFY);
+
+    if (watchFd < 0) {
+        std::cerr << "[ERR   ] inotify_add_watch failed on: " << userProfile << std::endl;
+        close(inotifyFd);
+        return;
+    }
+
+    constexpr size_t bufSize = 1024 * (sizeof(struct inotify_event) + NAME_MAX + 1);
+    char buffer[bufSize];
+
+    while (!_hStop) {
+        const int length = read(inotifyFd, buffer, bufSize);
+
+        if (length < 0) {
+            if (errno == EAGAIN || errno == EINTR) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                continue;
+            }
+            std::cerr << "[ERR   ] inotify read failed." << std::endl;
+            break;
+        }
+
+        int i = 0;
+        while (i < length) {
+            struct inotify_event* event = reinterpret_cast<struct inotify_event*>(&buffer[i]);
+
+            if (event->len > 0 && (event->mask & IN_MODIFY)) {
+                std::string filename(event->name);
+                std::filesystem::path fullpath = userProfile / filename;
+
+                if (EliteFileUtil::isStatusFile(filename)) {
+                    _statusWatcher.update();
+                }
+                else if (EliteFileUtil::isJournalFile(filename)) {
+                    _journalWatcher.update(fullpath);
+                }
+                else {
+                    std::cout << "[INFO  ] Ignored file change: " << filename << std::endl;
+                }
+            }
+
+            i += sizeof(struct inotify_event) + event->len;
+        }
+    }
+
+    inotify_rm_watch(inotifyFd, watchFd);
+    close(inotifyFd);
+}
+#endif
 
 
 void EDVoiceApp::loadPlugin(const std::filesystem::path& path)

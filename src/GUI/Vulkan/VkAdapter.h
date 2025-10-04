@@ -1,14 +1,12 @@
 #pragma once
 
-#include <vulkan/vulkan.h>
-// WIN32 specific
-#include <Windows.h>
-#include <vulkan/vulkan_win32.h>
-
 #include <vector>
+
+#include <vulkan/vulkan.h>
 
 #include "Swapchain.h"
 
+class WindowSystem;
 
 struct CurrFrameInfo {
     uint32_t iSwapchainImage;
@@ -21,15 +19,13 @@ struct CurrFrameInfo {
 class VkAdapter
 {
 public:
-    VkAdapter(const std::vector<char*>& instanceExtensions = {});
+    VkAdapter(
+        WindowSystem* windowSystem,
+        const std::vector<const char*>& instanceExtensions = {});
 
     ~VkAdapter();
 
-    // WIN32 specific
-    void initDevice(
-        HINSTANCE hInstance, HWND hwnd,
-        const std::vector<char*>& deviceExtensions = {}
-    );
+    void initDevice(const std::vector<const char*>& deviceExtensions = {});
 
     VkInstance getInstance() const { return _instance; }
     VkPhysicalDevice getPhysicalDevice() const { return _physicalDevice; }
@@ -45,10 +41,14 @@ public:
     void renderFrame();
     void presentFrame();
 
+    void resized(uint32_t width, uint32_t height);
+
 private:
     void createFramebuffer();
     void createRenderPass();
     void createCommandBuffer();
+
+    WindowSystem* _windowSystem;
 
     VkInstance _instance = VK_NULL_HANDLE;
     VkPhysicalDevice _physicalDevice = VK_NULL_HANDLE;

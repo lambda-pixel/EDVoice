@@ -1,65 +1,42 @@
 ﻿#include "EDVoiceGUI.h"
 
 #include <stdexcept>
-
-#include <windows.h>
-#include <windowsx.h>
-#include <dwmapi.h>
-#include <commdlg.h>
-
 #include <imgui.h>
-#include <backends/imgui_impl_win32.h>
-#define VK_USE_PLATFORM_WIN32_KHR
+
 #include <backends/imgui_impl_vulkan.h>
-
-
-const wchar_t CLASS_NAME[] = L"EDVoice";
-#ifdef BUILD_MEDICORP
-const wchar_t WINDOW_TITLE[] = L"EDVoice - MediCorp Edition";
-const char WINDOW_TITLE_STD[] = "EDVoice - MediCorp Edition";
-#else
-const wchar_t WINDOW_TITLE[] = L"EDVoice";
-const char WINDOW_TITLE_STD[] = "EDVoice";
-#endif
 
 #include "inter.cpp"
 
 EDVoiceGUI::EDVoiceGUI(
     const std::filesystem::path& exec_path,
-    const std::filesystem::path& config, 
-    HINSTANCE hInstance, int nShowCmd)
-    : _app(exec_path, config)
-    , _vkAdapter({ VK_KHR_SURFACE_EXTENSION_NAME, "VK_KHR_win32_surface" })
+    const std::filesystem::path& config,
+    WindowSystem* windowSystem)
+    : _app(new EDVoiceApp(exec_path, config))
+    , _vkAdapter(windowSystem)
+    , _windowSystem(windowSystem)
     , _imGuiIniPath(config.parent_path() / "imgui.ini")
 {
-    // ImGui initialization
-    ImGui_ImplWin32_EnableDpiAwareness();
-    _mainScale = ImGui_ImplWin32_GetDpiScaleForMonitor(MonitorFromPoint(POINT{ 0, 0 }, MONITOR_DEFAULTTOPRIMARY));
-
-    // Win32 stuff
-    w32CreateWindow(nShowCmd);
-    _vkAdapter.initDevice(hInstance, _hwnd);
+    windowSystem->createWindow(&_vkAdapter);
 
     // Setup ImGui
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGuiIO& io = ImGui::GetIO();
     io.IniFilename = NULL;
     ImGui::LoadIniSettingsFromDisk(_imGuiIniPath.string().c_str());
 
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-    
+
     ImGui::StyleColorsDark();
 
     // Scaling
     ImGuiStyle& style = ImGui::GetStyle();
-    style.ScaleAllSizes(_mainScale);
-    style.FontScaleDpi = _mainScale;
+    style.ScaleAllSizes(windowSystem->getMainScale());
+    style.FontScaleDpi = windowSystem->getMainScale();
 
-    ImGui_ImplWin32_Init(_hwnd);
-
-    ImFont* font = io.Fonts->AddFontFromMemoryCompressedTTF(inter_compressed_data, inter_compressed_size, _mainScale * 20.f);
+    ImFont* font = io.Fonts->AddFontFromMemoryCompressedTTF(
+        inter_compressed_data,
+        inter_compressed_size,
+        windowSystem->getMainScale() * 20.f);
 
     resize();
 }
@@ -68,35 +45,21 @@ EDVoiceGUI::EDVoiceGUI(
 EDVoiceGUI::~EDVoiceGUI()
 {
     vkDeviceWaitIdle(_vkAdapter.getDevice());
-    
-    ImGui::SaveIniSettingsToDisk(_imGuiIniPath.string().c_str());
-    ImGui_ImplVulkan_Shutdown();
-    ImGui_ImplWin32_Shutdown();
 
-    DestroyWindow(_hwnd);
-    UnregisterClassW(CLASS_NAME, _hInstance);
+    ImGui::SaveIniSettingsToDisk(_imGuiIniPath.string().c_str());
+
+    _windowSystem->destroyWindow();
+
+    delete _app;
 }
 
 
 void EDVoiceGUI::run()
 {
-    bool quit = false;
-
-    while (!quit)
+    while (!_windowSystem->quit())
     {
-        MSG msg;
-        while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
-        {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
+        _windowSystem->render();
 
-            if (msg.message == WM_QUIT) {
-                quit = true;
-            }
-        }
-
-        ImGui_ImplVulkan_NewFrame();
-        ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
         beginMainWindow();
@@ -177,12 +140,12 @@ void EDVoiceGUI::beginMainWindow()
 {
     ImGuiViewport* pViewport = ImGui::GetMainViewport();
 
-    if (_borderlessWindow) {
+    if (_windowSystem->borderlessWindow()) {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 0.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
 
-        ImGui::SetNextWindowSize(ImVec2(pViewport->Size.x, _titlebarHeight));
+        ImGui::SetNextWindowSize(ImVec2(pViewport->Size.x, _windowSystem->titleBarHeight()));
         ImGui::SetNextWindowPos(ImVec2(0, 0));
         ImGui::Begin("Title", nullptr,
             ImGuiWindowFlags_NoMove |
@@ -195,14 +158,12 @@ void EDVoiceGUI::beginMainWindow()
         const ImGuiStyle& style = ImGui::GetStyle();
         const float titleMarginLeft = 8.f;
         const float buttonWidth = 55.f;
-        const ImVec2 buttonSize(buttonWidth, _titlebarHeight);
-
-        _totalButtonWidth = 3 * buttonWidth;
+        const ImVec2 buttonSize(buttonWidth, _windowSystem->titleBarHeight());
 
         // Center title vertically
         ImGui::PushFont(NULL, style.FontSizeBase * 1.2f);
-        ImGui::SetCursorPos(ImVec2(titleMarginLeft, .5f * (_titlebarHeight - ImGui::GetFontSize())));
-        ImGui::Text(WINDOW_TITLE_STD);
+        ImGui::SetCursorPos(ImVec2(titleMarginLeft, .5f * (_windowSystem->titleBarHeight() - ImGui::GetFontSize())));
+        ImGui::Text("%s", _windowSystem->windowTitle());
         ImGui::PopFont();
 
         // Minimize & Resize buttons
@@ -211,10 +172,10 @@ void EDVoiceGUI::beginMainWindow()
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(255, 255, 255, 50));
         {
             ImGui::SetCursorPos(ImVec2(pViewport->Size.x - 3 * buttonWidth, 0.));
-            if (ImGui::Button("-", buttonSize)) { PostMessage(_hwnd, WM_SYSCOMMAND, SC_MINIMIZE, 0); }
+            if (ImGui::Button("-", buttonSize)) { _windowSystem->minimizeWindow(); }
 
             ImGui::SetCursorPos(ImVec2(pViewport->Size.x - 2 * buttonWidth, 0.));
-            if (ImGui::Button("+", buttonSize)) { PostMessage(_hwnd, WM_SYSCOMMAND, IsZoomed(_hwnd) ? SC_RESTORE : SC_MAXIMIZE, 0); }
+            if (ImGui::Button("+", buttonSize)) { _windowSystem->maximizeRestoreWindow(); }
         }
         ImGui::PopStyleColor(3);
 
@@ -224,7 +185,7 @@ void EDVoiceGUI::beginMainWindow()
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(255, 0, 0, 255));
         {
             ImGui::SetCursorPos(ImVec2(pViewport->Size.x - buttonWidth, 0.));
-            if (ImGui::Button("x", buttonSize)) { PostMessage(_hwnd, WM_CLOSE, 0, 0); }
+            if (ImGui::Button("x", buttonSize)) { _windowSystem->closeWindow(); }
         }
         ImGui::PopStyleColor(3);
 
@@ -232,16 +193,16 @@ void EDVoiceGUI::beginMainWindow()
         ImU32 col = ImGui::GetColorU32(ImGuiCol_Separator);
 
         ImGui::GetWindowDrawList()->AddLine(
-            ImVec2(0, _titlebarHeight),
-            ImVec2(pViewport->Size.x, _titlebarHeight),
+            ImVec2(0, _windowSystem->titleBarHeight()),
+            ImVec2(pViewport->Size.x, _windowSystem->titleBarHeight()),
             col, 1.0f
         );
 
         ImGui::End();
         ImGui::PopStyleVar(3);
 
-        ImGui::SetNextWindowSize(ImVec2(pViewport->Size.x, pViewport->Size.y - _titlebarHeight));
-        ImGui::SetNextWindowPos(ImVec2(0, _titlebarHeight));
+        ImGui::SetNextWindowSize(ImVec2(pViewport->Size.x, pViewport->Size.y - _windowSystem->titleBarHeight()));
+        ImGui::SetNextWindowPos(ImVec2(0, _windowSystem->titleBarHeight()));
     }
     else {
         ImGui::SetNextWindowSize(pViewport->Size);
@@ -265,7 +226,7 @@ void EDVoiceGUI::endMainWindow()
 
 void EDVoiceGUI::voicePackGUI()
 {
-    VoicePackManager& voicepack = _app.getVoicepack();
+    VoicePackManager& voicepack = _app->getVoicepack();
 
     size_t selectedVoicePackIdx = voicepack.getCurrentVoicePackIndex();
 
@@ -274,7 +235,7 @@ void EDVoiceGUI::voicePackGUI()
 #else
     const char* defaultVoicepackLabel = "Current Voicepack";
 #endif
-    ImGui::Text(defaultVoicepackLabel);
+    ImGui::Text("%s", defaultVoicepackLabel);
     ImGui::SameLine();
     if (ImGui::BeginCombo(
             "##ComboVoicePack",
@@ -302,27 +263,11 @@ void EDVoiceGUI::voicePackGUI()
     }
 
     ImGui::SameLine();
-    if (ImGui::Button("Add")) {
-        const std::string newVoicePack = w32OpenFileName(
-            "Select voicepack file", 
-            "", 
-            "json files\0*.json\0", 
-            false);
 
-        if (!newVoicePack.empty()) {
-            try {
-                std::string& voicepackName = std::filesystem::path(newVoicePack).stem().string();
-                size_t idxNewVoicePack = voicepack.addVoicePack(voicepackName, newVoicePack);
-                voicepack.loadVoicePackByIndex(idxNewVoicePack);
-            }
-            catch (const std::runtime_error& e) {
-                _logErrStr = e.what();
-                _hasError = true;
-            }
-        }
+    if (ImGui::Button("Add")) {
+        _windowSystem->openVoicePackFileDialog(this, EDVoiceGUI::loadVoicePack);
     }
 
-    //ImGui::SameLine();
     float volume = voicepack.getVolume();
     ImGui::SliderFloat("Volume", &volume, 0.f, 1.f, "%.2f");
 
@@ -331,32 +276,35 @@ void EDVoiceGUI::voicePackGUI()
     }
 
 #ifdef BUILD_MEDICORP
-    ImGui::Text("MediCorp Compliant: %s", _app.getVoicepack().isAltaCompliant() ? "Yes" : "No");
+    ImGui::Text("MediCorp Compliant: %s", _app->getVoicepack().isAltaCompliant() ? "Yes" : "No");
 #endif
 
     ImGui::Spacing();
 
     if (ImGui::CollapsingHeader("Status event voicelines", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::PushID("Status");
-        voicePackStatusGUI(voicepack);
+        voicePackStatusGUI();
         ImGui::PopID();
     }
 
     if (ImGui::CollapsingHeader("Special events voicelines", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::PushID("Special");
-        voicePackSpecialEventGUI(voicepack);
+        voicePackSpecialEventGUI();
         ImGui::PopID();
     }
 
     if (ImGui::CollapsingHeader("Journal events voicelines", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::PushID("Journal");
-        voicePackJourmalEventGUI(voicepack);
+        voicePackJourmalEventGUI();
         ImGui::PopID();
     }
 }
 
 
-void EDVoiceGUI::voicePackStatusGUI(VoicePackManager& voicepack) {
+void EDVoiceGUI::voicePackStatusGUI()
+{
+    VoicePackManager& voicepack = _app->getVoicepack();
+
     const std::array<std::array<VoiceTriggerStatus, 2 * StatusEvent::N_StatusEvents>, N_Vehicles>& statusActive = voicepack.getVoiceStatusActive();
     static ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter;
 
@@ -410,7 +358,7 @@ void EDVoiceGUI::voicePackStatusGUI(VoicePackManager& voicepack) {
                     }
 
                     ImGui::TableNextColumn();
-                    ImGui::Text(prettyPrintStatusState((StatusEvent)iEvent, statusState));
+                    ImGui::Text("%s", prettyPrintStatusState((StatusEvent)iEvent, statusState));
                 }
             }
         }
@@ -420,8 +368,10 @@ void EDVoiceGUI::voicePackStatusGUI(VoicePackManager& voicepack) {
 }
 
 
-void EDVoiceGUI::voicePackJourmalEventGUI(VoicePackManager& voicepack)
+void EDVoiceGUI::voicePackJourmalEventGUI()
 {
+    VoicePackManager& voicepack = _app->getVoicepack();
+
     const std::map<std::string, VoiceTriggerStatus>& eventItems = voicepack.getVoiceJournalActive();
 
     static ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter;
@@ -448,9 +398,9 @@ void EDVoiceGUI::voicePackJourmalEventGUI(VoicePackManager& voicepack)
                 if (active != (triggerStatus == Active)) {
                     voicepack.setVoiceJournalState(voiceItem.first, active);
                 }
-            
+
                 ImGui::TableNextColumn();
-                ImGui::Text(voiceItem.first.c_str());
+                ImGui::Text("%s", voiceItem.first.c_str());
             }
         }
 
@@ -459,8 +409,10 @@ void EDVoiceGUI::voicePackJourmalEventGUI(VoicePackManager& voicepack)
 }
 
 
-void EDVoiceGUI::voicePackSpecialEventGUI(VoicePackManager& voicepack)
+void EDVoiceGUI::voicePackSpecialEventGUI()
 {
+    VoicePackManager& voicepack = _app->getVoicepack();
+
     // TODO: shitty copy paste... but works for now :(
     const std::array<VoiceTriggerStatus, N_SpecialEvents>& eventItems = voicepack.getVoiceSpecialActive();
 
@@ -488,13 +440,32 @@ void EDVoiceGUI::voicePackSpecialEventGUI(VoicePackManager& voicepack)
                 if (active != (triggerStatus == Active)) {
                     voicepack.setVoiceSpecialState((SpecialEvent)iEvent, active);
                 }
-            
+
                 ImGui::TableNextColumn();
-                ImGui::Text(prettyPrintSpecialEvent((SpecialEvent)iEvent));
+                ImGui::Text("%s", prettyPrintSpecialEvent((SpecialEvent)iEvent));
             }
         }
 
         ImGui::EndTable();
+    }
+}
+
+
+void EDVoiceGUI::loadVoicePack(void* userdata, std::string path)
+{
+    EDVoiceGUI* obj = (EDVoiceGUI*)userdata;
+    VoicePackManager& voicepack = obj->_app->getVoicepack();
+
+    if (!path.empty()) {
+        try {
+            const std::string voicepackName = std::filesystem::path(path).stem().string();
+            size_t idxNewVoicePack = voicepack.addVoicePack(voicepackName, path);
+            voicepack.loadVoicePackByIndex(idxNewVoicePack);
+        }
+        catch (const std::runtime_error& e) {
+            obj->_logErrStr = e.what();
+            obj->_hasError = true;
+        }
     }
 }
 
@@ -571,294 +542,4 @@ const char* EDVoiceGUI::prettyPrintSpecialEvent(SpecialEvent event)
     }
 
     return "Unknown";
-}
-
-
-// ----------------------------------------------------------------------------
-// WIN32 specific mess
-// ----------------------------------------------------------------------------
-
-
-extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
-LRESULT CALLBACK EDVoiceGUI::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-    if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam)) {
-        return true;
-    }
-
-    if (msg == WM_NCCREATE) {
-        auto userdata = reinterpret_cast<CREATESTRUCTW*>(lParam)->lpCreateParams;
-        // store window instance pointer in window user data
-        ::SetWindowLongPtrW(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(userdata));
-    }
-    if (auto window_ptr = reinterpret_cast<EDVoiceGUI*>(::GetWindowLongPtrW(hWnd, GWLP_USERDATA))) {
-        auto& window = *window_ptr;
-
-        switch (msg) {
-        case WM_NCCALCSIZE: {
-            if (wParam == TRUE && window._borderlessWindow) {
-                auto& params = *reinterpret_cast<NCCALCSIZE_PARAMS*>(lParam);
-                window.w32AdjustMaximizedClientRect(params.rgrc[0]);
-                return 0;
-            }
-            break;
-        }
-        case WM_NCHITTEST: {
-            // When we have no border or title bar, we need to perform our
-            // own hit testing to allow resizing and moving.
-            if (window._borderlessWindow) {
-                LRESULT hitResult = window.w32HitTest(POINT{
-                    GET_X_LPARAM(lParam),
-                    GET_Y_LPARAM(lParam)
-                    });
-
-                if (hitResult) {
-                    return hitResult;
-                }
-            }
-            break;
-        }
-        case WM_NCACTIVATE: {
-            if (!window.w32CompositionEnabled()) {
-                // Prevents window frame reappearing on window activation
-                // in "basic" theme, where no aero shadow is present.
-                return 1;
-            }
-            break;
-        }
-
-        case WM_CLOSE: {
-            ::DestroyWindow(hWnd);
-            return 0;
-        }
-
-        case WM_DESTROY: {
-            ::PostQuitMessage(0);
-            return 0;
-        }
-
-        case WM_KEYDOWN:
-        case WM_SYSKEYDOWN: {
-            switch (wParam) {
-            //case VK_F8: { window.borderless_drag = !window.borderless_drag;        return 0; }
-            //case VK_F9: { window.borderless_resize = !window.borderless_resize;    return 0; }
-            //case VK_F10: { window.set_borderless(!window._borderlessWindow);               return 0; }
-            case VK_F10: { window.w32SetBorderless(!window._borderlessWindow);               return 0; }
-            //case VK_F11: { window.set_borderless_shadow(!window.borderless_shadow); return 0; }
-            }
-            break;
-        }
-        }
-    }
-
-    return ::DefWindowProcW(hWnd, msg, wParam, lParam);
-}
-
-
-bool EDVoiceGUI::w32CompositionEnabled()
-{
-    BOOL compositionEnabled = false;
-    const HRESULT queryComposition = ::DwmIsCompositionEnabled(&compositionEnabled);
-
-    return compositionEnabled && (queryComposition == S_OK);
-}
-
-
-DWORD EDVoiceGUI::w32Style()
-{
-    if (_borderlessWindow) {
-        if (w32CompositionEnabled()) {
-            return WS_POPUP | WS_THICKFRAME | WS_CAPTION | WS_SYSMENU | WS_MAXIMIZEBOX | WS_MINIMIZEBOX;
-        }
-        else {
-            return WS_POPUP | WS_THICKFRAME | WS_SYSMENU | WS_MAXIMIZEBOX | WS_MINIMIZEBOX;
-        }
-    }
-    else {
-        return WS_OVERLAPPEDWINDOW | WS_THICKFRAME | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
-    }
-}
-
-
-void EDVoiceGUI::w32CreateWindow(int nShowCmd)
-{
-    WNDCLASSEXW wcx{};
-    wcx.cbSize = sizeof(wcx);
-    wcx.style = CS_HREDRAW | CS_VREDRAW;
-    wcx.hInstance = nullptr;
-    wcx.lpfnWndProc = EDVoiceGUI::w32WndProc;
-    wcx.lpszClassName = CLASS_NAME;
-    wcx.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
-    wcx.hCursor = ::LoadCursorW(nullptr, IDC_ARROW);
-    const ATOM result = ::RegisterClassExW(&wcx);
-
-    if (!result) {
-        throw std::runtime_error("failed to register window class");
-    }
-
-    _hwnd = ::CreateWindowExW(
-        0,
-        wcx.lpszClassName,
-        WINDOW_TITLE,
-        w32Style(),
-        CW_USEDEFAULT, CW_USEDEFAULT,
-        (int)(_mainScale * 640), (int)(_mainScale * 700),
-        nullptr,
-        nullptr,
-        nullptr,
-        this
-    );
-
-    if (w32CompositionEnabled()) {
-        static const MARGINS shadow_state[2]{ { 0,0,0,0 },{ 1,1,1,1 } };
-        ::DwmExtendFrameIntoClientArea(_hwnd, &shadow_state[_borderlessWindow ? 1 : 0]);
-    }
-
-    // Center window to the screen
-    RECT rc;
-    GetWindowRect(_hwnd, &rc);
-    int winWidth = rc.right - rc.left;
-    int winHeight = rc.bottom - rc.top;
-
-    int screenWidth = GetSystemMetrics(SM_CXSCREEN);
-    int screenHeight = GetSystemMetrics(SM_CYSCREEN);
-
-    int x = (screenWidth - winWidth) / 2;
-    int y = (screenHeight - winHeight) / 2;
-
-    ::SetWindowPos(_hwnd, nullptr, x, y, 0, 0, SWP_FRAMECHANGED | SWP_NOSIZE);
-    ::ShowWindow(_hwnd, nShowCmd);
-    ::UpdateWindow(_hwnd);
-}
-
-
-void EDVoiceGUI::w32SetBorderless(bool borderless)
-{
-    if (borderless != _borderlessWindow) {
-        _borderlessWindow = borderless;
-
-        ::SetWindowLongPtrW(_hwnd, GWL_STYLE, static_cast<LONG>(w32Style()));
-
-        if (w32CompositionEnabled()) {
-            static const MARGINS shadow_state[2]{ { 0,0,0,0 },{ 1,1,1,1 } };
-            ::DwmExtendFrameIntoClientArea(_hwnd, &shadow_state[_borderlessWindow ? 1 : 0]);
-        }
-
-        ::SetWindowPos(_hwnd, nullptr, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE);
-        ::ShowWindow(_hwnd, SW_SHOW);
-        ::UpdateWindow(_hwnd);
-    }
-}
-
-
-bool EDVoiceGUI::w32IsMaximized()
-{
-    WINDOWPLACEMENT placement = {};
-    if (!::GetWindowPlacement(_hwnd, &placement)) {
-        return false;
-    }
-
-    return placement.showCmd == SW_MAXIMIZE;
-}
-
-
-void EDVoiceGUI::w32AdjustMaximizedClientRect(RECT& rect)
-{
-    if (!w32IsMaximized()) {
-        return;
-    }
-
-    auto monitor = ::MonitorFromWindow(_hwnd, MONITOR_DEFAULTTONULL);
-    if (!monitor) {
-        return;
-    }
-
-    MONITORINFO monitor_info{};
-    monitor_info.cbSize = sizeof(monitor_info);
-    if (!::GetMonitorInfoW(monitor, &monitor_info)) {
-        return;
-    }
-
-    // when maximized, make the client area fill just the monitor (without task bar) rect,
-    // not the whole window rect which extends beyond the monitor.
-    rect = monitor_info.rcWork;
-}
-
-
-LRESULT EDVoiceGUI::w32HitTest(POINT cursor) const
-{
-    // identify borders and corners to allow resizing the window.
-    // Note: On Windows 10, windows behave differently and
-    // allow resizing outside the visible window frame.
-    // This implementation does not replicate that behavior.
-    const POINT border{
-        ::GetSystemMetrics(SM_CXFRAME) + ::GetSystemMetrics(SM_CXPADDEDBORDER),
-        ::GetSystemMetrics(SM_CYFRAME) + ::GetSystemMetrics(SM_CXPADDEDBORDER)
-    };
-    RECT window;
-    if (!::GetWindowRect(_hwnd, &window)) {
-        return HTNOWHERE;
-    }
-
-    const auto drag = false;//borderless_drag ? HTCAPTION : HTCLIENT;
-
-    enum region_mask {
-        client = 0b0000,
-        left = 0b0001,
-        right = 0b0010,
-        top = 0b0100,
-        bottom = 0b1000,
-    };
-
-    const auto result =
-        left * (cursor.x < (window.left + border.x)) |
-        right * (cursor.x >= (window.right - border.x)) |
-        top * (cursor.y < (window.top + border.y)) |
-        bottom * (cursor.y >= (window.bottom - border.y));
-
-    switch (result) {
-        case left: return HTLEFT;
-        case right: return HTRIGHT;
-        case top: return HTTOP;
-        case bottom: return HTBOTTOM;
-        case top | left: return HTTOPLEFT;
-        case top | right: return HTTOPRIGHT;
-        case bottom | left: return HTBOTTOMLEFT;
-        case bottom | right: return HTBOTTOMRIGHT;
-        case client: {
-            // TODO: Adjust
-            if (cursor.y < (window.top + _titlebarHeight) && cursor.x < (window.right - _totalButtonWidth)) {
-                return HTCAPTION;
-            }
-            else {
-                return HTCLIENT;
-            }
-        }
-        default: return HTNOWHERE;
-    }
-}
-
-
-std::string EDVoiceGUI::w32OpenFileName(const char* title, const char* initialDir, const char* filter, bool multiSelect)
-{
-    OPENFILENAMEA ofn = { 0 };
-    char fileBuffer[MAX_PATH * 4] = { 0 };
-
-    ofn.lStructSize = sizeof(ofn);
-    ofn.hwndOwner = _hwnd;
-    ofn.lpstrTitle = title;
-    ofn.lpstrInitialDir = initialDir;
-    ofn.lpstrFilter = filter;
-    ofn.nFilterIndex = 1;
-    ofn.lpstrFile = fileBuffer;
-    ofn.nMaxFile = sizeof(fileBuffer);
-    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
-    if (multiSelect)
-        ofn.Flags |= OFN_ALLOWMULTISELECT;
-
-    if (GetOpenFileNameA(&ofn)) {
-        return std::string(fileBuffer);
-    }
-    return {};
 }

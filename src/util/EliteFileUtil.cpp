@@ -1,8 +1,12 @@
-#pragma once
-
 #include "EliteFileUtil.h"
 
+#ifdef _WIN32
 #include <shlobj.h>
+#else
+#include <unistd.h>
+#include <sys/types.h>
+#include <pwd.h>
+#endif
 
 #ifdef min
 #undef min
@@ -10,7 +14,11 @@
 
 bool EliteFileUtil::isJournalFile(const std::filesystem::path& path)
 {
+#ifdef _WIN32
     const std::wstring filename = path.filename();
+#else
+    const std::wstring filename = path.filename().wstring();
+#endif
 
     return filename.rfind(L"Journal.", 0) == 0 && path.extension() == L".log";
 }
@@ -40,7 +48,11 @@ std::filesystem::path EliteFileUtil::getLatestJournal(const std::filesystem::pat
 
 bool EliteFileUtil::isStatusFile(const std::filesystem::path& path)
 {
+#ifdef _WIN32
     const std::wstring filename = path.filename();
+#else
+    const std::wstring filename = path.filename().wstring();
+#endif
 
     return filename == L"Status.json";
 }
@@ -54,6 +66,7 @@ std::filesystem::path EliteFileUtil::getStatusFile(const std::filesystem::path& 
 
 std::filesystem::path EliteFileUtil::getSavedGamesPath()
 {
+#ifdef _WIN32
     PWSTR path = NULL;
     std::wstring result;
 
@@ -61,6 +74,14 @@ std::filesystem::path EliteFileUtil::getSavedGamesPath()
         result = path;
     }
     CoTaskMemFree(path);
+#else
+    // TODO Linux
+    struct passwd *pw = getpwuid(getuid());
+    const std::string homedir = pw->pw_dir;
+
+    std::filesystem::path result = std::filesystem::path(homedir) /    
+        ".local"/"share"/"Steam"/"steamapps"/"compatdata"/"359320"/"pfx"/"drive_c"/"users"/"steamuser"/"Saved Games";
+#endif
 
     return result;
 }
@@ -74,8 +95,7 @@ std::filesystem::path EliteFileUtil::getUserProfile()
 
 std::filesystem::path EliteFileUtil::resolvePath(
     const std::filesystem::path& basePath,
-    const std::string& file)
+    const std::filesystem::path& file)
 {
-    std::filesystem::path p(file);
-    return p.is_absolute() ? p : (basePath / p);
+    return file.is_absolute() ? file : (basePath / file);
 }

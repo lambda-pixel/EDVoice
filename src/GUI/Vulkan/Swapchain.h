@@ -10,9 +10,10 @@ public:
         VkPhysicalDevice physicalDevice,
         VkDevice device,
         VkSurfaceKHR surface,
+        uint32_t width, uint32_t height,
         VkImageLayout optimalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
-    virtual void updateSwapchain();
+    virtual void updateSwapchain(uint32_t width, uint32_t height);
     virtual void initSwapchainResources();
 
     virtual ~Swapchain();
@@ -36,6 +37,8 @@ public:
     uint32_t width() const { return _width; }
     uint32_t height() const { return _height; }
 
+    bool valid() const { return _valid; }
+
 protected:
     VkPhysicalDevice _physicalDevice;
     VkDevice _device;
@@ -58,4 +61,5 @@ protected:
     VkImageLayout _optimalLayout;
     VkFormat _format;
     uint32_t _width, _height;
+    bool _valid = false;
 };

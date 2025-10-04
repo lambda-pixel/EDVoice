@@ -4,11 +4,16 @@
 #include <cassert>
 #include <string>
 
+#include <config.h>
 #include "VkUtil.h"
+#include "../WindowSystem.h"
 
 
-VkAdapter::VkAdapter(const std::vector<char*>& instanceExtensions)
-    : _instance(VK_NULL_HANDLE)
+VkAdapter::VkAdapter(
+    WindowSystem* windowSystem,
+    const std::vector<const char*>& instanceExtensions)
+    : _windowSystem(windowSystem)
+    , _instance(VK_NULL_HANDLE)
     , _physicalDevice(VK_NULL_HANDLE)
     , _device(VK_NULL_HANDLE)
     , _iQueueFamily(0)
@@ -32,17 +37,26 @@ VkAdapter::VkAdapter(const std::vector<char*>& instanceExtensions)
     std::vector<const char*> enabledLayerNames;
 
 #ifdef VULKAN_DEBUG_LAYER
-    std::cout << "Enabling Vulkan validation layer" << std::endl;
+    std::cout << "[VULKAN] Enabling Vulkan validation layer" << std::endl;
     enabledLayerNames.push_back("VK_LAYER_KHRONOS_validation");
 #endif
+
+    std::vector<const char*> extensions(instanceExtensions);
+    std::vector<const char*> platformExtensions;
+    
+    _windowSystem->getVkInstanceExtensions(platformExtensions);
+
+    for (const char*& ext : platformExtensions) {
+        extensions.push_back(ext);
+    }
 
     const VkInstanceCreateInfo instanceCreateInfo = {
         VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO, nullptr, 0, // sType, pNext, flags
         &applicationInfo,                                   // pApplicationInfo
         static_cast<uint32_t>(enabledLayerNames.size()),
         enabledLayerNames.data(),                           // ppEnabledLayerNames
-        (uint32_t)instanceExtensions.size(),
-        instanceExtensions.data()                           // ppEnabledExtensionNames
+        static_cast<uint32_t>(extensions.size()),
+        extensions.data()                                   // ppEnabledExtensionNames
     };
 
     VK_THROW_IF_FAILED(vkCreateInstance(&instanceCreateInfo, nullptr, &_instance));
@@ -78,23 +92,14 @@ VkAdapter::~VkAdapter()
     }
 }
 
-
-void VkAdapter::initDevice(
-    HINSTANCE hInstance, HWND hwnd,
-    const std::vector<char*>& deviceExtensions)
+void VkAdapter::initDevice(const std::vector<const char*>& deviceExtensions)
 {
-    std::vector<char*> extensions(deviceExtensions);
+    std::vector<const char*> extensions(deviceExtensions);
     extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
-    // Create a Vulkan surface (WIN32 specific)
-    const VkWin32SurfaceCreateInfoKHR surfaceCreateInfo = {
-        VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR, nullptr, // sType, pNext
-        0,                                                        // flags
-        hInstance,                                                // hinstance
-        hwnd                                                      // hwnd
-    };
+    int width, height;
 
-    VK_THROW_IF_FAILED(vkCreateWin32SurfaceKHR(_instance, &surfaceCreateInfo, nullptr, &_surface));
+    _windowSystem->createVkSurfaceKHR(_instance, &_surface, &width, &height);
 
     // Find a suitable physical device
     uint32_t nPhysicalDevices;
@@ -135,7 +140,7 @@ void VkAdapter::initDevice(
                 _physicalDevice = device;
                 _iQueueFamily = iQueue;
 
-                std::cout << "Selected device: " << deviceProperties.deviceName << std::endl;
+                std::cout << "[VULKAN] Selected device: " << deviceProperties.deviceName << std::endl;
 
                 break;
             }
@@ -170,11 +175,14 @@ void VkAdapter::initDevice(
     VK_THROW_IF_FAILED(vkCreateDevice(_physicalDevice, &deviceCreateInfo, nullptr, &_device));
     vkGetDeviceQueue(_device, _iQueueFamily, 0, &_queue);
 
-    _swapchain = new Swapchain(_physicalDevice, _device, _surface);
+    _swapchain = new Swapchain(_physicalDevice, _device, _surface, width, height);
 
     createRenderPass();
-    createFramebuffer();
-    createCommandBuffer();
+
+    if (_swapchain->valid()) {
+        createFramebuffer();
+        createCommandBuffer();
+    }
 }
 
 
@@ -221,16 +229,6 @@ VkCommandBuffer VkAdapter::startNewFrame()
 
         return _commandBuffer[iSwapchainImage];
     }
-    else if (acquired == VK_SUBOPTIMAL_KHR ||
-        acquired == VK_ERROR_OUT_OF_DATE_KHR) {
-        // TODO: Maybe a bit overkill but works for now
-        vkDeviceWaitIdle(_device);
-
-        // Swapchain was updated, we need to update other resources
-        createRenderPass();
-        createFramebuffer();
-        createCommandBuffer();
-    }
 
     return VK_NULL_HANDLE;
 }
@@ -262,6 +260,23 @@ void VkAdapter::presentFrame()
 {
     if (_currFrameInfo.acquired) {
         _swapchain->present(_queue, _fenceCommandBuffer[_currFrameInfo.iSwapchainImage]);
+    }
+}
+
+
+void VkAdapter::resized(uint32_t width, uint32_t height)
+{
+    if (!_swapchain) return;
+
+    vkDeviceWaitIdle(_device);
+
+    _swapchain->updateSwapchain(width, height);
+
+    // Swapchain was updated, we need to update other resources
+    if (_swapchain->valid()) {
+        createRenderPass();
+        createFramebuffer();
+        createCommandBuffer();
     }
 }
 
