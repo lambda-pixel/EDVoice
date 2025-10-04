@@ -12,8 +12,7 @@
 VkAdapter::VkAdapter(
     WindowSystem* windowSystem,
     const std::vector<const char*>& instanceExtensions)
-    : _windowSystem(windowSystem)
-    , _instance(VK_NULL_HANDLE)
+    : _instance(VK_NULL_HANDLE)
     , _physicalDevice(VK_NULL_HANDLE)
     , _device(VK_NULL_HANDLE)
     , _iQueueFamily(0)
@@ -44,7 +43,7 @@ VkAdapter::VkAdapter(
     std::vector<const char*> extensions(instanceExtensions);
     std::vector<const char*> platformExtensions;
     
-    _windowSystem->getVkInstanceExtensions(platformExtensions);
+    windowSystem->getVkInstanceExtensions(platformExtensions);
 
     for (const char*& ext : platformExtensions) {
         extensions.push_back(ext);
@@ -92,14 +91,15 @@ VkAdapter::~VkAdapter()
     }
 }
 
-void VkAdapter::initDevice(const std::vector<const char*>& deviceExtensions)
+
+void VkAdapter::initDevice(Window* window, const std::vector<const char*>& deviceExtensions)
 {
     std::vector<const char*> extensions(deviceExtensions);
     extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
     int width, height;
 
-    _windowSystem->createVkSurfaceKHR(_instance, &_surface, &width, &height);
+    window->createVkSurfaceKHR(_instance, &_surface, &width, &height);
 
     // Find a suitable physical device
     uint32_t nPhysicalDevices;

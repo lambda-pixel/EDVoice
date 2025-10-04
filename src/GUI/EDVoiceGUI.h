@@ -40,6 +40,7 @@ private:
     EDVoiceApp* _app;
     VkAdapter _vkAdapter;
     WindowSystem* _windowSystem;
+    Window* _mainWindow;
 
     bool _imGuiInitialized = false;
 

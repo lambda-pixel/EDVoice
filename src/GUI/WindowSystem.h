@@ -3,6 +3,8 @@
 #include <string>
 #include <config.h>
 
+#include <imgui.h>
+
 #if defined(USE_SDL) || defined(USE_SDL_MIXER)
     #include <SDL3/SDL.h>
 #endif
@@ -29,8 +31,21 @@ public:
 
     virtual ~WindowSystem();
 
-    void createWindow(VkAdapter* vkAdapter);
-    void destroyWindow();
+    void getVkInstanceExtensions(std::vector<const char*>& extensions) const;
+
+#ifndef USE_SDL
+    HINSTANCE _hInstance;
+    int _nShowCmd;
+#endif
+    // TODO: create vulkan context first
+};
+
+
+class Window
+{
+public:
+    Window(WindowSystem* sys, VkAdapter* vkAdapter, const std::string& title);
+    virtual ~Window();
 
     void render();
 
@@ -50,21 +65,22 @@ public:
 
     const char* windowTitle() const;
 
-    void getVkInstanceExtensions(std::vector<const char*>& extensions) const;
-
     void createVkSurfaceKHR(
         VkInstance instance,
         VkSurfaceKHR* surface, int *width, int *height) const;
 
 private:
     VkAdapter* _vkAdapter = nullptr;
+    WindowSystem* _sys;
+
+    ImGuiContext* _imGuiContext;
 
     float _mainScale = 1.f;
     bool _borderlessWindow = true;
     // TODO: make scale aware
     float _titlebarHeight = 32.f;
-    float _buttonWidth = 32.f;
-    float _totalButtonWidth = 3 * 32.f;
+    float _buttonWidth = 55.f;
+    float _totalButtonWidth = 3 * 55.f;
 
     bool _quit = false;
 
@@ -87,7 +103,6 @@ private:
     static LRESULT CALLBACK w32WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
     bool w32CompositionEnabled();
     DWORD w32Style();
-    void w32CreateWindow(int nShowCmd);
     void w32SetBorderless(bool borderless);
     bool w32IsMaximized();
     void w32AdjustMaximizedClientRect(RECT& rect);
@@ -95,8 +110,7 @@ private:
     std::string w32OpenFileName(const char* title, const char* initialDir, const char* filter, bool multiSelect);
 
     HWND _hwnd;
-    HINSTANCE _hInstance;
-    int _nShowCmd;
+    std::wstring _className;
 #endif
 };
 

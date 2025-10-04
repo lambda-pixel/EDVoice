@@ -7,6 +7,7 @@
 #include "Swapchain.h"
 
 class WindowSystem;
+class Window;
 
 struct CurrFrameInfo {
     uint32_t iSwapchainImage;
@@ -25,7 +26,7 @@ public:
 
     ~VkAdapter();
 
-    void initDevice(const std::vector<const char*>& deviceExtensions = {});
+    void initDevice(Window* window, const std::vector<const char*>& deviceExtensions = {});
 
     VkInstance getInstance() const { return _instance; }
     VkPhysicalDevice getPhysicalDevice() const { return _physicalDevice; }
@@ -47,8 +48,6 @@ private:
     void createFramebuffer();
     void createRenderPass();
     void createCommandBuffer();
-
-    WindowSystem* _windowSystem;
 
     VkInstance _instance = VK_NULL_HANDLE;
     VkPhysicalDevice _physicalDevice = VK_NULL_HANDLE;

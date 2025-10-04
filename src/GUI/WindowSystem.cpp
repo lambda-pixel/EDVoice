@@ -5,12 +5,11 @@
 #ifdef USE_SDL
     #include <backends/imgui_impl_sdl3.h>
 #else
-    const wchar_t CLASS_NAME[] = L"EDVoice";
-
     #include <windowsx.h>
     #include <dwmapi.h>
     #include <commdlg.h>
-
+    #include <codecvt>
+    
     #include <backends/imgui_impl_win32.h>
 #endif
 
@@ -61,7 +60,24 @@ WindowSystem::~WindowSystem()
 }
 
 
-void WindowSystem::createWindow(VkAdapter* vkAdapter)
+void WindowSystem::getVkInstanceExtensions(std::vector<const char*>& extensions) const
+{
+#ifdef USE_SDL
+    uint32_t nInstanceExt;
+    const char* const* instanceExt = SDL_Vulkan_GetInstanceExtensions(&nInstanceExt);
+
+    for (size_t i = 0; i < nInstanceExt; i++) {
+        extensions.push_back(instanceExt[i]);
+    }
+#else
+    extensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
+    extensions.push_back("VK_KHR_win32_surface");
+#endif
+}
+
+
+Window::Window(WindowSystem* sys, VkAdapter* vkAdapter, const std::string& title)
+    : _sys(sys)
 {
     _vkAdapter = vkAdapter;
 
@@ -74,7 +90,7 @@ void WindowSystem::createWindow(VkAdapter* vkAdapter)
         SDL_WINDOW_BORDERLESS;
 
     _sdlWindow = SDL_CreateWindow(
-        "EDVoice",
+        title.c_str(),
         640, 700,
         window_flags
     );
@@ -94,14 +110,14 @@ void WindowSystem::createWindow(VkAdapter* vkAdapter)
     ImGui_ImplWin32_EnableDpiAwareness();
     _mainScale = ImGui_ImplWin32_GetDpiScaleForMonitor(MonitorFromPoint(POINT{ 0, 0 }, MONITOR_DEFAULTTOPRIMARY));
 
-    const wchar_t CLASS_NAME[] = L"EDVoice";
+    _className = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(title);;
 
     WNDCLASSEXW wcx{};
     wcx.cbSize = sizeof(wcx);
     wcx.style = CS_HREDRAW | CS_VREDRAW;
     wcx.hInstance = nullptr;
-    wcx.lpfnWndProc = WindowSystem::w32WndProc;
-    wcx.lpszClassName = CLASS_NAME;
+    wcx.lpfnWndProc = Window::w32WndProc;
+    wcx.lpszClassName = _className.c_str();
     wcx.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
     wcx.hCursor = ::LoadCursorW(nullptr, IDC_ARROW);
     const ATOM result = ::RegisterClassExW(&wcx);
@@ -113,7 +129,7 @@ void WindowSystem::createWindow(VkAdapter* vkAdapter)
     _hwnd = ::CreateWindowExW(
         0,
         wcx.lpszClassName,
-        WINDOW_TITLE,
+        _className.c_str(),
         w32Style(),
         CW_USEDEFAULT, CW_USEDEFAULT,
         (int)(_mainScale * 640), (int)(_mainScale * 700),
@@ -141,21 +157,43 @@ void WindowSystem::createWindow(VkAdapter* vkAdapter)
     int y = (screenHeight - winHeight) / 2;
 
     ::SetWindowPos(_hwnd, nullptr, x, y, 0, 0, SWP_FRAMECHANGED | SWP_NOSIZE);
-    ::ShowWindow(_hwnd, _nShowCmd);
+    ::ShowWindow(_hwnd, _sys->_nShowCmd);
     ::UpdateWindow(_hwnd);
 
-    _vkAdapter->initDevice();
+    _vkAdapter->initDevice(this);
 
     IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
+    _imGuiContext = ImGui::CreateContext();
 
     ImGui_ImplWin32_Init(_hwnd);
 #endif
 }
 
 
-void WindowSystem::render()
+Window::~Window()
 {
+    ImGui::SetCurrentContext(_imGuiContext);
+
+    ImGui_ImplVulkan_Shutdown();
+
+#ifdef USE_SDL
+    ImGui_ImplSDL3_Shutdown();
+    SDL_DestroyWindow(_sdlWindow);
+#else
+    ImGui_ImplWin32_Shutdown();
+
+    DestroyWindow(_hwnd);
+    UnregisterClassW(_className.c_str(), _sys->_hInstance);
+#endif
+
+    ImGui::DestroyContext(_imGuiContext);
+}
+
+
+void Window::render()
+{
+    ImGui::SetCurrentContext(_imGuiContext);
+
 #ifdef USE_SDL
     const int TARGET_FPS = 60;
     const int FRAME_DELAY_MS = 1000 / TARGET_FPS;
@@ -190,24 +228,7 @@ void WindowSystem::render()
 }
 
 
-void WindowSystem::destroyWindow()
-{
-    ImGui_ImplVulkan_Shutdown();
-
-#ifdef USE_SDL
-    ImGui_ImplSDL3_Shutdown();
-    SDL_DestroyWindow(_sdlWindow);
-#else
-    ImGui_ImplWin32_Shutdown();
-
-    DestroyWindow(_hwnd);
-    UnregisterClassW(CLASS_NAME, _hInstance);
-#endif
-}
-
-
-
-void WindowSystem::minimizeWindow()
+void Window::minimizeWindow()
 {
 #ifdef USE_SDL
     SDL_MinimizeWindow(_sdlWindow);
@@ -217,7 +238,7 @@ void WindowSystem::minimizeWindow()
 }
 
 
-void WindowSystem::maximizeRestoreWindow()
+void Window::maximizeRestoreWindow()
 {
 #ifdef USE_SDL
     if (_isMaximized) {
@@ -234,7 +255,7 @@ void WindowSystem::maximizeRestoreWindow()
 }
 
 
-void WindowSystem::closeWindow()
+void Window::closeWindow()
 {
 #ifdef USE_SDL
     SDL_Event event;
@@ -248,7 +269,7 @@ void WindowSystem::closeWindow()
 }
 
 
-void WindowSystem::openVoicePackFileDialog(void* userdata, openedFile callback)
+void Window::openVoicePackFileDialog(void* userdata, openedFile callback)
 {
 #ifdef USE_SDL
     const SDL_DialogFileFilter filters[] = {
@@ -279,29 +300,13 @@ void WindowSystem::openVoicePackFileDialog(void* userdata, openedFile callback)
 }
 
 
-const char* WindowSystem::windowTitle() const
+const char* Window::windowTitle() const
 {
     return WINDOW_TITLE_STD;
 }
 
 
-void WindowSystem::getVkInstanceExtensions(std::vector<const char*>& extensions) const
-{
-#ifdef USE_SDL
-    uint32_t nInstanceExt;
-    const char* const* instanceExt = SDL_Vulkan_GetInstanceExtensions(&nInstanceExt);
-
-    for (size_t i = 0; i < nInstanceExt; i++) {
-        extensions.push_back(instanceExt[i]);
-    }
-#else
-    extensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
-    extensions.push_back("VK_KHR_win32_surface");
-#endif
-}
-
-
-void WindowSystem::createVkSurfaceKHR(
+void Window::createVkSurfaceKHR(
     VkInstance instance,
     VkSurfaceKHR* surface, int* width, int* height) const
 {
@@ -316,8 +321,8 @@ void WindowSystem::createVkSurfaceKHR(
     const VkWin32SurfaceCreateInfoKHR surfaceCreateInfo = {
         VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR, nullptr, // sType, pNext
         0,                                                        // flags
-        _hInstance,                                                // hinstance
-        _hwnd                                                      // hwnd
+        _sys->_hInstance,                                         // hinstance
+        _hwnd                                                     // hwnd
     };
 
     vkCreateWin32SurfaceKHR(instance, &surfaceCreateInfo, nullptr, surface);
@@ -336,7 +341,7 @@ void WindowSystem::createVkSurfaceKHR(
 
 #ifdef USE_SDL
 
-void WindowSystem::sdlWndProc(SDL_Event& event)
+void Window::sdlWndProc(SDL_Event& event)
 {
     ImGui_ImplSDL3_ProcessEvent(&event);
 
@@ -373,7 +378,7 @@ void WindowSystem::sdlWndProc(SDL_Event& event)
 }
 
 
-SDL_HitTestResult SDLCALL WindowSystem::sdlHitTest(SDL_Window* win, const SDL_Point* area, void* data)
+SDL_HitTestResult SDLCALL Window::sdlHitTest(SDL_Window* win, const SDL_Point* area, void* data)
 {
     WindowSystem* obj = (WindowSystem*)data;
     assert(win == obj->_sdlWindow);
@@ -424,7 +429,7 @@ SDL_HitTestResult SDLCALL WindowSystem::sdlHitTest(SDL_Window* win, const SDL_Po
 }
 
 
-void SDLCALL WindowSystem::sdlCallbackOpenFile(void* userdata, const char* const* filelist, int filter)
+void SDLCALL Window::sdlCallbackOpenFile(void* userdata, const char* const* filelist, int filter)
 {
     OpenFileCbData* obj = (OpenFileCbData*)userdata;
 
@@ -452,7 +457,7 @@ void SDLCALL WindowSystem::sdlCallbackOpenFile(void* userdata, const char* const
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-LRESULT CALLBACK WindowSystem::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK Window::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam)) {
         return true;
@@ -464,7 +469,7 @@ LRESULT CALLBACK WindowSystem::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
         ::SetWindowLongPtrW(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(userdata));
     }
 
-    if (auto window_ptr = reinterpret_cast<WindowSystem*>(::GetWindowLongPtrW(hWnd, GWLP_USERDATA))) {
+    if (auto window_ptr = reinterpret_cast<Window*>(::GetWindowLongPtrW(hWnd, GWLP_USERDATA))) {
         auto& window = *window_ptr;
 
         switch (msg) {
@@ -537,7 +542,7 @@ LRESULT CALLBACK WindowSystem::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
 }
 
 
-bool WindowSystem::w32CompositionEnabled()
+bool Window::w32CompositionEnabled()
 {
     BOOL compositionEnabled = false;
     const HRESULT queryComposition = ::DwmIsCompositionEnabled(&compositionEnabled);
@@ -546,7 +551,7 @@ bool WindowSystem::w32CompositionEnabled()
 }
 
 
-DWORD WindowSystem::w32Style()
+DWORD Window::w32Style()
 {
     if (_borderlessWindow) {
         if (w32CompositionEnabled()) {
@@ -562,59 +567,7 @@ DWORD WindowSystem::w32Style()
 }
 
 
-void WindowSystem::w32CreateWindow(int nShowCmd)
-{
-    WNDCLASSEXW wcx{};
-    wcx.cbSize = sizeof(wcx);
-    wcx.style = CS_HREDRAW | CS_VREDRAW;
-    wcx.hInstance = nullptr;
-    wcx.lpfnWndProc = WindowSystem::w32WndProc;
-    wcx.lpszClassName = CLASS_NAME;
-    wcx.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
-    wcx.hCursor = ::LoadCursorW(nullptr, IDC_ARROW);
-    const ATOM result = ::RegisterClassExW(&wcx);
-
-    if (!result) {
-        throw std::runtime_error("failed to register window class");
-    }
-
-    _hwnd = ::CreateWindowExW(
-        0,
-        wcx.lpszClassName,
-        WINDOW_TITLE,
-        w32Style(),
-        CW_USEDEFAULT, CW_USEDEFAULT,
-        (int)(_mainScale * 640), (int)(_mainScale * 700),
-        nullptr,
-        nullptr,
-        nullptr,
-        this
-    );
-
-    if (w32CompositionEnabled()) {
-        static const MARGINS shadow_state[2]{ { 0,0,0,0 },{ 1,1,1,1 } };
-        ::DwmExtendFrameIntoClientArea(_hwnd, &shadow_state[_borderlessWindow ? 1 : 0]);
-    }
-
-    // Center window to the screen
-    RECT rc;
-    GetWindowRect(_hwnd, &rc);
-    int winWidth = rc.right - rc.left;
-    int winHeight = rc.bottom - rc.top;
-
-    int screenWidth = GetSystemMetrics(SM_CXSCREEN);
-    int screenHeight = GetSystemMetrics(SM_CYSCREEN);
-
-    int x = (screenWidth - winWidth) / 2;
-    int y = (screenHeight - winHeight) / 2;
-
-    ::SetWindowPos(_hwnd, nullptr, x, y, 0, 0, SWP_FRAMECHANGED | SWP_NOSIZE);
-    ::ShowWindow(_hwnd, nShowCmd);
-    ::UpdateWindow(_hwnd);
-}
-
-
-void WindowSystem::w32SetBorderless(bool borderless)
+void Window::w32SetBorderless(bool borderless)
 {
     if (borderless != _borderlessWindow) {
         _borderlessWindow = borderless;
@@ -633,7 +586,7 @@ void WindowSystem::w32SetBorderless(bool borderless)
 }
 
 
-bool WindowSystem::w32IsMaximized()
+bool Window::w32IsMaximized()
 {
     WINDOWPLACEMENT placement = {};
     if (!::GetWindowPlacement(_hwnd, &placement)) {
@@ -644,7 +597,7 @@ bool WindowSystem::w32IsMaximized()
 }
 
 
-void WindowSystem::w32AdjustMaximizedClientRect(RECT& rect)
+void Window::w32AdjustMaximizedClientRect(RECT& rect)
 {
     if (!w32IsMaximized()) {
         return;
@@ -667,7 +620,7 @@ void WindowSystem::w32AdjustMaximizedClientRect(RECT& rect)
 }
 
 
-LRESULT WindowSystem::w32HitTest(POINT cursor) const
+LRESULT Window::w32HitTest(POINT cursor) const
 {
     // identify borders and corners to allow resizing the window.
     // Note: On Windows 10, windows behave differently and
@@ -721,7 +674,7 @@ LRESULT WindowSystem::w32HitTest(POINT cursor) const
 }
 
 
-std::string WindowSystem::w32OpenFileName(const char* title, const char* initialDir, const char* filter, bool multiSelect)
+std::string Window::w32OpenFileName(const char* title, const char* initialDir, const char* filter, bool multiSelect)
 {
     OPENFILENAMEA ofn = { 0 };
     char fileBuffer[MAX_PATH * 4] = { 0 };

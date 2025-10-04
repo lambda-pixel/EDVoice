@@ -16,7 +16,7 @@ EDVoiceGUI::EDVoiceGUI(
     , _windowSystem(windowSystem)
     , _imGuiIniPath(config.parent_path() / "imgui.ini")
 {
-    windowSystem->createWindow(&_vkAdapter);
+    _mainWindow = new Window(windowSystem, &_vkAdapter, "EDVoice");
 
     // Setup ImGui
     ImGuiIO& io = ImGui::GetIO();
@@ -30,13 +30,13 @@ EDVoiceGUI::EDVoiceGUI(
 
     // Scaling
     ImGuiStyle& style = ImGui::GetStyle();
-    style.ScaleAllSizes(windowSystem->getMainScale());
-    style.FontScaleDpi = windowSystem->getMainScale();
+    style.ScaleAllSizes(_mainWindow->getMainScale());
+    style.FontScaleDpi = _mainWindow->getMainScale();
 
     ImFont* font = io.Fonts->AddFontFromMemoryCompressedTTF(
         inter_compressed_data,
         inter_compressed_size,
-        windowSystem->getMainScale() * 20.f);
+        _mainWindow->getMainScale() * 20.f);
 
     resize();
 }
@@ -48,17 +48,16 @@ EDVoiceGUI::~EDVoiceGUI()
 
     ImGui::SaveIniSettingsToDisk(_imGuiIniPath.string().c_str());
 
-    _windowSystem->destroyWindow();
-
-    delete _app;
+    delete _mainWindow;
+    delete _app; // TODO: don't manage the app lifetime
 }
 
 
 void EDVoiceGUI::run()
 {
-    while (!_windowSystem->quit())
+    while (!_mainWindow->quit())
     {
-        _windowSystem->render();
+        _mainWindow->render();
 
         ImGui::NewFrame();
 
@@ -140,12 +139,12 @@ void EDVoiceGUI::beginMainWindow()
 {
     ImGuiViewport* pViewport = ImGui::GetMainViewport();
 
-    if (_windowSystem->borderlessWindow()) {
+    if (_mainWindow->borderlessWindow()) {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 0.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
 
-        ImGui::SetNextWindowSize(ImVec2(pViewport->Size.x, _windowSystem->titleBarHeight()));
+        ImGui::SetNextWindowSize(ImVec2(pViewport->Size.x, _mainWindow->titleBarHeight()));
         ImGui::SetNextWindowPos(ImVec2(0, 0));
         ImGui::Begin("Title", nullptr,
             ImGuiWindowFlags_NoMove |
@@ -157,13 +156,13 @@ void EDVoiceGUI::beginMainWindow()
 
         const ImGuiStyle& style = ImGui::GetStyle();
         const float titleMarginLeft = 8.f;
-        const float buttonWidth = 55.f;
-        const ImVec2 buttonSize(buttonWidth, _windowSystem->titleBarHeight());
+        const float buttonWidth = _mainWindow->windowButtonWidth();
+        const ImVec2 buttonSize(buttonWidth, _mainWindow->titleBarHeight());
 
         // Center title vertically
         ImGui::PushFont(NULL, style.FontSizeBase * 1.2f);
-        ImGui::SetCursorPos(ImVec2(titleMarginLeft, .5f * (_windowSystem->titleBarHeight() - ImGui::GetFontSize())));
-        ImGui::Text("%s", _windowSystem->windowTitle());
+        ImGui::SetCursorPos(ImVec2(titleMarginLeft, .5f * (_mainWindow->titleBarHeight() - ImGui::GetFontSize())));
+        ImGui::Text("%s", _mainWindow->windowTitle());
         ImGui::PopFont();
 
         // Minimize & Resize buttons
@@ -172,10 +171,10 @@ void EDVoiceGUI::beginMainWindow()
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(255, 255, 255, 50));
         {
             ImGui::SetCursorPos(ImVec2(pViewport->Size.x - 3 * buttonWidth, 0.));
-            if (ImGui::Button("-", buttonSize)) { _windowSystem->minimizeWindow(); }
+            if (ImGui::Button("-", buttonSize)) { _mainWindow->minimizeWindow(); }
 
             ImGui::SetCursorPos(ImVec2(pViewport->Size.x - 2 * buttonWidth, 0.));
-            if (ImGui::Button("+", buttonSize)) { _windowSystem->maximizeRestoreWindow(); }
+            if (ImGui::Button("+", buttonSize)) { _mainWindow->maximizeRestoreWindow(); }
         }
         ImGui::PopStyleColor(3);
 
@@ -185,7 +184,7 @@ void EDVoiceGUI::beginMainWindow()
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(255, 0, 0, 255));
         {
             ImGui::SetCursorPos(ImVec2(pViewport->Size.x - buttonWidth, 0.));
-            if (ImGui::Button("x", buttonSize)) { _windowSystem->closeWindow(); }
+            if (ImGui::Button("x", buttonSize)) { _mainWindow->closeWindow(); }
         }
         ImGui::PopStyleColor(3);
 
@@ -193,16 +192,16 @@ void EDVoiceGUI::beginMainWindow()
         ImU32 col = ImGui::GetColorU32(ImGuiCol_Separator);
 
         ImGui::GetWindowDrawList()->AddLine(
-            ImVec2(0, _windowSystem->titleBarHeight()),
-            ImVec2(pViewport->Size.x, _windowSystem->titleBarHeight()),
+            ImVec2(0, _mainWindow->titleBarHeight()),
+            ImVec2(pViewport->Size.x, _mainWindow->titleBarHeight()),
             col, 1.0f
         );
 
         ImGui::End();
         ImGui::PopStyleVar(3);
 
-        ImGui::SetNextWindowSize(ImVec2(pViewport->Size.x, pViewport->Size.y - _windowSystem->titleBarHeight()));
-        ImGui::SetNextWindowPos(ImVec2(0, _windowSystem->titleBarHeight()));
+        ImGui::SetNextWindowSize(ImVec2(pViewport->Size.x, pViewport->Size.y - _mainWindow->titleBarHeight()));
+        ImGui::SetNextWindowPos(ImVec2(0, _mainWindow->titleBarHeight()));
     }
     else {
         ImGui::SetNextWindowSize(pViewport->Size);
@@ -265,7 +264,7 @@ void EDVoiceGUI::voicePackGUI()
     ImGui::SameLine();
 
     if (ImGui::Button("Add")) {
-        _windowSystem->openVoicePackFileDialog(this, EDVoiceGUI::loadVoicePack);
+        _mainWindow->openVoicePackFileDialog(this, EDVoiceGUI::loadVoicePack);
     }
 
     float volume = voicepack.getVolume();
