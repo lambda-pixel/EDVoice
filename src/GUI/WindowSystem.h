@@ -63,8 +63,8 @@ private:
     bool _borderlessWindow = true;
     // TODO: make scale aware
     float _titlebarHeight = 32.f;
-    float _buttonWidth = 32.f;
-    float _totalButtonWidth = 3 * 32.f;
+    float _buttonWidth = 55.f;
+    float _totalButtonWidth = 3 * 55.f;
 
     bool _quit = false;
 

@@ -157,7 +157,7 @@ void EDVoiceGUI::beginMainWindow()
 
         const ImGuiStyle& style = ImGui::GetStyle();
         const float titleMarginLeft = 8.f;
-        const float buttonWidth = 55.f;
+        const float buttonWidth = _windowSystem->windowButtonWidth();
         const ImVec2 buttonSize(buttonWidth, _windowSystem->titleBarHeight());
 
         // Center title vertically
