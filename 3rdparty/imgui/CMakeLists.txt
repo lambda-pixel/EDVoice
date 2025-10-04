@@ -8,7 +8,7 @@ if (USE_SDL)
         imgui/imgui_widgets.cpp
         imgui/backends/imgui_impl_sdl3.cpp
         imgui/backends/imgui_impl_vulkan.cpp
-        imgui/imgui_demo.cpp
+        #imgui/imgui_demo.cpp
     )
 else()
     add_library(imgui
@@ -18,7 +18,7 @@ else()
         imgui/imgui_widgets.cpp
         imgui/backends/imgui_impl_win32.cpp
         imgui/backends/imgui_impl_vulkan.cpp
-        imgui/imgui_demo.cpp
+        #imgui/imgui_demo.cpp
     )
 endif()
 

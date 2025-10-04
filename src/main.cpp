@@ -2,7 +2,6 @@
 #include <filesystem>
 
 #include "EDVoiceApp.h"
-#include "GUI/WindowSystem.h"
 
 #ifdef _WIN32
 
@@ -21,6 +20,7 @@ void run_failback_cli(
 
 #include <sstream>
 #include "GUI/EDVoiceGUI.h"
+#include "GUI/WindowSystem.h"
 
 int WINAPI wWinMain(
     _In_ HINSTANCE hInstance,
@@ -151,6 +151,7 @@ void run_failback_cli(
 #else // !_WIN32
 
 #include "GUI/EDVoiceGUI.h"
+#include "GUI/WindowSystem.h"
 
 int main(int argc, char* argv[])
 {
