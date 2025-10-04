@@ -100,6 +100,9 @@ int main(int argc, char* argv[])
     const std::filesystem::path execPath = std::filesystem::path(argv[0]).parent_path();
     const std::filesystem::path configFile = execPath / "config" / "default.json";
 
+    auto oldCoutBuf = std::cout.rdbuf();
+    auto oldCerrBuf = std::cerr.rdbuf();
+
     std::ostringstream local;
     std::cout.rdbuf(local.rdbuf());
     std::cerr.rdbuf(local.rdbuf());
@@ -135,6 +138,9 @@ int main(int argc, char* argv[])
         out << local.str();
         out.close();
     }
+
+    std::cout.rdbuf(oldCoutBuf);
+    std::cerr.rdbuf(oldCerrBuf);
 
     return 0;
 }
