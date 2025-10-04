@@ -103,7 +103,8 @@ Window::Window(WindowSystem* sys, VkAdapter* vkAdapter, const std::string& title
     SDL_ShowWindow(_sdlWindow);
     
     IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
+    _imGuiContext = ImGui::CreateContext();
+    ImGui::SetCurrentContext(_imGuiContext);
 
     ImGui_ImplSDL3_InitForVulkan(_sdlWindow);
 #else
@@ -164,6 +165,7 @@ Window::Window(WindowSystem* sys, VkAdapter* vkAdapter, const std::string& title
 
     IMGUI_CHECKVERSION();
     _imGuiContext = ImGui::CreateContext();
+    ImGui::SetCurrentContext(_imGuiContext);
 
     ImGui_ImplWin32_Init(_hwnd);
 #endif
