@@ -1,127 +1,17 @@
 ﻿#include <iostream>
 #include <filesystem>
+#include <sstream>
 
 #include "EDVoiceApp.h"
 
-#ifdef _WIN32
+#if !defined(GUI_MODE) && defined(WIN32)
+
+// ----------------------------------------------------------------------------
+// WIN32 console mode
+// ----------------------------------------------------------------------------
 
 #include <conio.h>
 #include <windows.h>
-
-void run_failback_cli(
-    const std::filesystem::path& execPath,
-    const std::filesystem::path& configFile);
-
-#ifdef GUI_MODE
-
-// ----------------------------------------------------------------------------
-// GUI
-// ----------------------------------------------------------------------------
-
-#include <sstream>
-#include "GUI/EDVoiceGUI.h"
-#include "GUI/WindowSystem.h"
-
-int WINAPI wWinMain(
-    _In_ HINSTANCE hInstance,
-    _In_opt_ HINSTANCE hPrevInstance,
-    _In_ LPWSTR lpCmdLine,
-    _In_ int nShowCmd)
-{
-    LPWSTR* szArgList;
-    int argCount;
-    szArgList = CommandLineToArgvW(GetCommandLine(), &argCount);
-
-    const std::filesystem::path execPath = std::filesystem::path(szArgList[0]).parent_path();
-    const std::filesystem::path configFile = execPath / "config" / "default.json";
-
-    std::ostringstream local;
-    std::cout.rdbuf(local.rdbuf());
-    std::cerr.rdbuf(local.rdbuf());
-
-    bool failbackMode = false;
-
-    try {
-#ifdef USE_SDL
-        WindowSystem windowSystem;
-#else
-        WindowSystem windowSystem(hInstance, nShowCmd);
-#endif
-        EDVoiceGUI gui(execPath, configFile, &windowSystem);
-        gui.run();
-    } catch (const std::exception& e) {
-        std::cerr << "[FATAL ] Exception: " << e.what() << std::endl;
-        failbackMode = true;
-    } catch (...) {
-        std::cerr << "[FATAL ] Exception unknown" << std::endl;
-        failbackMode = true;
-    }
-
-    if (failbackMode) {
-        std::ofstream out("EDVoiceCrash.log", std::ios::app);
-        out << local.str();
-        out.close();
-
-        // Clear WM_QUIT messages
-        MSG msg;
-
-        while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
-            if (msg.message == WM_QUIT) continue;
-
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
-
-        MessageBoxA(NULL, "Could not load the GUI. A Log file EDVoiceCrash.log was created. Please send it for bug review.\nTrying to launch in failback mode...\no7", "EDVoice", MB_OK | MB_ICONERROR);
-
-        run_failback_cli(execPath, configFile);
-    }
-
-    return 0;
-}
-
-#else // !GUI_MODE
-
-// ----------------------------------------------------------------------------
-// Console mode
-// ----------------------------------------------------------------------------
-
-int WINAPI wWinMain(
-    _In_ HINSTANCE hInstance,
-    _In_opt_ HINSTANCE hPrevInstance,
-    _In_ LPWSTR lpCmdLine,
-    _In_ int nShowCmd)
-{
-    LPWSTR* szArgList;
-    int argCount;
-    szArgList = CommandLineToArgvW(GetCommandLine(), &argCount);
-
-    const std::filesystem::path execPath = std::filesystem::path(szArgList[0]).parent_path();
-    const std::filesystem::path configFile = execPath / "config" / "default.json";
-
-    run_failback_cli(execPath, configFile);
-
-    return 0;
-}
-
-#endif
-
-
-LRESULT CALLBACK w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-    switch (msg) {
-        case WM_CLOSE:
-            ::DestroyWindow(hWnd);
-            return 0;
-
-        case WM_DESTROY:
-            ::PostQuitMessage(0);
-            return 0;
-    }
-
-    return ::DefWindowProcW(hWnd, msg, wParam, lParam);
-}
-
 
 void run_failback_cli(
     const std::filesystem::path& execPath,
@@ -148,34 +38,105 @@ void run_failback_cli(
     FreeConsole();
 }
 
-#else // !_WIN32
+
+LRESULT CALLBACK w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    switch (msg) {
+    case WM_CLOSE:
+        ::DestroyWindow(hWnd);
+        return 0;
+
+    case WM_DESTROY:
+        ::PostQuitMessage(0);
+        return 0;
+    }
+
+    return ::DefWindowProcW(hWnd, msg, wParam, lParam);
+}
+
+
+int WINAPI wWinMain(
+    _In_ HINSTANCE hInstance,
+    _In_opt_ HINSTANCE hPrevInstance,
+    _In_ LPWSTR lpCmdLine,
+    _In_ int nShowCmd)
+{
+    LPWSTR* szArgList;
+    int argCount;
+    szArgList = CommandLineToArgvW(GetCommandLine(), &argCount);
+
+    const std::filesystem::path execPath = std::filesystem::path(szArgList[0]).parent_path();
+    const std::filesystem::path configFile = execPath / "config" / "default.json";
+
+    run_failback_cli(execPath, configFile);
+
+    return 0;
+}
+
+#else
+
+// ----------------------------------------------------------------------------
+// GUI mode
+// ----------------------------------------------------------------------------
 
 #include "GUI/EDVoiceGUI.h"
 #include "GUI/WindowSystem.h"
 
+#ifdef WIN32
+int WINAPI wWinMain(
+    _In_ HINSTANCE hInstance,
+    _In_opt_ HINSTANCE hPrevInstance,
+    _In_ LPWSTR lpCmdLine,
+    _In_ int nShowCmd)
+{
+    LPWSTR* argv;
+    int argCount;
+    argv = CommandLineToArgvW(GetCommandLine(), &argCount);
+#endif
+#ifndef WIN32
 int main(int argc, char* argv[])
 {
+#endif
     const std::filesystem::path execPath = std::filesystem::path(argv[0]).parent_path();
     const std::filesystem::path configFile = execPath / "config" / "default.json";
-    
-    WindowSystem windowSystem;
+
+    std::ostringstream local;
+    std::cout.rdbuf(local.rdbuf());
+    std::cerr.rdbuf(local.rdbuf());
+
+    bool failbackMode = false;
 
     try {
-        EDVoiceGUI app(execPath, configFile, &windowSystem);
-        app.run();
-    } catch (const std::exception& e) {
-        SDL_ShowSimpleMessageBox(
-            SDL_MESSAGEBOX_ERROR,
-            "Could not start EDVoice",
-            e.what(), NULL);
-    } catch (...) {
-        SDL_ShowSimpleMessageBox(
-            SDL_MESSAGEBOX_ERROR,
-            "Could not start EDVoice",
-            "Unknown error", NULL);
+#ifdef USE_SDL
+        WindowSystem windowSystem;
+#else
+        WindowSystem windowSystem(hInstance, nShowCmd);
+#endif
+        EDVoiceGUI gui(execPath, configFile, &windowSystem);
+        gui.run();
+    }
+    catch (const std::exception& e) {
+        std::cerr << "[FATAL ] Exception: " << e.what() << std::endl;
+        failbackMode = true;
+
+        // TODO:
+        // SDL_ShowSimpleMessageBox(
+        //    SDL_MESSAGEBOX_ERROR,
+        //    "Could not start EDVoice",
+        //    e.what(), NULL);
+    }
+    catch (...) {
+        std::cerr << "[FATAL ] Exception unknown" << std::endl;
+        failbackMode = true;
+    }
+
+    if (failbackMode) {
+        std::ofstream out("EDVoiceCrash.log", std::ios::app);
+        out << local.str();
+        out.close();
     }
 
     return 0;
 }
 
-#endif // _WIN32
+#endif // GUI_MODE || !WIN32
