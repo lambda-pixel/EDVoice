@@ -75,7 +75,7 @@ EDVoiceGUI::EDVoiceGUI(
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGuiIO& io = ImGui::GetIO();
     io.IniFilename = NULL;
     ImGui::LoadIniSettingsFromDisk(_imGuiIniPath.string().c_str());
 
