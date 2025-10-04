@@ -163,7 +163,7 @@ void EDVoiceGUI::beginMainWindow()
         // Center title vertically
         ImGui::PushFont(NULL, style.FontSizeBase * 1.2f);
         ImGui::SetCursorPos(ImVec2(titleMarginLeft, .5f * (_windowSystem->titleBarHeight() - ImGui::GetFontSize())));
-        ImGui::Text(_windowSystem->windowTitle());
+        ImGui::Text("%s", _windowSystem->windowTitle());
         ImGui::PopFont();
 
         // Minimize & Resize buttons
@@ -458,7 +458,7 @@ void EDVoiceGUI::loadVoicePack(void* userdata, std::string path)
 
     if (!path.empty()) {
         try {
-            std::string& voicepackName = std::filesystem::path(path).stem().string();
+            const std::string voicepackName = std::filesystem::path(path).stem().string();
             size_t idxNewVoicePack = voicepack.addVoicePack(voicepackName, path);
             voicepack.loadVoicePackByIndex(idxNewVoicePack);
         }
