@@ -31,7 +31,7 @@ private:
     void voicePackJourmalEventGUI();
     void voicePackSpecialEventGUI();
 
-    void voicePackOpenDialogGUI();
+    static void loadVoicePack(void* userdata, std::string path);
 
     static const char* prettyPrintStatusState(StatusEvent status, bool activated);
     static const char* prettyPrintVehicle(Vehicle vehicle);

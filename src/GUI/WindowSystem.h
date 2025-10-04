@@ -16,6 +16,8 @@
 
 #include "Vulkan/VkAdapter.h"
 
+typedef void (*openedFile)(void* userdata, std::string filepath);
+
 class WindowSystem
 {
 public:
@@ -35,6 +37,8 @@ public:
     void minimizeWindow();
     void maximizeRestoreWindow();
     void closeWindow();
+
+    void openVoicePackFileDialog(void* userdata, openedFile callback);
 
     bool quit() const { return _quit; }
 
@@ -67,6 +71,12 @@ private:
 #ifdef USE_SDL
     void sdlWndProc(SDL_Event& event);
     static SDL_HitTestResult SDLCALL sdlHitTest(SDL_Window* win, const SDL_Point* area, void* data);
+
+    struct OpenFileCbData {
+        void* userdata;
+        openedFile callback;
+    };
+
     static void SDLCALL sdlCallbackOpenFile(void* userdata, const char* const* filelist, int filter);
 
     SDL_Window* _sdlWindow;

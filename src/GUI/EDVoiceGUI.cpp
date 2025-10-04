@@ -265,7 +265,7 @@ void EDVoiceGUI::voicePackGUI()
     ImGui::SameLine();
 
     if (ImGui::Button("Add")) {
-        voicePackOpenDialogGUI();
+        _windowSystem->openVoicePackFileDialog(this, EDVoiceGUI::loadVoicePack);
     }
 
     float volume = voicepack.getVolume();
@@ -451,43 +451,22 @@ void EDVoiceGUI::voicePackSpecialEventGUI()
 }
 
 
-void EDVoiceGUI::voicePackOpenDialogGUI()
+void EDVoiceGUI::loadVoicePack(void* userdata, std::string path)
 {
-    /*
-    VoicePackManager& voicepack = _app->getVoicepack();
+    EDVoiceGUI* obj = (EDVoiceGUI*)userdata;
+    VoicePackManager& voicepack = obj->_app->getVoicepack();
 
-#ifdef _WIN32
-    const std::string newVoicePack = w32OpenFileName(
-        "Select voicepack file",
-        "",
-        "JSON file\0*.json\0",
-        false);
-
-    if (!newVoicePack.empty()) {
+    if (!path.empty()) {
         try {
-            std::string& voicepackName = std::filesystem::path(newVoicePack).stem().string();
-            size_t idxNewVoicePack = voicepack.addVoicePack(voicepackName, newVoicePack);
+            std::string& voicepackName = std::filesystem::path(path).stem().string();
+            size_t idxNewVoicePack = voicepack.addVoicePack(voicepackName, path);
             voicepack.loadVoicePackByIndex(idxNewVoicePack);
         }
         catch (const std::runtime_error& e) {
-            _logErrStr = e.what();
-            _hasError = true;
+            obj->_logErrStr = e.what();
+            obj->_hasError = true;
         }
     }
-#else
-    const SDL_DialogFileFilter filters[] = {
-        { "JSON file",  "json" }
-    };
-
-    SDL_ShowOpenFileDialog(
-        sdlCallbackOpenFile,
-        this,
-        _sdlWindow,
-        filters, 1,
-        NULL,
-        false);
-#endif
-*/
 }
 
 

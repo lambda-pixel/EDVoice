@@ -248,6 +248,37 @@ void WindowSystem::closeWindow()
 }
 
 
+void WindowSystem::openVoicePackFileDialog(void* userdata, openedFile callback)
+{
+#ifdef USE_SDL
+    const SDL_DialogFileFilter filters[] = {
+    { "JSON file",  "json" }
+    };
+
+    // TODO: Ugly but whatever... it is deleted by the callback
+    OpenFileCbData* callbackData = new OpenFileCbData;
+    callbackData->callback = callback;
+    callbackData->userdata = userdata;
+
+    SDL_ShowOpenFileDialog(
+        sdlCallbackOpenFile,
+        callbackData,
+        _sdlWindow,
+        filters, 1,
+        NULL,
+        false);
+#else
+    const std::string newVoicePack = w32OpenFileName(
+        "Select voicepack file",
+        "",
+        "JSON file\0*.json\0",
+        false);
+
+    callback(userdata, newVoicePack);
+#endif
+}
+
+
 const char* WindowSystem::windowTitle() const
 {
     return WINDOW_TITLE_STD;
@@ -395,31 +426,26 @@ SDL_HitTestResult SDLCALL WindowSystem::sdlHitTest(SDL_Window* win, const SDL_Po
 
 void SDLCALL WindowSystem::sdlCallbackOpenFile(void* userdata, const char* const* filelist, int filter)
 {
-    // TODO!
-    //WindowSystem* obj = (WindowSystem*)userdata;
-    //VoicePackManager& voicepack = obj->_app->getVoicepack();
+    OpenFileCbData* obj = (OpenFileCbData*)userdata;
 
-    //if (!filelist) {
-    //    obj->_logErrStr = SDL_GetError();
-    //    obj->_hasError = true;
-    //    SDL_Log("An error occured: %s", SDL_GetError());
-    //    return;
-    //}
-    //else if (!*filelist) {
-    //    SDL_Log("The user did not select any file.");
-    //    SDL_Log("Most likely, the dialog was canceled.");
-    //    return;
-    //}
+    if (!filelist) {
+        SDL_Log("An error occured: %s", SDL_GetError());
+    }
+    else if (!*filelist) {
+        SDL_Log("The user did not select any file.");
+        SDL_Log("Most likely, the dialog was canceled.");
+    }
+    else {
+        while (*filelist) {
+            const std::string newVoicePack = *filelist;
 
-    //while (*filelist) {
-    //    const std::string newVoicePack = *filelist;
-    //    const std::string voicepackName = std::filesystem::path(newVoicePack).stem().string();
-    //    const size_t idxNewVoicePack = voicepack.addVoicePack(voicepackName, newVoicePack);
-    //    voicepack.loadVoicePackByIndex(idxNewVoicePack);
+            obj->callback(obj->userdata, newVoicePack);
 
-    //    SDL_Log("Full path to selected file: '%s'", *filelist);
-    //    filelist++;
-    //}
+            filelist++;
+        }
+    }
+
+    delete obj;
 }
 
 #else
