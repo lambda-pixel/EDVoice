@@ -39,7 +39,7 @@ void AudioPlayer::addTrack(const std::filesystem::path& path)
     // TODO: optimization - this is not ideal, the decoding shall be done 
     //       the at voicepack level once instead of decoding again and 
     //       again the same track.
-    MIX_Audio* nextVoiceline = MIX_LoadAudio(_pMixer, path.c_str(), true);
+    MIX_Audio* nextVoiceline = MIX_LoadAudio(_pMixer, path.string().c_str(), true);
 
     if (!nextVoiceline) {
         std::cerr << "[ERROR ] Could not load track: " << path << " " << SDL_GetError() << std::endl;

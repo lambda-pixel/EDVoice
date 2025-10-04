@@ -1,7 +1,6 @@
-#ifdef BUILD_MEDICORP
-
 #include "MedicComlpiant.h"
 
+#ifdef BUILD_MEDICORP
 
 bool MedicCompliant::isCompliant() const
 {

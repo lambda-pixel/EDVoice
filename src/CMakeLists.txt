@@ -21,6 +21,8 @@ set(EDVOICE_SOURCES_GUI
     GUI/Vulkan/VkAdapter.cpp
     GUI/Vulkan/Swapchain.cpp
     GUI/Vulkan/VkUtil.cpp
+
+    GUI/WindowSystem.cpp
 )
 
 # GUI version
@@ -47,8 +49,7 @@ target_include_directories(EDVoice PRIVATE ${CMAKE_BINARY_DIR})
 
 # target_compile_definitions(EDVoice-cli PRIVATE UNICODE _UNICODE)
 
-if (USE_SDL)
-    find_package(SDL3)
+if (USE_SDL OR USE_SDL_MIXER)
     target_link_libraries(EDVoice PRIVATE SDL3::SDL3)
 endif()
 

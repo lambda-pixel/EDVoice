@@ -1,18 +1,12 @@
 #pragma once
 
-#include <vulkan/vulkan.h>
-
-#ifdef _WIN32
-    #include <Windows.h>
-    #include <vulkan/vulkan_win32.h>
-#else
-    #include <SDL3/SDL_vulkan.h>
-#endif
-
 #include <vector>
+
+#include <vulkan/vulkan.h>
 
 #include "Swapchain.h"
 
+class WindowSystem;
 
 struct CurrFrameInfo {
     uint32_t iSwapchainImage;
@@ -25,22 +19,13 @@ struct CurrFrameInfo {
 class VkAdapter
 {
 public:
-    VkAdapter(const std::vector<const char*>& instanceExtensions = {});
+    VkAdapter(
+        WindowSystem* windowSystem,
+        const std::vector<const char*>& instanceExtensions = {});
 
     ~VkAdapter();
 
-    // WIN32 specific
-#ifdef _WIN32
-    void initDevice(
-        HINSTANCE hInstance, HWND hwnd,
-        const std::vector<const char*>& deviceExtensions = {}
-    );
-#else
-    void initDevice(
-        SDL_Window* window,
-        const std::vector<const char*>& deviceExtensions = {}
-    );
-#endif
+    void initDevice(const std::vector<const char*>& deviceExtensions = {});
 
     VkInstance getInstance() const { return _instance; }
     VkPhysicalDevice getPhysicalDevice() const { return _physicalDevice; }
@@ -62,6 +47,8 @@ private:
     void createFramebuffer();
     void createRenderPass();
     void createCommandBuffer();
+
+    WindowSystem* _windowSystem;
 
     VkInstance _instance = VK_NULL_HANDLE;
     VkPhysicalDevice _physicalDevice = VK_NULL_HANDLE;

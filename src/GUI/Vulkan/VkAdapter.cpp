@@ -4,11 +4,16 @@
 #include <cassert>
 #include <string>
 
+#include <config.h>
 #include "VkUtil.h"
+#include "../WindowSystem.h"
 
 
-VkAdapter::VkAdapter(const std::vector<const char*>& instanceExtensions)
-    : _instance(VK_NULL_HANDLE)
+VkAdapter::VkAdapter(
+    WindowSystem* windowSystem,
+    const std::vector<const char*>& instanceExtensions)
+    : _windowSystem(windowSystem)
+    , _instance(VK_NULL_HANDLE)
     , _physicalDevice(VK_NULL_HANDLE)
     , _device(VK_NULL_HANDLE)
     , _iQueueFamily(0)
@@ -37,17 +42,13 @@ VkAdapter::VkAdapter(const std::vector<const char*>& instanceExtensions)
 #endif
 
     std::vector<const char*> extensions(instanceExtensions);
-#ifdef _WIN32
-    extensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
-    extensions.push_back("VK_KHR_win32_surface");
-#else
-    uint32_t nInstanceExt;
-    const char* const* instanceExt = SDL_Vulkan_GetInstanceExtensions(&nInstanceExt);
+    std::vector<const char*> platformExtensions;
+    
+    _windowSystem->getVkInstanceExtensions(platformExtensions);
 
-    for (size_t i = 0; i < nInstanceExt; i++) {
-        extensions.push_back(instanceExt[i]);
+    for (const char*& ext : platformExtensions) {
+        extensions.push_back(ext);
     }
-#endif
 
     const VkInstanceCreateInfo instanceCreateInfo = {
         VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO, nullptr, 0, // sType, pNext, flags
@@ -91,40 +92,14 @@ VkAdapter::~VkAdapter()
     }
 }
 
-void VkAdapter::initDevice(
-#ifdef _WIN32
-    HINSTANCE hInstance, HWND hwnd,
-#else
-    SDL_Window* window,
-#endif
-    const std::vector<const char*>& deviceExtensions)
+void VkAdapter::initDevice(const std::vector<const char*>& deviceExtensions)
 {
     std::vector<const char*> extensions(deviceExtensions);
     extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
     int width, height;
-#ifdef _WIN32
-    // Create a Vulkan surface (WIN32 specific)
-    const VkWin32SurfaceCreateInfoKHR surfaceCreateInfo = {
-        VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR, nullptr, // sType, pNext
-        0,                                                        // flags
-        hInstance,                                                // hinstance
-        hwnd                                                      // hwnd
-    };
 
-    vkCreateWin32SurfaceKHR(_instance, &surfaceCreateInfo, nullptr, &_surface);
-    
-    RECT rect;
-    ::GetClientRect(hwnd, &rect);
-    width = rect.right - rect.left;
-    height = rect.bottom - rect.top;
-#else
-    SDL_Vulkan_CreateSurface(window, _instance, nullptr, &_surface);
-    
-    // WTF... I have to call GetWindowSize first and then GetWindowSizeInPixel just for
-    // lord Wayland. Damn
-    SDL_GetWindowSize(window, &width, &height);
-#endif
+    _windowSystem->createVkSurfaceKHR(_instance, &_surface, &width, &height);
 
     // Find a suitable physical device
     uint32_t nPhysicalDevices;

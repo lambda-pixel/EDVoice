@@ -2,6 +2,7 @@
 #include <filesystem>
 
 #include "EDVoiceApp.h"
+#include "GUI/WindowSystem.h"
 
 #ifdef _WIN32
 
@@ -41,7 +42,12 @@ int WINAPI wWinMain(
     bool failbackMode = false;
 
     try {
-        EDVoiceGUI gui(execPath, configFile, hInstance, nShowCmd);
+#ifdef USE_SDL
+        WindowSystem windowSystem;
+#else
+        WindowSystem windowSystem(hInstance, nShowCmd);
+#endif
+        EDVoiceGUI gui(execPath, configFile, &windowSystem);
         gui.run();
     } catch (const std::exception& e) {
         std::cerr << "[FATAL ] Exception: " << e.what() << std::endl;
@@ -145,23 +151,16 @@ void run_failback_cli(
 #else // !_WIN32
 
 #include "GUI/EDVoiceGUI.h"
-#include <SDL3/SDL.h>
 
 int main(int argc, char* argv[])
 {
     const std::filesystem::path execPath = std::filesystem::path(argv[0]).parent_path();
     const std::filesystem::path configFile = execPath / "config" / "default.json";
     
-    SDL_InitFlags sdlFlags = SDL_INIT_VIDEO | SDL_INIT_GAMEPAD;
-
-#ifdef USE_SDL_MIXER
-    sdlFlags |= SDL_INIT_AUDIO;
-#endif
-
-    SDL_Init(sdlFlags);
+    WindowSystem windowSystem;
 
     try {
-        EDVoiceGUI app(execPath, configFile);
+        EDVoiceGUI app(execPath, configFile, &windowSystem);
         app.run();
     } catch (const std::exception& e) {
         SDL_ShowSimpleMessageBox(
@@ -174,8 +173,6 @@ int main(int argc, char* argv[])
             "Could not start EDVoice",
             "Unknown error", NULL);
     }
-
-    SDL_Quit();
 
     return 0;
 }
