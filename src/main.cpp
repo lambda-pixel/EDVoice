@@ -151,8 +151,14 @@ int main(int argc, char* argv[])
 {
     const std::filesystem::path execPath = std::filesystem::path(argv[0]).parent_path();
     const std::filesystem::path configFile = execPath / "config" / "default.json";
+    
+    SDL_InitFlags sdlFlags = SDL_INIT_VIDEO | SDL_INIT_GAMEPAD;
 
-    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD);
+#ifdef USE_SDL_MIXER
+    sdlFlags |= SDL_INIT_AUDIO;
+#endif
+
+    SDL_Init(sdlFlags);
 
     try {
         EDVoiceGUI app(execPath, configFile);

@@ -1,3 +1,9 @@
 [submodule "3rdparty/imgui/imgui"]
 	path = 3rdparty/imgui/imgui
 	url = https://github.com/ocornut/imgui.git
+[submodule "3rdparty/SDL_mixer"]
+	path = 3rdparty/SDL_mixer
+	url = https://github.com/libsdl-org/SDL_mixer.git
+[submodule "3rdparty/SDL"]
+	path = 3rdparty/SDL
+	url = https://github.com/libsdl-org/SDL.git
