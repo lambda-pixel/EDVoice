@@ -102,7 +102,7 @@ Window::Window(
     );
 
     _mainScale = SDL_GetWindowPixelDensity(_sdlWindow);
-    _vkAdapter->initDevice();
+    _vkAdapter->initDevice(this);
 
     SDL_SetWindowPosition(_sdlWindow, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     SDL_SetWindowHitTest(_sdlWindow, sdlHitTest, this);
@@ -268,6 +268,8 @@ void Window::beginFrame()
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplWin32_NewFrame();
 #endif
+
+    ImGui::NewFrame();
 }
 
 
@@ -478,7 +480,7 @@ void Window::sdlWndProc(SDL_Event& event)
         _mainScale = SDL_GetWindowDisplayScale(_sdlWindow);
         int width, height;
         SDL_GetWindowSizeInPixels(_sdlWindow, &width, &height);
-        onResize(width, heigth);
+        onResize(width, height);
     }
     break;
     default:
@@ -489,7 +491,7 @@ void Window::sdlWndProc(SDL_Event& event)
 
 SDL_HitTestResult SDLCALL Window::sdlHitTest(SDL_Window* win, const SDL_Point* area, void* data)
 {
-    WindowSystem* obj = (WindowSystem*)data;
+    Window* obj = (Window*)data;
     assert(win == obj->_sdlWindow);
 
     int width, height;
