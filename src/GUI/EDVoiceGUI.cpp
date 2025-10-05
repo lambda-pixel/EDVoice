@@ -36,8 +36,6 @@ void EDVoiceGUI::run()
     {
         _mainWindow->beginFrame();
 
-        ImGui::NewFrame();
-
         beginMainWindow();
         voicePackGUI();
         endMainWindow();
