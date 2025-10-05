@@ -20,8 +20,6 @@ public:
     void run();
 
 private:
-    void resize();
-
     void beginMainWindow();
     void endMainWindow();
 
@@ -42,7 +40,7 @@ private:
     WindowSystem* _windowSystem;
     Window* _mainWindow;
 
-    bool _imGuiInitialized = false;
+    Window* _overlayWindow;
 
     bool _hasError = false;
     std::string _logErrStr;

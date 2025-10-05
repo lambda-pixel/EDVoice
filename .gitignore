@@ -1,3 +1,5 @@
 ﻿/.vs
 /out
 /build
+/tests
+/build_medic

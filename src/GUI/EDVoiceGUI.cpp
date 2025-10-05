@@ -17,6 +17,7 @@ EDVoiceGUI::EDVoiceGUI(
     , _imGuiIniPath(config.parent_path() / "imgui.ini")
 {
     _mainWindow = new Window(windowSystem, &_vkAdapter, "EDVoice");
+    //_overlayWindow = new Window(windowSystem, &_vkAdapter, "EDVoice bis");
 
     // Setup ImGui
     ImGuiIO& io = ImGui::GetIO();
@@ -37,8 +38,6 @@ EDVoiceGUI::EDVoiceGUI(
         inter_compressed_data,
         inter_compressed_size,
         _mainWindow->getMainScale() * 20.f);
-
-    resize();
 }
 
 
@@ -49,6 +48,7 @@ EDVoiceGUI::~EDVoiceGUI()
     ImGui::SaveIniSettingsToDisk(_imGuiIniPath.string().c_str());
 
     delete _mainWindow;
+    //delete _overlayWindow;
     delete _app; // TODO: don't manage the app lifetime
 }
 
@@ -92,46 +92,10 @@ void EDVoiceGUI::run()
                 _vkAdapter.presentFrame();
             }
             else {
-                resize();
+                _mainWindow->refreshResize();
             }
         }
     }
-}
-
-
-void EDVoiceGUI::resize()
-{
-    if (_imGuiInitialized) {
-        ImGui_ImplVulkan_Shutdown();
-    }
-
-    ImGui_ImplVulkan_InitInfo init_info = {
-        _vkAdapter.API_VERSION,             // ApiVersion
-        _vkAdapter.getInstance(),           // Instance
-        _vkAdapter.getPhysicalDevice(),     // PhysicalDevice
-        _vkAdapter.getDevice(),             // Device
-        _vkAdapter.getQueueFamily(),        // QueueFamily
-        _vkAdapter.getQueue(),              // Queue
-        VK_NULL_HANDLE,                     // DescriptorPool
-        IMGUI_IMPL_VULKAN_MINIMUM_IMAGE_SAMPLER_POOL_SIZE, // DescriptorPoolSize
-        _vkAdapter.nImageCount(),           // MinImageCount
-        _vkAdapter.nImageCount(),           // ImageCount
-        VK_NULL_HANDLE,                     // PipelineCache (optional)
-        _vkAdapter.getRenderPass(),         // RenderPass
-        0,                                  // Subpass
-        VK_SAMPLE_COUNT_1_BIT,              // msaaSamples
-        false,                              // UseDynamicRendering
-    #ifdef IMGUI_IMPL_VULKAN_HAS_DYNAMIC_RENDERING
-        {},                                 // PipelineRenderingCreateInfo (optional)
-    #endif
-        nullptr,                            // VkAllocationCallbacks
-        nullptr,                            // (*CheckVkResultFn)(VkResult err)
-        1024 * 1024                           // MinAllocationSize
-    };
-
-    ImGui_ImplVulkan_Init(&init_info);
-
-    _imGuiInitialized = true;
 }
 
 

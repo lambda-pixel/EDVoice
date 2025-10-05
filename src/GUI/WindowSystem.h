@@ -47,6 +47,9 @@ public:
     Window(WindowSystem* sys, VkAdapter* vkAdapter, const std::string& title);
     virtual ~Window();
 
+    void onResize(uint32_t width, uint32_t height);
+    void refreshResize();
+
     void render();
 
     void minimizeWindow();
@@ -74,6 +77,7 @@ private:
     WindowSystem* _sys;
 
     ImGuiContext* _imGuiContext;
+    bool _imGuiInitialized = false;
 
     float _mainScale = 1.f;
     bool _borderlessWindow = true;

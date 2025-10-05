@@ -15,7 +15,7 @@
 
 #include <backends/imgui_impl_vulkan.h>
 
-
+// TODO: remove
 #ifdef BUILD_MEDICORP
     const wchar_t WINDOW_TITLE[] = L"EDVoice - MediCorp Edition";
     const char WINDOW_TITLE_STD[] = "EDVoice - MediCorp Edition";
@@ -169,6 +169,8 @@ Window::Window(WindowSystem* sys, VkAdapter* vkAdapter, const std::string& title
 
     ImGui_ImplWin32_Init(_hwnd);
 #endif
+
+    refreshResize();
 }
 
 
@@ -191,6 +193,53 @@ Window::~Window()
     ImGui::DestroyContext(_imGuiContext);
 }
 
+
+void Window::onResize(uint32_t width, uint32_t height)
+{
+    _vkAdapter->resized(width, height);
+    
+    if (_imGuiInitialized) {
+        refreshResize();
+    }
+}
+
+
+void Window::refreshResize()
+{
+    ImGui::SetCurrentContext(_imGuiContext);
+
+    if (_imGuiInitialized) {
+        ImGui_ImplVulkan_Shutdown();
+    }
+
+    ImGui_ImplVulkan_InitInfo init_info = {
+        _vkAdapter->API_VERSION,            // ApiVersion
+        _vkAdapter->getInstance(),          // Instance
+        _vkAdapter->getPhysicalDevice(),    // PhysicalDevice
+        _vkAdapter->getDevice(),            // Device
+        _vkAdapter->getQueueFamily(),       // QueueFamily
+        _vkAdapter->getQueue(),             // Queue
+        VK_NULL_HANDLE,                     // DescriptorPool
+        IMGUI_IMPL_VULKAN_MINIMUM_IMAGE_SAMPLER_POOL_SIZE, // DescriptorPoolSize
+        _vkAdapter->nImageCount(),          // MinImageCount
+        _vkAdapter->nImageCount(),          // ImageCount
+        VK_NULL_HANDLE,                     // PipelineCache (optional)
+        _vkAdapter->getRenderPass(),        // RenderPass
+        0,                                  // Subpass
+        VK_SAMPLE_COUNT_1_BIT,              // msaaSamples
+        false,                              // UseDynamicRendering
+    #ifdef IMGUI_IMPL_VULKAN_HAS_DYNAMIC_RENDERING
+        {},                                 // PipelineRenderingCreateInfo (optional)
+    #endif
+        nullptr,                            // VkAllocationCallbacks
+        nullptr,                            // (*CheckVkResultFn)(VkResult err)
+        1024 * 1024                         // MinAllocationSize
+    };
+
+    ImGui_ImplVulkan_Init(&init_info);
+
+    _imGuiInitialized = true;
+}
 
 void Window::render()
 {
@@ -362,7 +411,7 @@ void Window::sdlWndProc(SDL_Event& event)
     {
         int width, height;
         SDL_GetWindowSizeInPixels(_sdlWindow, &width, &height);
-        _vkAdapter->resized(width, height);
+        onResize(width, height);
     }
     break;
 
@@ -371,7 +420,7 @@ void Window::sdlWndProc(SDL_Event& event)
         _mainScale = SDL_GetWindowDisplayScale(_sdlWindow);
         int width, height;
         SDL_GetWindowSizeInPixels(_sdlWindow, &width, &height);
-        _vkAdapter->resized(width, height);
+        onResize(width, heigth);
     }
     break;
     default:
@@ -478,7 +527,7 @@ LRESULT CALLBACK Window::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
             case WM_SIZE: {
                 UINT width = LOWORD(lParam);
                 UINT height = HIWORD(lParam);
-                window._vkAdapter->resized(width, height);
+                window.onResize(width, height);
             break;
         }
 
