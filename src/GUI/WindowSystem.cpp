@@ -122,7 +122,7 @@ Window::Window(
     WNDCLASSEXW wcx{};
     wcx.cbSize = sizeof(wcx);
     wcx.style = CS_HREDRAW | CS_VREDRAW;
-    wcx.hInstance = nullptr;
+    wcx.hInstance = _sys->_hInstance;
     wcx.lpfnWndProc = Window::w32WndProc;
     wcx.lpszClassName = _className.c_str();
     wcx.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
@@ -197,6 +197,11 @@ Window::Window(
         getMainScale() * 20.f);
 
     refreshResize();
+
+    // Apply scale
+    _titlebarHeight = _mainScale * 32.f;
+    _buttonWidth = _mainScale * 55.f;
+    _totalButtonWidth = 3.f * _buttonWidth;
 }
 
 
@@ -745,8 +750,6 @@ LRESULT Window::w32HitTest(POINT cursor) const
     if (!::GetWindowRect(_hwnd, &window)) {
         return HTNOWHERE;
     }
-
-    const auto drag = false;//borderless_drag ? HTCAPTION : HTCLIENT;
 
     enum region_mask {
         client = 0b0000,

@@ -94,7 +94,7 @@ private:
     // GUI properties
     float _mainScale = 1.f;
     bool _borderlessWindow = true;
-    // TODO: make scale aware
+
     float _titlebarHeight = 32.f;
     float _buttonWidth = 55.f;
     float _totalButtonWidth = 3 * 55.f;
