@@ -3,9 +3,6 @@
 #include <stdexcept>
 #include <imgui.h>
 
-#include <backends/imgui_impl_vulkan.h>
-
-#include "inter.cpp"
 
 EDVoiceGUI::EDVoiceGUI(
     const std::filesystem::path& exec_path,
@@ -14,39 +11,19 @@ EDVoiceGUI::EDVoiceGUI(
     : _app(new EDVoiceApp(exec_path, config))
     , _vkAdapter(windowSystem)
     , _windowSystem(windowSystem)
-    , _imGuiIniPath(config.parent_path() / "imgui.ini")
 {
-    _mainWindow = new Window(windowSystem, &_vkAdapter, "EDVoice");
+    _mainWindow = new Window(
+        windowSystem,
+        &_vkAdapter,
+        "EDVoice",
+        config.parent_path() / "imgui.ini"
+    );
     //_overlayWindow = new Window(windowSystem, &_vkAdapter, "EDVoice bis");
-
-    // Setup ImGui
-    ImGuiIO& io = ImGui::GetIO();
-    io.IniFilename = NULL;
-    ImGui::LoadIniSettingsFromDisk(_imGuiIniPath.string().c_str());
-
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-
-    ImGui::StyleColorsDark();
-
-    // Scaling
-    ImGuiStyle& style = ImGui::GetStyle();
-    style.ScaleAllSizes(_mainWindow->getMainScale());
-    style.FontScaleDpi = _mainWindow->getMainScale();
-
-    ImFont* font = io.Fonts->AddFontFromMemoryCompressedTTF(
-        inter_compressed_data,
-        inter_compressed_size,
-        _mainWindow->getMainScale() * 20.f);
 }
 
 
 EDVoiceGUI::~EDVoiceGUI()
 {
-    vkDeviceWaitIdle(_vkAdapter.getDevice());
-
-    ImGui::SaveIniSettingsToDisk(_imGuiIniPath.string().c_str());
-
     delete _mainWindow;
     //delete _overlayWindow;
     delete _app; // TODO: don't manage the app lifetime
@@ -57,7 +34,7 @@ void EDVoiceGUI::run()
 {
     while (!_mainWindow->quit())
     {
-        _mainWindow->render();
+        _mainWindow->beginFrame();
 
         ImGui::NewFrame();
 
@@ -78,23 +55,7 @@ void EDVoiceGUI::run()
             ImGui::EndPopup();
         }
 
-        ImGui::Render();
-        ImDrawData* draw_data = ImGui::GetDrawData();
-        const bool is_minimized = (draw_data->DisplaySize.x <= 0.0f || draw_data->DisplaySize.y <= 0.0f);
-
-        if (!is_minimized)
-        {
-            VkCommandBuffer commandBuffer = _vkAdapter.startNewFrame();
-
-            if (commandBuffer != VK_NULL_HANDLE) {
-                ImGui_ImplVulkan_RenderDrawData(draw_data, commandBuffer);
-                _vkAdapter.renderFrame();
-                _vkAdapter.presentFrame();
-            }
-            else {
-                _mainWindow->refreshResize();
-            }
-        }
+        _mainWindow->endFrame();
     }
 }
 

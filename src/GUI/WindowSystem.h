@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <filesystem>
 #include <config.h>
 
 #include <imgui.h>
@@ -44,13 +45,19 @@ public:
 class Window
 {
 public:
-    Window(WindowSystem* sys, VkAdapter* vkAdapter, const std::string& title);
+    Window(
+        WindowSystem* sys,
+        VkAdapter* vkAdapter,
+        const std::string& title,
+        const std::filesystem::path& config
+    );
+    
     virtual ~Window();
 
     void onResize(uint32_t width, uint32_t height);
-    void refreshResize();
 
-    void render();
+    void beginFrame();
+    void endFrame();
 
     void minimizeWindow();
     void maximizeRestoreWindow();
@@ -73,12 +80,18 @@ public:
         VkSurfaceKHR* surface, int *width, int *height) const;
 
 private:
-    VkAdapter* _vkAdapter = nullptr;
-    WindowSystem* _sys;
+    void refreshResize();
 
-    ImGuiContext* _imGuiContext;
+private:
+    VkAdapter* _vkAdapter = nullptr;
+    WindowSystem* _sys = nullptr;
+    ImGuiContext* _imGuiContext = nullptr;
+
     bool _imGuiInitialized = false;
 
+    const std::filesystem::path _configPath;
+
+    // GUI properties
     float _mainScale = 1.f;
     bool _borderlessWindow = true;
     // TODO: make scale aware
