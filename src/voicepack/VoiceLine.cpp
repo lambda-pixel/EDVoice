@@ -28,7 +28,7 @@ bool VoiceLine::empty() const
 }
 
 
-const std::filesystem::path& VoiceLine::getNextVoiceline()
+std::optional<std::filesystem::path> VoiceLine::getNextVoiceline()
 {
     _hasBeenPlayedOnce = true;
     _lastPlayed = std::chrono::steady_clock::now();
@@ -36,7 +36,7 @@ const std::filesystem::path& VoiceLine::getNextVoiceline()
     if (_filepath.size() == 0) {
         // This is an error, shall not happen, silently ignore
         assert(0);
-        return std::filesystem::path();
+        return {};
     }
 
     if (_filepath.size() == 1) {

@@ -21,6 +21,17 @@ VoicePack::VoicePack(VoicePackManager& voicepackManager)
     , _isShutdownState(false)
     , _isPriming(false)
 {
+    for (auto& vs : _voiceStatus) {
+        vs.fill(VoiceLine());
+    }
+
+    _voiceSpecial.fill(VoiceLine());
+
+    for (auto& va : _voiceStatusActive) {
+        va.fill(Undefined);
+    }
+
+    _voiceSpecialActive.fill(Undefined);
 }
 
 
@@ -199,7 +210,12 @@ void VoicePack::onStatusChanged(StatusEvent event, bool status)
 
     if (_voiceStatusActive[_currVehicle][index] == Active &&
         _voiceStatus[_currVehicle][index].hasCooledDown()) {
-        _voicePackManager.playStatusVoiceline(_currVehicle, event, status, _voiceStatus[_currVehicle][index].getNextVoiceline());
+
+        const auto& soundPath = _voiceStatus[_currVehicle][index].getNextVoiceline();
+
+        if (soundPath) {
+            _voicePackManager.playStatusVoiceline(_currVehicle, event, status, soundPath.value());
+        }
     }
 }
 
@@ -265,7 +281,11 @@ void VoicePack::onJournalEvent(const std::string& event, const std::string& jour
 
     if (it != _voiceJournal.end() && _voiceJournalActive[event] == Active &&
         it->second.hasCooledDown()) {
-        _voicePackManager.playJournalVoiceline(event, it->second.getNextVoiceline());
+        const auto& soundPath = it->second.getNextVoiceline();
+
+        if (soundPath) {
+            _voicePackManager.playJournalVoiceline(event, soundPath.value());
+        }
     }
 
     const nlohmann::json json = nlohmann::json::parse(journalEntry);
@@ -398,7 +418,12 @@ void VoicePack::onSpecialEvent(SpecialEvent event)
 
     if (_voiceSpecialActive[event] == Active &&
         _voiceSpecial[event].hasCooledDown()) {
-        _voicePackManager.playSpecialVoiceline(event, _voiceSpecial[event].getNextVoiceline());
+
+        const auto& soundPath = _voiceSpecial[event].getNextVoiceline();
+
+        if (soundPath) {
+            _voicePackManager.playSpecialVoiceline(event, soundPath.value());
+        }
     }
 }
 

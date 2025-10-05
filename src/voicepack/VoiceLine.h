@@ -5,6 +5,7 @@
 #include <string>
 #include <random>
 #include <chrono>
+#include <optional>
 
 #include <json.hpp>
 
@@ -17,7 +18,7 @@ public:
     int getCooldownMs() const;
     bool empty() const;
 
-    const std::filesystem::path& getNextVoiceline();
+    std::optional<std::filesystem::path> getNextVoiceline();
 
     void loadFromJson(const std::filesystem::path& basePath, const nlohmann::json& json);
     void saveToJson(nlohmann::json& json) const;
