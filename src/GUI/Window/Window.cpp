@@ -1,6 +1,7 @@
 #include "Window.h"
 
 #ifdef USE_SDL
+    #include <SDL3/SDL_vulkan.h>
     #include <backends/imgui_impl_sdl3.h>
 #else
     #include <backends/imgui_impl_win32.h>
@@ -175,4 +176,3 @@ void Window::refreshResize()
 
     _imGuiInitialized = true;
 }
-

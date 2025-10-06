@@ -29,7 +29,8 @@ private:
     float _totalButtonWidth = 3 * 55.f;
 
 #ifdef USE_SDL
-    void sdlWndProc(SDL_Event& event);
+    virtual void sdlWndProc(SDL_Event& event);
+
     static SDL_HitTestResult SDLCALL sdlHitTest(SDL_Window* win, const SDL_Point* area, void* data);
 
     struct OpenFileCbData {

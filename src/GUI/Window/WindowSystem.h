@@ -10,7 +10,7 @@
 
 #ifdef USE_SDL
 #else
-#include <windows.h>
+    #include <windows.h>
 #endif
 
 

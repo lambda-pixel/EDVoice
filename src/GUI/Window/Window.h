@@ -9,7 +9,7 @@
 #include <imgui.h>
 
 #ifdef USE_SDL
-    #include <SDL3/SDL_vulkan.h>
+    #include <SDL3/SDL.h>
 #else
     #include <windows.h>
     #define VK_USE_PLATFORM_WIN32_KHR
@@ -65,9 +65,10 @@ protected:
     bool _closed = false;
 
 #ifdef USE_SDL
+    virtual void sdlWndProc(SDL_Event& event) = 0;
+
     SDL_Window* _sdlWindow;
 #else
     HWND _hwnd;
 #endif
 };
-

@@ -244,18 +244,18 @@ void WindowMain::openVoicePackFileDialog(void* userdata, openedFile callback)
 
 #ifdef USE_SDL
 
-void MainWindow::sdlWndProc(SDL_Event& event)
+void WindowMain::sdlWndProc(SDL_Event& event)
 {
     ImGui_ImplSDL3_ProcessEvent(&event);
 
     switch (event.type) {
         case SDL_EVENT_QUIT:
-            _quit = true;
+            _closed = true;
             break;
 
         case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
             if (event.window.windowID == SDL_GetWindowID(_sdlWindow)) {
-                _quit = true;
+                _closed = true;
             }
             break;
 
@@ -281,9 +281,9 @@ void MainWindow::sdlWndProc(SDL_Event& event)
 }
 
 
-SDL_HitTestResult SDLCALL MainWindow::sdlHitTest(SDL_Window* win, const SDL_Point* area, void* data)
+SDL_HitTestResult SDLCALL WindowMain::sdlHitTest(SDL_Window* win, const SDL_Point* area, void* data)
 {
-    Window* obj = (Window*)data;
+    WindowMain* obj = (WindowMain*)data;
     assert(win == obj->_sdlWindow);
 
     int width, height;
@@ -319,7 +319,7 @@ SDL_HitTestResult SDLCALL MainWindow::sdlHitTest(SDL_Window* win, const SDL_Poin
         case bottom | left:     return SDL_HITTEST_RESIZE_BOTTOMLEFT;
         case bottom | right:    return SDL_HITTEST_RESIZE_BOTTOMRIGHT;
         case client: {
-            // Title bar area — allow dragging the window
+            // Title bar area ï¿½ allow dragging the window
             if (y < obj->_titlebarHeight && x < (width - obj->_totalButtonWidth)) {
                 return SDL_HITTEST_DRAGGABLE;
             }
@@ -332,7 +332,7 @@ SDL_HitTestResult SDLCALL MainWindow::sdlHitTest(SDL_Window* win, const SDL_Poin
 }
 
 
-void SDLCALL MainWindow::sdlCallbackOpenFile(void* userdata, const char* const* filelist, int filter)
+void SDLCALL WindowMain::sdlCallbackOpenFile(void* userdata, const char* const* filelist, int filter)
 {
     OpenFileCbData* obj = (OpenFileCbData*)userdata;
 
@@ -614,5 +614,3 @@ std::string WindowMain::w32OpenFileName(const char* title, const char* initialDi
 }
 
 #endif
-
-

@@ -3,13 +3,15 @@
 #include <stdexcept>
 
 #ifdef USE_SDL
+    #include <SDL3/SDL_vulkan.h>
+
     #include <backends/imgui_impl_sdl3.h>
 #else
     #include <windowsx.h>
     #include <dwmapi.h>
     #include <commdlg.h>
     #include <codecvt>
-    
+
     #include <backends/imgui_impl_win32.h>
 #endif
 
