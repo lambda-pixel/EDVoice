@@ -80,7 +80,7 @@ int WINAPI wWinMain(
 // ----------------------------------------------------------------------------
 
 #include "GUI/EDVoiceGUI.h"
-#include "GUI/WindowSystem.h"
+#include "GUI/Window/WindowSystem.h"
 
 #ifdef WIN32
 int WINAPI wWinMain(

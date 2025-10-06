@@ -7,17 +7,17 @@
 #include <PluginInterface.h>
 
 #ifdef _WIN32
-#include <windows.h>
-typedef HMODULE LibHandle;
-#define LoadLib(name) LoadLibraryA(name)
-#define GetSym GetProcAddress
-#define CloseLib FreeLibrary
+    #include <windows.h>
+    typedef HMODULE LibHandle;
+    #define LoadLib(name) LoadLibraryA(name)
+    #define GetSym GetProcAddress
+    #define CloseLib FreeLibrary
 #else
-#include <dlfcn.h>
-typedef void* LibHandle;
-#define LoadLib(name) dlopen(name, RTLD_NOW)
-#define GetSym dlsym
-#define CloseLib dlclose
+    #include <dlfcn.h>
+    typedef void* LibHandle;
+    #define LoadLib(name) dlopen(name, RTLD_NOW)
+    #define GetSym dlsym
+    #define CloseLib dlclose
 #endif
 
 #include "watchers/StatusWatcher.h"

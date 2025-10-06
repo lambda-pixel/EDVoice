@@ -4,6 +4,14 @@
 #include <imgui.h>
 
 
+// TODO: remove
+#ifdef BUILD_MEDICORP
+const char* WINDOW_TITLE = "EDVoice - MediCorp Edition";
+#else
+const char* WINDOW_TITLE = "EDVoice";
+#endif
+
+
 EDVoiceGUI::EDVoiceGUI(
     const std::filesystem::path& exec_path,
     const std::filesystem::path& config,
@@ -13,7 +21,7 @@ EDVoiceGUI::EDVoiceGUI(
 {
     _mainWindow = new Window(
         windowSystem,
-        "EDVoice",
+        WINDOW_TITLE,
         config.parent_path() / "imgui.ini"
     );
 

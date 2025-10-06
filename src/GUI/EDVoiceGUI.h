@@ -3,7 +3,8 @@
 #include <filesystem>
 #include <thread>
 
-#include "WindowSystem.h"
+#include "Window/WindowSystem.h"
+#include "Window/Window.h"
 #include "../EDVoiceApp.h"
 
 class EDVoiceGUI

@@ -6,7 +6,9 @@
 
 #include <config.h>
 #include "VkUtil.h"
-#include "../WindowSystem.h"
+
+#include "../Window/WindowSystem.h"
+#include "../Window/Window.h"
 
 
 VkAdapter::VkAdapter(

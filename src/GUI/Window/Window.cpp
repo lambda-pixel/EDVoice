@@ -1,6 +1,4 @@
-#include "WindowSystem.h"
-
-#include <stdexcept>
+#include "Window.h"
 
 #ifdef USE_SDL
     #include <backends/imgui_impl_sdl3.h>
@@ -9,74 +7,13 @@
     #include <dwmapi.h>
     #include <commdlg.h>
     #include <codecvt>
-    
+
     #include <backends/imgui_impl_win32.h>
 #endif
 
 #include <backends/imgui_impl_vulkan.h>
 
 #include "inter.cpp"
-
-// TODO: remove
-#ifdef BUILD_MEDICORP
-    const wchar_t WINDOW_TITLE[] = L"EDVoice - MediCorp Edition";
-    const char WINDOW_TITLE_STD[] = "EDVoice - MediCorp Edition";
-#else
-    const wchar_t WINDOW_TITLE[] = L"EDVoice";
-    const char WINDOW_TITLE_STD[] = "EDVoice";
-#endif
-
-
-WindowSystem::WindowSystem(
-#ifdef USE_SDL
-)
-#else
-    HINSTANCE hInstance, int nShowCmd)
-    : _hInstance(hInstance)
-    , _nShowCmd(nShowCmd)
-#endif
-{
-#if defined(USE_SDL) || defined(USE_SDL_MIXER)
-    SDL_InitFlags sdlFlags = 0;
-#endif
-
-#ifdef USE_SDL
-    sdlFlags |= SDL_INIT_VIDEO | SDL_INIT_GAMEPAD;
-#endif
-
-#ifdef USE_SDL_MIXER
-    sdlFlags |= SDL_INIT_AUDIO;
- #endif
-
-#if defined(USE_SDL) || defined(USE_SDL_MIXER)
-    SDL_Init(sdlFlags);
-#endif
-}
-
-
-WindowSystem::~WindowSystem()
-{
-#if defined(USE_SDL) || defined(USE_SDL_MIXER)
-    SDL_Quit();
-#endif
-}
-
-
-void WindowSystem::getVkInstanceExtensions(std::vector<const char*>& extensions) const
-{
-#ifdef USE_SDL
-    uint32_t nInstanceExt;
-    const char* const* instanceExt = SDL_Vulkan_GetInstanceExtensions(&nInstanceExt);
-
-    for (size_t i = 0; i < nInstanceExt; i++) {
-        extensions.push_back(instanceExt[i]);
-    }
-#else
-    extensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
-    extensions.push_back("VK_KHR_win32_surface");
-#endif
-}
-
 
 Window::Window(
     WindowSystem* sys,
@@ -85,6 +22,7 @@ Window::Window(
     : _vkAdapter(sys)
     , _sys(sys)
     , _configPath(config)
+    , _title(title)
 {
 #ifdef USE_SDL
     SDL_WindowFlags window_flags =
@@ -106,7 +44,7 @@ Window::Window(
     SDL_SetWindowPosition(_sdlWindow, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     SDL_SetWindowHitTest(_sdlWindow, sdlHitTest, this);
     SDL_ShowWindow(_sdlWindow);
-    
+
     IMGUI_CHECKVERSION();
     _imGuiContext = ImGui::CreateContext();
     ImGui::SetCurrentContext(_imGuiContext);
@@ -230,7 +168,7 @@ Window::~Window()
 void Window::onResize(uint32_t width, uint32_t height)
 {
     _vkAdapter.resized(width, height);
-    
+
     if (_imGuiInitialized) {
         refreshResize();
     }
@@ -379,7 +317,7 @@ void Window::openVoicePackFileDialog(void* userdata, openedFile callback)
 
 const char* Window::windowTitle() const
 {
-    return WINDOW_TITLE_STD;
+    return _title.c_str();
 }
 
 
@@ -655,8 +593,8 @@ LRESULT CALLBACK Window::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
                     //case VK_F8: { window.borderless_drag = !window.borderless_drag;        return 0; }
                     //case VK_F9: { window.borderless_resize = !window.borderless_resize;    return 0; }
                     //case VK_F10: { window.set_borderless(!window._borderlessWindow);               return 0; }
-                    case VK_F10: { pWindow->w32SetBorderless(!pWindow->_borderlessWindow);               return 0; }
-                    //case VK_F11: { window.set_borderless_shadow(!window.borderless_shadow); return 0; }
+                case VK_F10: { pWindow->w32SetBorderless(!pWindow->_borderlessWindow);               return 0; }
+                           //case VK_F11: { window.set_borderless_shadow(!window.borderless_shadow); return 0; }
                 }
                 break;
             }
@@ -813,8 +751,10 @@ std::string Window::w32OpenFileName(const char* title, const char* initialDir, c
     ofn.lpstrFile = fileBuffer;
     ofn.nMaxFile = sizeof(fileBuffer);
     ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
-    if (multiSelect)
+
+    if (multiSelect) {
         ofn.Flags |= OFN_ALLOWMULTISELECT;
+    }
 
     if (GetOpenFileNameA(&ofn)) {
         return std::string(fileBuffer);

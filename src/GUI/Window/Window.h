@@ -1,14 +1,12 @@
 #pragma once
 
+#include "WindowSystem.h"
+
 #include <string>
 #include <filesystem>
 #include <config.h>
 
 #include <imgui.h>
-
-#if defined(USE_SDL) || defined(USE_SDL_MIXER)
-    #include <SDL3/SDL.h>
-#endif
 
 #ifdef USE_SDL
     #include <SDL3/SDL_vulkan.h>
@@ -17,30 +15,9 @@
     #define VK_USE_PLATFORM_WIN32_KHR
 #endif
 
-#include "Vulkan/VkAdapter.h"
+#include "../Vulkan/VkAdapter.h"
 
 typedef void (*openedFile)(void* userdata, std::string filepath);
-
-class WindowSystem
-{
-public:
-#ifdef USE_SDL
-    WindowSystem();
-#else
-    WindowSystem(HINSTANCE hInstance, int nShowCmd);
-#endif // USE_SDL
-
-    virtual ~WindowSystem();
-
-    void getVkInstanceExtensions(std::vector<const char*>& extensions) const;
-
-#ifndef USE_SDL
-    HINSTANCE _hInstance;
-    int _nShowCmd;
-#endif
-    // TODO: create vulkan context first
-};
-
 
 class Window
 {
@@ -50,7 +27,7 @@ public:
         const std::string& title,
         const std::filesystem::path& config
     );
-    
+
     virtual ~Window();
 
     void onResize(uint32_t width, uint32_t height);
@@ -76,7 +53,7 @@ public:
 
     void createVkSurfaceKHR(
         VkInstance instance,
-        VkSurfaceKHR* surface, int *width, int *height) const;
+        VkSurfaceKHR* surface, int* width, int* height) const;
 
 private:
     void refreshResize();
@@ -97,6 +74,7 @@ private:
     float _titlebarHeight = 32.f;
     float _buttonWidth = 55.f;
     float _totalButtonWidth = 3 * 55.f;
+    std::string _title;
 
     bool _quit = false;
 

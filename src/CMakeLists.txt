@@ -18,11 +18,13 @@ set(EDVOICE_SOURCES
 
 set(EDVOICE_SOURCES_GUI
     GUI/EDVoiceGUI.cpp
+
     GUI/Vulkan/VkAdapter.cpp
     GUI/Vulkan/Swapchain.cpp
     GUI/Vulkan/VkUtil.cpp
 
-    GUI/WindowSystem.cpp
+    GUI/Window/WindowSystem.cpp
+    GUI/Window/Window.cpp
 )
 
 if (WIN32)
