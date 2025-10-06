@@ -3,7 +3,6 @@
 #include <filesystem>
 #include <thread>
 
-#include "Vulkan/VkAdapter.h"
 #include "WindowSystem.h"
 #include "../EDVoiceApp.h"
 
@@ -36,7 +35,6 @@ private:
     static const char* prettyPrintSpecialEvent(SpecialEvent event);
 
     EDVoiceApp* _app;
-    VkAdapter _vkAdapter;
     WindowSystem* _windowSystem;
     Window* _mainWindow;
 

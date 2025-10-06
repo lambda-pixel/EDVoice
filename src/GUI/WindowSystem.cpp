@@ -80,10 +80,9 @@ void WindowSystem::getVkInstanceExtensions(std::vector<const char*>& extensions)
 
 Window::Window(
     WindowSystem* sys,
-    VkAdapter* vkAdapter,
     const std::string& title,
     const std::filesystem::path& config)
-    : _vkAdapter(vkAdapter)
+    : _vkAdapter(sys)
     , _sys(sys)
     , _configPath(config)
 {
@@ -102,7 +101,7 @@ Window::Window(
     );
 
     _mainScale = SDL_GetWindowPixelDensity(_sdlWindow);
-    _vkAdapter->initDevice(this);
+    _vkAdapter.initDevice(this);
 
     SDL_SetWindowPosition(_sdlWindow, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     SDL_SetWindowHitTest(_sdlWindow, sdlHitTest, this);
@@ -167,7 +166,7 @@ Window::Window(
     ::ShowWindow(_hwnd, _sys->_nShowCmd);
     ::UpdateWindow(_hwnd);
 
-    _vkAdapter->initDevice(this);
+    _vkAdapter.initDevice(this);
 
     IMGUI_CHECKVERSION();
     _imGuiContext = ImGui::CreateContext();
@@ -207,7 +206,7 @@ Window::Window(
 
 Window::~Window()
 {
-    vkDeviceWaitIdle(_vkAdapter->getDevice());
+    vkDeviceWaitIdle(_vkAdapter.getDevice());
 
     ImGui::SetCurrentContext(_imGuiContext);
     ImGui::SaveIniSettingsToDisk(_configPath.string().c_str());
@@ -230,7 +229,7 @@ Window::~Window()
 
 void Window::onResize(uint32_t width, uint32_t height)
 {
-    _vkAdapter->resized(width, height);
+    _vkAdapter.resized(width, height);
     
     if (_imGuiInitialized) {
         refreshResize();
@@ -292,12 +291,12 @@ void Window::endFrame()
 
     if (!is_minimized)
     {
-        VkCommandBuffer commandBuffer = _vkAdapter->startNewFrame();
+        VkCommandBuffer commandBuffer = _vkAdapter.startNewFrame();
 
         if (commandBuffer != VK_NULL_HANDLE) {
             ImGui_ImplVulkan_RenderDrawData(draw_data, commandBuffer);
-            _vkAdapter->renderFrame();
-            _vkAdapter->presentFrame();
+            _vkAdapter.renderFrame();
+            _vkAdapter.presentFrame();
         }
         else {
             refreshResize();
@@ -422,18 +421,18 @@ void Window::refreshResize()
     }
 
     ImGui_ImplVulkan_InitInfo init_info = {
-        _vkAdapter->API_VERSION,            // ApiVersion
-        _vkAdapter->getInstance(),          // Instance
-        _vkAdapter->getPhysicalDevice(),    // PhysicalDevice
-        _vkAdapter->getDevice(),            // Device
-        _vkAdapter->getQueueFamily(),       // QueueFamily
-        _vkAdapter->getQueue(),             // Queue
+        _vkAdapter.API_VERSION,            // ApiVersion
+        _vkAdapter.getInstance(),          // Instance
+        _vkAdapter.getPhysicalDevice(),    // PhysicalDevice
+        _vkAdapter.getDevice(),            // Device
+        _vkAdapter.getQueueFamily(),       // QueueFamily
+        _vkAdapter.getQueue(),             // Queue
         VK_NULL_HANDLE,                     // DescriptorPool
         IMGUI_IMPL_VULKAN_MINIMUM_IMAGE_SAMPLER_POOL_SIZE, // DescriptorPoolSize
-        _vkAdapter->nImageCount(),          // MinImageCount
-        _vkAdapter->nImageCount(),          // ImageCount
+        _vkAdapter.nImageCount(),          // MinImageCount
+        _vkAdapter.nImageCount(),          // ImageCount
         VK_NULL_HANDLE,                     // PipelineCache (optional)
-        _vkAdapter->getRenderPass(),        // RenderPass
+        _vkAdapter.getRenderPass(),        // RenderPass
         0,                                  // Subpass
         VK_SAMPLE_COUNT_1_BIT,              // msaaSamples
         false,                              // UseDynamicRendering
@@ -462,34 +461,34 @@ void Window::sdlWndProc(SDL_Event& event)
     ImGui_ImplSDL3_ProcessEvent(&event);
 
     switch (event.type) {
-    case SDL_EVENT_QUIT:
-        _quit = true;
-        break;
-
-    case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
-        if (event.window.windowID == SDL_GetWindowID(_sdlWindow)) {
+        case SDL_EVENT_QUIT:
             _quit = true;
+            break;
+
+        case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+            if (event.window.windowID == SDL_GetWindowID(_sdlWindow)) {
+                _quit = true;
+            }
+            break;
+
+        case SDL_EVENT_WINDOW_RESIZED:
+        {
+            int width, height;
+            SDL_GetWindowSizeInPixels(_sdlWindow, &width, &height);
+            onResize(width, height);
         }
         break;
 
-    case SDL_EVENT_WINDOW_RESIZED:
-    {
-        int width, height;
-        SDL_GetWindowSizeInPixels(_sdlWindow, &width, &height);
-        onResize(width, height);
-    }
-    break;
-
-    case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
-    {
-        _mainScale = SDL_GetWindowDisplayScale(_sdlWindow);
-        int width, height;
-        SDL_GetWindowSizeInPixels(_sdlWindow, &width, &height);
-        onResize(width, height);
-    }
-    break;
-    default:
+        case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
+        {
+            _mainScale = SDL_GetWindowDisplayScale(_sdlWindow);
+            int width, height;
+            SDL_GetWindowSizeInPixels(_sdlWindow, &width, &height);
+            onResize(width, height);
+        }
         break;
+        default:
+            break;
     }
 }
 
@@ -523,24 +522,24 @@ SDL_HitTestResult SDLCALL Window::sdlHitTest(SDL_Window* win, const SDL_Point* a
         ((y >= (height - borderY)) ? bottom : 0);
 
     switch (result) {
-    case left:              return SDL_HITTEST_RESIZE_LEFT;
-    case right:             return SDL_HITTEST_RESIZE_RIGHT;
-    case top:               return SDL_HITTEST_RESIZE_TOP;
-    case bottom:            return SDL_HITTEST_RESIZE_BOTTOM;
-    case top | left:        return SDL_HITTEST_RESIZE_TOPLEFT;
-    case top | right:       return SDL_HITTEST_RESIZE_TOPRIGHT;
-    case bottom | left:     return SDL_HITTEST_RESIZE_BOTTOMLEFT;
-    case bottom | right:    return SDL_HITTEST_RESIZE_BOTTOMRIGHT;
-    case client: {
-        // Title bar area — allow dragging the window
-        if (y < obj->_titlebarHeight && x < (width - obj->_totalButtonWidth)) {
-            return SDL_HITTEST_DRAGGABLE;
+        case left:              return SDL_HITTEST_RESIZE_LEFT;
+        case right:             return SDL_HITTEST_RESIZE_RIGHT;
+        case top:               return SDL_HITTEST_RESIZE_TOP;
+        case bottom:            return SDL_HITTEST_RESIZE_BOTTOM;
+        case top | left:        return SDL_HITTEST_RESIZE_TOPLEFT;
+        case top | right:       return SDL_HITTEST_RESIZE_TOPRIGHT;
+        case bottom | left:     return SDL_HITTEST_RESIZE_BOTTOMLEFT;
+        case bottom | right:    return SDL_HITTEST_RESIZE_BOTTOMRIGHT;
+        case client: {
+            // Title bar area — allow dragging the window
+            if (y < obj->_titlebarHeight && x < (width - obj->_totalButtonWidth)) {
+                return SDL_HITTEST_DRAGGABLE;
+            }
+            else {
+                return SDL_HITTEST_NORMAL;
+            }
         }
-        else {
-            return SDL_HITTEST_NORMAL;
-        }
-    }
-    default:                return SDL_HITTEST_NORMAL;
+        default:                return SDL_HITTEST_NORMAL;
     }
 }
 
@@ -575,9 +574,9 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 
 LRESULT CALLBACK Window::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    auto window_ptr = reinterpret_cast<Window*>(::GetWindowLongPtrW(hWnd, GWLP_USERDATA));
+    auto pWindow = reinterpret_cast<Window*>(::GetWindowLongPtrW(hWnd, GWLP_USERDATA));
 
-    if (!window_ptr) {
+    if (!pWindow) {
         if (msg == WM_NCCREATE) {
             auto userdata = reinterpret_cast<CREATESTRUCTW*>(lParam)->lpCreateParams;
             // store window instance pointer in window user data
@@ -586,12 +585,10 @@ LRESULT CALLBACK Window::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
 
         return ::DefWindowProcW(hWnd, msg, wParam, lParam);
     }
-    else if (window_ptr->_hwnd == hWnd) {
-        auto& window = *window_ptr;
-
-        if (window._imGuiInitialized) {
+    else if (pWindow->_hwnd == hWnd) {
+        if (pWindow->_imGuiInitialized) {
             ImGuiContext* prevContex = ImGui::GetCurrentContext();
-            ImGui::SetCurrentContext(window._imGuiContext);
+            ImGui::SetCurrentContext(pWindow->_imGuiContext);
             LRESULT imGuiRes = ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam);
             ImGui::SetCurrentContext(prevContex);
 
@@ -604,14 +601,14 @@ LRESULT CALLBACK Window::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
             case WM_SIZE: {
                 UINT width = LOWORD(lParam);
                 UINT height = HIWORD(lParam);
-                window.onResize(width, height);
+                pWindow->onResize(width, height);
                 break;
             }
 
             case WM_NCCALCSIZE: {
-                if (wParam == TRUE && window._borderlessWindow) {
+                if (wParam == TRUE && pWindow->_borderlessWindow) {
                     auto& params = *reinterpret_cast<NCCALCSIZE_PARAMS*>(lParam);
-                    window.w32AdjustMaximizedClientRect(params.rgrc[0]);
+                    pWindow->w32AdjustMaximizedClientRect(params.rgrc[0]);
                     return 0;
                 }
                 break;
@@ -619,8 +616,8 @@ LRESULT CALLBACK Window::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
             case WM_NCHITTEST: {
                 // When we have no border or title bar, we need to perform our
                 // own hit testing to allow resizing and moving.
-                if (window._borderlessWindow) {
-                    LRESULT hitResult = window.w32HitTest(POINT{
+                if (pWindow->_borderlessWindow) {
+                    LRESULT hitResult = pWindow->w32HitTest(POINT{
                         GET_X_LPARAM(lParam),
                         GET_Y_LPARAM(lParam)
                         });
@@ -632,7 +629,7 @@ LRESULT CALLBACK Window::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
                 break;
             }
             case WM_NCACTIVATE: {
-                if (!window.w32CompositionEnabled()) {
+                if (!pWindow->w32CompositionEnabled()) {
                     // Prevents window frame reappearing on window activation
                     // in "basic" theme, where no aero shadow is present.
                     return 1;
@@ -642,13 +639,13 @@ LRESULT CALLBACK Window::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
 
             case WM_CLOSE: {
                 ::DestroyWindow(hWnd);
-                window._quit = true;
+                pWindow->_quit = true;
                 return 0;
             }
 
             case WM_DESTROY: {
                 ::PostQuitMessage(0);
-                window._quit = true;
+                pWindow->_quit = true;
                 return 0;
             }
 
@@ -658,8 +655,8 @@ LRESULT CALLBACK Window::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
                     //case VK_F8: { window.borderless_drag = !window.borderless_drag;        return 0; }
                     //case VK_F9: { window.borderless_resize = !window.borderless_resize;    return 0; }
                     //case VK_F10: { window.set_borderless(!window._borderlessWindow);               return 0; }
-                case VK_F10: { window.w32SetBorderless(!window._borderlessWindow);               return 0; }
-                            //case VK_F11: { window.set_borderless_shadow(!window.borderless_shadow); return 0; }
+                    case VK_F10: { pWindow->w32SetBorderless(!pWindow->_borderlessWindow);               return 0; }
+                    //case VK_F11: { window.set_borderless_shadow(!window.borderless_shadow); return 0; }
                 }
                 break;
             }
@@ -780,24 +777,24 @@ LRESULT Window::w32HitTest(POINT cursor) const
         bottom * (cursor.y >= (window.bottom - border.y));
 
     switch (result) {
-    case left: return HTLEFT;
-    case right: return HTRIGHT;
-    case top: return HTTOP;
-    case bottom: return HTBOTTOM;
-    case top | left: return HTTOPLEFT;
-    case top | right: return HTTOPRIGHT;
-    case bottom | left: return HTBOTTOMLEFT;
-    case bottom | right: return HTBOTTOMRIGHT;
-    case client: {
-        // TODO: Adjust
-        if (cursor.y < (window.top + _titlebarHeight) && cursor.x < (window.right - _totalButtonWidth)) {
-            return HTCAPTION;
+        case left: return HTLEFT;
+        case right: return HTRIGHT;
+        case top: return HTTOP;
+        case bottom: return HTBOTTOM;
+        case top | left: return HTTOPLEFT;
+        case top | right: return HTTOPRIGHT;
+        case bottom | left: return HTBOTTOMLEFT;
+        case bottom | right: return HTBOTTOMRIGHT;
+        case client: {
+            // TODO: Adjust
+            if (cursor.y < (window.top + _titlebarHeight) && cursor.x < (window.right - _totalButtonWidth)) {
+                return HTCAPTION;
+            }
+            else {
+                return HTCLIENT;
+            }
         }
-        else {
-            return HTCLIENT;
-        }
-    }
-    default: return HTNOWHERE;
+        default: return HTNOWHERE;
     }
 }
 

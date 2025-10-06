@@ -47,7 +47,6 @@ class Window
 public:
     Window(
         WindowSystem* sys,
-        VkAdapter* vkAdapter,
         const std::string& title,
         const std::filesystem::path& config
     );
@@ -83,7 +82,7 @@ private:
     void refreshResize();
 
 private:
-    VkAdapter* _vkAdapter = nullptr;
+    VkAdapter _vkAdapter;
     WindowSystem* _sys = nullptr;
     ImGuiContext* _imGuiContext = nullptr;
 

@@ -9,19 +9,16 @@ EDVoiceGUI::EDVoiceGUI(
     const std::filesystem::path& config,
     WindowSystem* windowSystem)
     : _app(new EDVoiceApp(exec_path, config))
-    , _vkAdapter(windowSystem)
     , _windowSystem(windowSystem)
 {
     _mainWindow = new Window(
         windowSystem,
-        &_vkAdapter,
         "EDVoice",
         config.parent_path() / "imgui.ini"
     );
 
     _overlayWindow = new Window(
         windowSystem,
-        new VkAdapter(windowSystem),
         "EDVoice overlay",
         config.parent_path() / "overlay.ini"
     );
