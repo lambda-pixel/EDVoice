@@ -8,7 +8,7 @@ EDVoiceGUI::EDVoiceGUI(
     const std::filesystem::path& exec_path,
     const std::filesystem::path& config,
     WindowSystem* windowSystem)
-    : _app(new EDVoiceApp(exec_path, config))
+    : _app(exec_path, config)
     , _windowSystem(windowSystem)
 {
     _mainWindow = new Window(
@@ -28,8 +28,7 @@ EDVoiceGUI::EDVoiceGUI(
 EDVoiceGUI::~EDVoiceGUI()
 {
     delete _mainWindow;
-    //delete _overlayWindow;
-    delete _app; // TODO: don't manage the app lifetime
+    delete _overlayWindow;
 }
 
 
@@ -155,7 +154,7 @@ void EDVoiceGUI::endMainWindow()
 
 void EDVoiceGUI::voicePackGUI()
 {
-    VoicePackManager& voicepack = _app->getVoicepack();
+    VoicePackManager& voicepack = _app.getVoicepack();
 
     size_t selectedVoicePackIdx = voicepack.getCurrentVoicePackIndex();
 
@@ -205,7 +204,7 @@ void EDVoiceGUI::voicePackGUI()
     }
 
 #ifdef BUILD_MEDICORP
-    ImGui::Text("MediCorp Compliant: %s", _app->getVoicepack().isAltaCompliant() ? "Yes" : "No");
+    ImGui::Text("MediCorp Compliant: %s", _app.getVoicepack().isAltaCompliant() ? "Yes" : "No");
 #endif
 
     ImGui::Spacing();
@@ -232,7 +231,7 @@ void EDVoiceGUI::voicePackGUI()
 
 void EDVoiceGUI::voicePackStatusGUI()
 {
-    VoicePackManager& voicepack = _app->getVoicepack();
+    VoicePackManager& voicepack = _app.getVoicepack();
 
     const std::array<std::array<VoiceTriggerStatus, 2 * StatusEvent::N_StatusEvents>, N_Vehicles>& statusActive = voicepack.getVoiceStatusActive();
     static ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter;
@@ -299,7 +298,7 @@ void EDVoiceGUI::voicePackStatusGUI()
 
 void EDVoiceGUI::voicePackJourmalEventGUI()
 {
-    VoicePackManager& voicepack = _app->getVoicepack();
+    VoicePackManager& voicepack = _app.getVoicepack();
 
     const std::map<std::string, VoiceTriggerStatus>& eventItems = voicepack.getVoiceJournalActive();
 
@@ -340,7 +339,7 @@ void EDVoiceGUI::voicePackJourmalEventGUI()
 
 void EDVoiceGUI::voicePackSpecialEventGUI()
 {
-    VoicePackManager& voicepack = _app->getVoicepack();
+    VoicePackManager& voicepack = _app.getVoicepack();
 
     // TODO: shitty copy paste... but works for now :(
     const std::array<VoiceTriggerStatus, N_SpecialEvents>& eventItems = voicepack.getVoiceSpecialActive();
@@ -383,7 +382,7 @@ void EDVoiceGUI::voicePackSpecialEventGUI()
 void EDVoiceGUI::loadVoicePack(void* userdata, std::string path)
 {
     EDVoiceGUI* obj = (EDVoiceGUI*)userdata;
-    VoicePackManager& voicepack = obj->_app->getVoicepack();
+    VoicePackManager& voicepack = obj->_app.getVoicepack();
 
     if (!path.empty()) {
         try {

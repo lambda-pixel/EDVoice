@@ -34,10 +34,10 @@ private:
     static const char* prettyPrintVehicle(Vehicle vehicle);
     static const char* prettyPrintSpecialEvent(SpecialEvent event);
 
-    EDVoiceApp* _app;
+    EDVoiceApp _app;
     WindowSystem* _windowSystem;
-    Window* _mainWindow;
 
+    Window* _mainWindow;
     Window* _overlayWindow;
 
     bool _hasError = false;
