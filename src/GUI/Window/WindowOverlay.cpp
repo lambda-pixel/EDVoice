@@ -1,7 +1,8 @@
 #include "WindowOverlay.h"
 
+#ifndef USE_SDL
 
-WindowOverlay(
+WindowOverlay::WindowOverlay(
     WindowSystem* sys,
     const std::string& title,
     const std::filesystem::path& config,
@@ -10,3 +11,5 @@ WindowOverlay(
 {
 
 }
+
+#endif

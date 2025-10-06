@@ -4,6 +4,7 @@
 
 #include <config.h>
 
+// The overlay feature is currently Windows specific
 #ifndef USE_SDL
 
 class WindowOverlay: public Window
