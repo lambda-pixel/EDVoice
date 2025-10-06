@@ -18,7 +18,13 @@ EDVoiceGUI::EDVoiceGUI(
         "EDVoice",
         config.parent_path() / "imgui.ini"
     );
-    //_overlayWindow = new Window(windowSystem, &_vkAdapter, "EDVoice bis");
+
+    _overlayWindow = new Window(
+        windowSystem,
+        new VkAdapter(windowSystem),
+        "EDVoice overlay",
+        config.parent_path() / "overlay.ini"
+    );
 }
 
 
@@ -54,6 +60,10 @@ void EDVoiceGUI::run()
         }
 
         _mainWindow->endFrame();
+
+        _overlayWindow->beginFrame();
+        ImGui::ShowDemoWindow();
+        _overlayWindow->endFrame();
     }
 }
 

@@ -264,7 +264,7 @@ void Window::beginFrame()
     ImGui_ImplSDL3_NewFrame();
 #else
     MSG msg;
-    while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+    while (PeekMessage(&msg, _hwnd, 0, 0, PM_REMOVE))
     {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
@@ -575,86 +575,100 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 
 LRESULT CALLBACK Window::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam)) {
-        return true;
-    }
+    auto window_ptr = reinterpret_cast<Window*>(::GetWindowLongPtrW(hWnd, GWLP_USERDATA));
 
-    if (msg == WM_NCCREATE) {
-        auto userdata = reinterpret_cast<CREATESTRUCTW*>(lParam)->lpCreateParams;
-        // store window instance pointer in window user data
-        ::SetWindowLongPtrW(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(userdata));
-    }
+    if (!window_ptr) {
+        if (msg == WM_NCCREATE) {
+            auto userdata = reinterpret_cast<CREATESTRUCTW*>(lParam)->lpCreateParams;
+            // store window instance pointer in window user data
+            ::SetWindowLongPtrW(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(userdata));
+        }
 
-    if (auto window_ptr = reinterpret_cast<Window*>(::GetWindowLongPtrW(hWnd, GWLP_USERDATA))) {
+        return ::DefWindowProcW(hWnd, msg, wParam, lParam);
+    }
+    else if (window_ptr->_hwnd == hWnd) {
         auto& window = *window_ptr;
+
+        if (window._imGuiInitialized) {
+            ImGuiContext* prevContex = ImGui::GetCurrentContext();
+            ImGui::SetCurrentContext(window._imGuiContext);
+            LRESULT imGuiRes = ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam);
+            ImGui::SetCurrentContext(prevContex);
+
+            if (imGuiRes) {
+                return 0;
+            }
+        }
 
         switch (msg) {
             case WM_SIZE: {
                 UINT width = LOWORD(lParam);
                 UINT height = HIWORD(lParam);
                 window.onResize(width, height);
-            break;
-        }
+                break;
+            }
 
-        case WM_NCCALCSIZE: {
-            if (wParam == TRUE && window._borderlessWindow) {
-                auto& params = *reinterpret_cast<NCCALCSIZE_PARAMS*>(lParam);
-                window.w32AdjustMaximizedClientRect(params.rgrc[0]);
+            case WM_NCCALCSIZE: {
+                if (wParam == TRUE && window._borderlessWindow) {
+                    auto& params = *reinterpret_cast<NCCALCSIZE_PARAMS*>(lParam);
+                    window.w32AdjustMaximizedClientRect(params.rgrc[0]);
+                    return 0;
+                }
+                break;
+            }
+            case WM_NCHITTEST: {
+                // When we have no border or title bar, we need to perform our
+                // own hit testing to allow resizing and moving.
+                if (window._borderlessWindow) {
+                    LRESULT hitResult = window.w32HitTest(POINT{
+                        GET_X_LPARAM(lParam),
+                        GET_Y_LPARAM(lParam)
+                        });
+
+                    if (hitResult) {
+                        return hitResult;
+                    }
+                }
+                break;
+            }
+            case WM_NCACTIVATE: {
+                if (!window.w32CompositionEnabled()) {
+                    // Prevents window frame reappearing on window activation
+                    // in "basic" theme, where no aero shadow is present.
+                    return 1;
+                }
+                break;
+            }
+
+            case WM_CLOSE: {
+                ::DestroyWindow(hWnd);
+                window._quit = true;
                 return 0;
             }
-            break;
-        }
-        case WM_NCHITTEST: {
-            // When we have no border or title bar, we need to perform our
-            // own hit testing to allow resizing and moving.
-            if (window._borderlessWindow) {
-                LRESULT hitResult = window.w32HitTest(POINT{
-                    GET_X_LPARAM(lParam),
-                    GET_Y_LPARAM(lParam)
-                    });
 
-                if (hitResult) {
-                    return hitResult;
+            case WM_DESTROY: {
+                ::PostQuitMessage(0);
+                window._quit = true;
+                return 0;
+            }
+
+            case WM_KEYDOWN:
+            case WM_SYSKEYDOWN: {
+                switch (wParam) {
+                    //case VK_F8: { window.borderless_drag = !window.borderless_drag;        return 0; }
+                    //case VK_F9: { window.borderless_resize = !window.borderless_resize;    return 0; }
+                    //case VK_F10: { window.set_borderless(!window._borderlessWindow);               return 0; }
+                case VK_F10: { window.w32SetBorderless(!window._borderlessWindow);               return 0; }
+                            //case VK_F11: { window.set_borderless_shadow(!window.borderless_shadow); return 0; }
                 }
+                break;
             }
-            break;
-        }
-        case WM_NCACTIVATE: {
-            if (!window.w32CompositionEnabled()) {
-                // Prevents window frame reappearing on window activation
-                // in "basic" theme, where no aero shadow is present.
-                return 1;
-            }
-            break;
         }
 
-        case WM_CLOSE: {
-            ::DestroyWindow(hWnd);
-            window._quit = true;
-            return 0;
-        }
-
-        case WM_DESTROY: {
-            ::PostQuitMessage(0);
-            window._quit = true;
-            return 0;
-        }
-
-        case WM_KEYDOWN:
-        case WM_SYSKEYDOWN: {
-            switch (wParam) {
-                //case VK_F8: { window.borderless_drag = !window.borderless_drag;        return 0; }
-                //case VK_F9: { window.borderless_resize = !window.borderless_resize;    return 0; }
-                //case VK_F10: { window.set_borderless(!window._borderlessWindow);               return 0; }
-            case VK_F10: { window.w32SetBorderless(!window._borderlessWindow);               return 0; }
-                       //case VK_F11: { window.set_borderless_shadow(!window.borderless_shadow); return 0; }
-            }
-            break;
-        }
-        }
+        return ::DefWindowProcW(hWnd, msg, wParam, lParam);
     }
 
-    return ::DefWindowProcW(hWnd, msg, wParam, lParam);
+    return 0;
 }
 
 
