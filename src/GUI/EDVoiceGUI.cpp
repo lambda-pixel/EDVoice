@@ -19,30 +19,30 @@ EDVoiceGUI::EDVoiceGUI(
     : _app(exec_path, config)
     , _windowSystem(windowSystem)
 {
-    _mainWindow = new Window(
+    _mainWindow = new WindowMain(
         windowSystem,
         WINDOW_TITLE,
         config.parent_path() / "imgui.ini"
     );
 
-    _overlayWindow = new Window(
-        windowSystem,
-        "EDVoice overlay",
-        config.parent_path() / "overlay.ini"
-    );
+    //_overlayWindow = new WindowMain(
+    //    windowSystem,
+    //    "EDVoice overlay",
+    //    config.parent_path() / "overlay.ini"
+    //);
 }
 
 
 EDVoiceGUI::~EDVoiceGUI()
 {
     delete _mainWindow;
-    delete _overlayWindow;
+    //delete _overlayWindow;
 }
 
 
 void EDVoiceGUI::run()
 {
-    while (!_mainWindow->quit())
+    while (!_mainWindow->closed())
     {
         _mainWindow->beginFrame();
 
@@ -65,9 +65,9 @@ void EDVoiceGUI::run()
 
         _mainWindow->endFrame();
 
-        _overlayWindow->beginFrame();
-        ImGui::ShowDemoWindow();
-        _overlayWindow->endFrame();
+        //_overlayWindow->beginFrame();
+        //ImGui::ShowDemoWindow();
+        //_overlayWindow->endFrame();
     }
 }
 

@@ -25,6 +25,7 @@ set(EDVOICE_SOURCES_GUI
 
     GUI/Window/WindowSystem.cpp
     GUI/Window/Window.cpp
+    GUI/Window/WindowMain.cpp
 )
 
 if (WIN32)

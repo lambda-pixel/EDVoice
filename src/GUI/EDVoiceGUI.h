@@ -4,7 +4,7 @@
 #include <thread>
 
 #include "Window/WindowSystem.h"
-#include "Window/Window.h"
+#include "Window/WindowMain.h"
 #include "../EDVoiceApp.h"
 
 class EDVoiceGUI
@@ -38,8 +38,8 @@ private:
     EDVoiceApp _app;
     WindowSystem* _windowSystem;
 
-    Window* _mainWindow;
-    Window* _overlayWindow;
+    WindowMain* _mainWindow;
+    WindowMain* _overlayWindow;
 
     bool _hasError = false;
     std::string _logErrStr;
