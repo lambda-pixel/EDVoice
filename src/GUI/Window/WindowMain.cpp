@@ -163,8 +163,6 @@ WindowMain::~WindowMain()
 }
 
 
-
-
 void WindowMain::minimizeWindow()
 {
 #ifdef USE_SDL
@@ -237,10 +235,10 @@ void WindowMain::openVoicePackFileDialog(void* userdata, openedFile callback)
 }
 
 
-
 // ----------------------------------------------------------------------------
 // Platform specific mess
 // ----------------------------------------------------------------------------
+
 
 #ifdef USE_SDL
 
@@ -356,7 +354,9 @@ void SDLCALL WindowMain::sdlCallbackOpenFile(void* userdata, const char* const* 
     delete obj;
 }
 
+
 #else
+
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
