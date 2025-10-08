@@ -449,11 +449,9 @@ LRESULT CALLBACK WindowMain::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPAR
                 break;
             }
         }
-
-        return ::DefWindowProcW(hWnd, msg, wParam, lParam);
     }
 
-    return 0;
+    return ::DefWindowProcW(hWnd, msg, wParam, lParam);
 }
 
 

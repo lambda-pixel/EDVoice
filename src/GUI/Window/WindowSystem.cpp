@@ -67,3 +67,19 @@ void WindowSystem::getVkInstanceExtensions(std::vector<const char*>& extensions)
     extensions.push_back("VK_KHR_win32_surface");
 #endif
 }
+
+
+void WindowSystem::collectEvents()
+{
+    // TODO: make it cleaner, right now, each window collect their
+    //       own events during the rendering loop but this blocks
+    //       audio when handled by WIN32
+#ifndef USE_SDL
+    MSG msg;
+    while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+    {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+#endif
+}

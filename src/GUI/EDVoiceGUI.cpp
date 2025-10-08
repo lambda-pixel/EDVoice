@@ -68,6 +68,8 @@ void EDVoiceGUI::run()
         //_overlayWindow->beginFrame();
         //ImGui::ShowDemoWindow();
         //_overlayWindow->endFrame();
+
+        _windowSystem->collectEvents();
     }
 }
 

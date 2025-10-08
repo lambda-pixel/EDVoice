@@ -27,6 +27,8 @@ public:
 
     void getVkInstanceExtensions(std::vector<const char*>& extensions) const;
 
+    void collectEvents();
+
 #ifndef USE_SDL
     HINSTANCE _hInstance;
     int _nShowCmd;

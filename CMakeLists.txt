@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.15)
 project(EDVoice)
 
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED On)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(BUILD_MEDICORP "Build with MediCorp support" OFF)
 
