@@ -319,7 +319,7 @@ void VkAdapter::createFramebuffer()
 void VkAdapter::createRenderPass()
 {
     // Free previously allocated resources in case of a swapchain change
-    vkDestroyRenderPass(_device, _renderPass, nullptr);
+    if (_renderPass) vkDestroyRenderPass(_device, _renderPass, nullptr);
 
     const VkAttachmentDescription attachmentDescription[] = {
         {       // resolve
@@ -349,11 +349,18 @@ void VkAdapter::createRenderPass()
         0, nullptr,                                 // preserveAttachments
     };
 
+    const VkSubpassDependency dependency = {
+        VK_SUBPASS_EXTERNAL, 0,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        0
+    };
+
     const VkRenderPassCreateInfo renderPassCreateInfo = {
         VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO, nullptr, 0,  // sType, pNext, flags
         C_ARRAY_SIZE(attachmentDescription), attachmentDescription, // attachments
         1, &subpassDescription,                                 // subpasses
-        0, nullptr                                              // dependencies
+        1, &dependency                                              // dependencies
     };
 
     VK_THROW_IF_FAILED(vkCreateRenderPass(_device, &renderPassCreateInfo, nullptr, &_renderPass));

@@ -33,6 +33,15 @@ Swapchain::~Swapchain()
     vkDestroySwapchainKHR(_device, _swapchain, nullptr);
 }
 
+VkCompositeAlphaFlagBitsKHR chooseCompositeAlpha(const VkSurfaceCapabilitiesKHR& caps) {
+    if (caps.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR)
+        return VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR;
+    if (caps.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR)
+        return VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR;
+    if (caps.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR)
+        return VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
+    return VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+}
 
 void Swapchain::updateSwapchain(uint32_t width, uint32_t height)
 {
@@ -55,11 +64,25 @@ void Swapchain::updateSwapchain(uint32_t width, uint32_t height)
 
     bool formatFound = false;
 
+    const std::vector<VkFormat> preferred = {
+        VK_FORMAT_B8G8R8A8_UNORM,
+        VK_FORMAT_R8G8B8A8_UNORM,
+        //VK_FORMAT_B8G8R8A8_SRGB,
+        //VK_FORMAT_R8G8B8A8_SRGB
+    };
+
     for (const VkSurfaceFormatKHR& format : supportedFormats) {
-        if ((format.colorSpace & VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
-        {
-            _swapchainFormat = format;
-            formatFound = true;
+        for (const auto& f: preferred) {
+            if ((format.colorSpace & VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR &&
+                format.format == f)
+            {
+                _swapchainFormat = format;
+                formatFound = true;
+                break;
+            }
+        }
+
+        if (formatFound) {
             break;
         }
     }
@@ -92,7 +115,7 @@ void Swapchain::updateSwapchain(uint32_t width, uint32_t height)
         VK_SHARING_MODE_EXCLUSIVE,                              // imageSharingMode
         0, nullptr,                                             // sharingQueues
         surfaceCapabilities.currentTransform,                   // preTransform
-        VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,                      // compositeAlpha
+        chooseCompositeAlpha(surfaceCapabilities),                      // compositeAlpha
         VK_PRESENT_MODE_FIFO_KHR,                               // presentMode
         VK_FALSE,                                               // clipped
         VK_NULL_HANDLE//_swapchain                                              // oldSwapchain

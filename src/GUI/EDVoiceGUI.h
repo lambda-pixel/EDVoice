@@ -5,6 +5,7 @@
 
 #include "Window/WindowSystem.h"
 #include "Window/WindowMain.h"
+#include "Window/WindowOverlay.h"
 #include "../EDVoiceApp.h"
 
 class EDVoiceGUI
@@ -39,7 +40,7 @@ private:
     WindowSystem* _windowSystem;
 
     WindowMain* _mainWindow;
-    WindowMain* _overlayWindow;
+    WindowOverlay* _overlayWindow;
 
     bool _hasError = false;
     std::string _logErrStr;

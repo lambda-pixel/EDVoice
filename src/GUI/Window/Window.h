@@ -30,8 +30,8 @@ protected:
 public:
     virtual ~Window();
 
-    void beginFrame();
-    void endFrame();
+    virtual void beginFrame();
+    virtual void endFrame();
 
     bool closed() const { return _closed; }
 
@@ -43,6 +43,12 @@ public:
     void createVkSurfaceKHR(
         VkInstance instance,
         VkSurfaceKHR* surface, int* width, int* height) const;
+
+#ifdef USE_SDL
+    SDL_Window* handle() const { return _sdlWindow; }
+#else
+    HWND handle() const { return _hwnd; }
+#endif
 
 protected:
     void onResize(uint32_t width, uint32_t height);

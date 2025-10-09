@@ -23,9 +23,12 @@ set(EDVOICE_SOURCES_GUI
     GUI/Vulkan/Swapchain.cpp
     GUI/Vulkan/VkUtil.cpp
 
+    GUI/DX11/DX11Adapter.cpp
+
     GUI/Window/WindowSystem.cpp
     GUI/Window/Window.cpp
     GUI/Window/WindowMain.cpp
+    GUI/Window/WindowOverlay.cpp
 )
 
 if (WIN32)

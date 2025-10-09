@@ -18,7 +18,8 @@ else()
         imgui/imgui_widgets.cpp
         imgui/backends/imgui_impl_win32.cpp
         imgui/backends/imgui_impl_vulkan.cpp
-        #imgui/imgui_demo.cpp
+        imgui/backends/imgui_impl_dx11.cpp
+        imgui/imgui_demo.cpp
     )
 endif()
 
