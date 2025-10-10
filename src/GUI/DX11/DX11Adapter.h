@@ -10,7 +10,7 @@ class Window;
 class DX11Adapter
 {
 public:
-    DX11Adapter();
+    DX11Adapter(WindowSystem* sys);
 
     virtual ~DX11Adapter();
 

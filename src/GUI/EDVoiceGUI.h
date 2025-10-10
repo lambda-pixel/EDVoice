@@ -40,7 +40,7 @@ private:
     WindowSystem* _windowSystem;
 
     WindowMain* _mainWindow;
-    WindowOverlay* _overlayWindow;
+    //WindowOverlay* _overlayWindow;
 
     bool _hasError = false;
     std::string _logErrStr;

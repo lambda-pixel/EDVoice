@@ -13,8 +13,6 @@
 
 #include <backends/imgui_impl_vulkan.h>
 
-#include "inter.cpp"
-
 
 WindowMain::WindowMain(
     WindowSystem* sys,
@@ -37,17 +35,10 @@ WindowMain::WindowMain(
     );
 
     _mainScale = SDL_GetWindowPixelDensity(_sdlWindow);
-    _vkAdapter.initDevice(this);
 
     SDL_SetWindowPosition(_sdlWindow, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     SDL_SetWindowHitTest(_sdlWindow, sdlHitTest, this);
     SDL_ShowWindow(_sdlWindow);
-
-    IMGUI_CHECKVERSION();
-    _imGuiContext = ImGui::CreateContext();
-    ImGui::SetCurrentContext(_imGuiContext);
-
-    ImGui_ImplSDL3_InitForVulkan(_sdlWindow);
 #else
     ImGui_ImplWin32_EnableDpiAwareness();
     _mainScale = ImGui_ImplWin32_GetDpiScaleForMonitor(MonitorFromPoint(POINT{ 0, 0 }, MONITOR_DEFAULTTOPRIMARY));
@@ -56,7 +47,7 @@ WindowMain::WindowMain(
 
     WNDCLASSEXW wcx{};
     wcx.cbSize = sizeof(wcx);
-    wcx.style = CS_HREDRAW | CS_VREDRAW;
+    wcx.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
     wcx.hInstance = _sys->_hInstance;
     wcx.lpfnWndProc = WindowMain::w32WndProc;
     wcx.lpszClassName = _className.c_str();
@@ -77,7 +68,7 @@ WindowMain::WindowMain(
         (int)(_mainScale * 640), (int)(_mainScale * 700),
         nullptr,
         nullptr,
-        nullptr,
+        wcx.hInstance,
         this
     );
 
@@ -101,65 +92,24 @@ WindowMain::WindowMain(
     ::SetWindowPos(_hwnd, nullptr, x, y, 0, 0, SWP_FRAMECHANGED | SWP_NOSIZE);
     ::ShowWindow(_hwnd, _sys->_nShowCmd);
     ::UpdateWindow(_hwnd);
-
-    _vkAdapter.initDevice(this);
-
-    IMGUI_CHECKVERSION();
-    _imGuiContext = ImGui::CreateContext();
-    ImGui::SetCurrentContext(_imGuiContext);
-
-    ImGui_ImplWin32_Init(_hwnd);
 #endif
-
-    // Final ImGui setup
-    ImGuiIO& io = ImGui::GetIO();
-    io.IniFilename = NULL;
-    ImGui::LoadIniSettingsFromDisk(_configPath.string().c_str());
-
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-
-    ImGui::StyleColorsDark();
-
-    // Scaling
-    ImGuiStyle& style = ImGui::GetStyle();
-    style.ScaleAllSizes(getMainScale());
-    style.FontScaleDpi = getMainScale();
-
-    ImFont* font = io.Fonts->AddFontFromMemoryCompressedTTF(
-        inter_compressed_data,
-        inter_compressed_size,
-        getMainScale() * 20.f);
-
-    refreshResize();
-
     // Apply scale
     _titlebarHeight = _mainScale * 32.f;
     _buttonWidth = _mainScale * 55.f;
     _totalButtonWidth = 3.f * _buttonWidth;
+
+    postInit();
 }
 
 
 WindowMain::~WindowMain()
 {
-    vkDeviceWaitIdle(_vkAdapter.getDevice());
-
-    ImGui::SetCurrentContext(_imGuiContext);
-    ImGui::SaveIniSettingsToDisk(_configPath.string().c_str());
-
-    ImGui_ImplVulkan_Shutdown();
-
 #ifdef USE_SDL
-    ImGui_ImplSDL3_Shutdown();
     SDL_DestroyWindow(_sdlWindow);
 #else
-    ImGui_ImplWin32_Shutdown();
-
     DestroyWindow(_hwnd);
     UnregisterClassW(_className.c_str(), _sys->_hInstance);
 #endif
-
-    ImGui::DestroyContext(_imGuiContext);
 }
 
 
@@ -357,7 +307,7 @@ void SDLCALL WindowMain::sdlCallbackOpenFile(void* userdata, const char* const* 
 
 #else
 
-
+#include <iostream>
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 LRESULT CALLBACK WindowMain::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -370,8 +320,6 @@ LRESULT CALLBACK WindowMain::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPAR
             // store window instance pointer in window user data
             ::SetWindowLongPtrW(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(userdata));
         }
-
-        return ::DefWindowProcW(hWnd, msg, wParam, lParam);
     }
     else if (pWindow->_hwnd == hWnd) {
         if (pWindow->_imGuiInitialized) {
@@ -386,6 +334,9 @@ LRESULT CALLBACK WindowMain::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPAR
         }
 
         switch (msg) {
+            case WM_MOUSEACTIVATE:
+                return MA_ACTIVATE;
+
             case WM_SIZE: {
                 UINT width = LOWORD(lParam);
                 UINT height = HIWORD(lParam);

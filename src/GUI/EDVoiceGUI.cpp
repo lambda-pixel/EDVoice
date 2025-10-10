@@ -25,12 +25,12 @@ EDVoiceGUI::EDVoiceGUI(
         config.parent_path() / "imgui.ini"
     );
 
-    _overlayWindow = new WindowOverlay(
-        windowSystem,
-        "EDVoice overlay",
-        config.parent_path() / "overlay.ini",
-        L"EliteDangerous64.exe"
-    );
+    //_overlayWindow = new WindowOverlay(
+    //    windowSystem,
+    //    "EDVoice overlay",
+    //    config.parent_path() / "overlay.ini",
+    //    L"EliteDangerous64.exe"
+    //);
 }
 
 
@@ -66,9 +66,9 @@ void EDVoiceGUI::run()
 
         _mainWindow->endFrame();
 
-        _overlayWindow->beginFrame();
-        ImGui::ShowDemoWindow();
-        _overlayWindow->endFrame();
+        //_overlayWindow->beginFrame();
+        //ImGui::ShowDemoWindow();
+        //_overlayWindow->endFrame();
 
         _windowSystem->collectEvents();
     }

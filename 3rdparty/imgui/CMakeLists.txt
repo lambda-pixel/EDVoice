@@ -1,28 +1,35 @@
 find_package(Vulkan REQUIRED)
 
+set(IMGUI_SRC
+    imgui/imgui.cpp
+    imgui/imgui_draw.cpp
+    imgui/imgui_tables.cpp
+    imgui/imgui_widgets.cpp
+    imgui/imgui_demo.cpp
+)
+
 if (USE_SDL)
-    add_library(imgui
-        imgui/imgui.cpp
-        imgui/imgui_draw.cpp
-        imgui/imgui_tables.cpp
-        imgui/imgui_widgets.cpp
+    set(IMGUI_SRC ${IMGUI_SRC}
         imgui/backends/imgui_impl_sdl3.cpp
-        imgui/backends/imgui_impl_vulkan.cpp
-        #imgui/imgui_demo.cpp
     )
 else()
-    add_library(imgui
-        imgui/imgui.cpp
-        imgui/imgui_draw.cpp
-        imgui/imgui_tables.cpp
-        imgui/imgui_widgets.cpp
+    set(IMGUI_SRC ${IMGUI_SRC}
         imgui/backends/imgui_impl_win32.cpp
-        imgui/backends/imgui_impl_vulkan.cpp
-        imgui/backends/imgui_impl_dx11.cpp
-        imgui/imgui_demo.cpp
     )
 endif()
 
+if (USE_VULKAN)
+    set(IMGUI_SRC ${IMGUI_SRC}
+        imgui/backends/imgui_impl_vulkan.cpp
+    )
+else()
+    set(IMGUI_SRC ${IMGUI_SRC}
+        imgui/backends/imgui_impl_dx11.cpp
+    )
+endif()
+
+
+add_library(imgui ${IMGUI_SRC})
 target_include_directories(imgui PUBLIC imgui)
 
 target_link_libraries(imgui PUBLIC Vulkan::Vulkan)

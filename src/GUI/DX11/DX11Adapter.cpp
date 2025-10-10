@@ -7,11 +7,13 @@
 
 #include "../Window/Window.h"
 
+#ifdef USE_SDL
+    #include <SDL3/SDL.h>
+#endif
 
-DX11Adapter::DX11Adapter()
-{
 
-}
+DX11Adapter::DX11Adapter(WindowSystem*)
+{}
 
 
 DX11Adapter::~DX11Adapter()
@@ -37,7 +39,13 @@ void DX11Adapter::initDevice(Window* window)
     sd.BufferDesc.RefreshRate.Denominator = 1;
     sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
     sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+#ifdef USE_SDL
+    SDL_PropertiesID props = SDL_GetWindowProperties(window->handle());
+    HWND hwnd = (HWND)SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
+    sd.OutputWindow = hwnd;
+#else
     sd.OutputWindow = window->handle();
+#endif
     sd.SampleDesc.Count = 1;
     sd.SampleDesc.Quality = 0;
     sd.Windowed = TRUE;

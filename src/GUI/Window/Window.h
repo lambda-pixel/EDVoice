@@ -15,7 +15,12 @@
     #define VK_USE_PLATFORM_WIN32_KHR
 #endif
 
-#include "../Vulkan/VkAdapter.h"
+#ifdef USE_VULKAN
+    #include "../Vulkan/VkAdapter.h"
+#else
+    #include "../DX11/DX11Adapter.h"
+#endif
+
 
 typedef void (*openedFile)(void* userdata, std::string filepath);
 
@@ -40,9 +45,11 @@ public:
 
     const char* windowTitle() const;
 
+#ifdef USE_VULKAN
     void createVkSurfaceKHR(
         VkInstance instance,
         VkSurfaceKHR* surface, int* width, int* height) const;
+#endif
 
 #ifdef USE_SDL
     SDL_Window* handle() const { return _sdlWindow; }
@@ -51,10 +58,17 @@ public:
 #endif
 
 protected:
+    void postInit();
     void onResize(uint32_t width, uint32_t height);
     void refreshResize();
 
-    VkAdapter _vkAdapter;
+#ifdef USE_VULKAN
+    VkAdapter _gpuAdapter;
+#else
+    DX11Adapter _gpuAdapter;
+#endif
+    bool _gpuInitialized = false;
+
     WindowSystem* _sys = nullptr;
     ImGuiContext* _imGuiContext = nullptr;
 
