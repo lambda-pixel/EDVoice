@@ -19,7 +19,7 @@ EDVoiceGUI::EDVoiceGUI(
     : _app(exec_path, config)
     , _windowSystem(windowSystem)
 {
-    _mainWindow = new WindowMain(
+    _mainWindow = new WindowBorderless(
         windowSystem,
         WINDOW_TITLE,
         config.parent_path() / "imgui.ini"
@@ -80,7 +80,7 @@ void EDVoiceGUI::beginMainWindow()
 {
     ImGuiViewport* pViewport = ImGui::GetMainViewport();
 
-    if (_mainWindow->borderlessWindow()) {
+    if (_mainWindow->borderless()) {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 0.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
@@ -103,7 +103,7 @@ void EDVoiceGUI::beginMainWindow()
         // Center title vertically
         ImGui::PushFont(NULL, style.FontSizeBase * 1.2f);
         ImGui::SetCursorPos(ImVec2(titleMarginLeft, .5f * (_mainWindow->titleBarHeight() - ImGui::GetFontSize())));
-        ImGui::Text("%s", _mainWindow->windowTitle());
+        ImGui::Text("%s", _mainWindow->title());
         ImGui::PopFont();
 
         // Minimize & Resize buttons

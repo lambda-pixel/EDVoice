@@ -1,4 +1,4 @@
-#include "WindowMain.h"
+#include "WindowBorderless.h"
 
 #ifdef USE_SDL
     #include <backends/imgui_impl_sdl3.h>
@@ -9,7 +9,7 @@
 #endif
 
 
-WindowMain::WindowMain(
+WindowBorderless::WindowBorderless(
     WindowSystem* sys,
     const std::string& title,
     const std::filesystem::path& config)
@@ -17,6 +17,19 @@ WindowMain::WindowMain(
 {
 #ifdef USE_SDL
     SDL_SetWindowHitTest(_sdlWindow, sdlHitTest, this);
+    SDL_SetWindowBordered(_sdlWindow, false);
+    SDL_ShowWindow(_sdlWindow);
+#else
+    ::SetWindowLongPtrW(_hwnd, GWL_STYLE, static_cast<LONG>(w32Style()));
+
+    if (w32CompositionEnabled()) {
+        static const MARGINS shadow_state[2]{ { 0,0,0,0 },{ 1,1,1,1 } };
+        ::DwmExtendFrameIntoClientArea(_hwnd, &shadow_state[_borderless ? 1 : 0]);
+    }
+
+    ::SetWindowPos(_hwnd, nullptr, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE);
+    ::ShowWindow(_hwnd, SW_SHOW);
+    ::UpdateWindow(_hwnd);
 #endif
     // Apply scale
     _titlebarHeight = _mainScale * 32.f;
@@ -25,11 +38,11 @@ WindowMain::WindowMain(
 }
 
 
-WindowMain::~WindowMain()
+WindowBorderless::~WindowBorderless()
 {}
 
 
-void WindowMain::minimizeWindow()
+void WindowBorderless::minimizeWindow()
 {
 #ifdef USE_SDL
     SDL_MinimizeWindow(_sdlWindow);
@@ -39,7 +52,7 @@ void WindowMain::minimizeWindow()
 }
 
 
-void WindowMain::maximizeRestoreWindow()
+void WindowBorderless::maximizeRestoreWindow()
 {
 #ifdef USE_SDL
     if (_isMaximized) {
@@ -56,7 +69,7 @@ void WindowMain::maximizeRestoreWindow()
 }
 
 
-void WindowMain::closeWindow()
+void WindowBorderless::closeWindow()
 {
 #ifdef USE_SDL
     SDL_Event event;
@@ -70,7 +83,7 @@ void WindowMain::closeWindow()
 }
 
 
-void WindowMain::openVoicePackFileDialog(void* userdata, openedFile callback)
+void WindowBorderless::openVoicePackFileDialog(void* userdata, openedFile callback)
 {
 #ifdef USE_SDL
     const SDL_DialogFileFilter filters[] = {
@@ -223,11 +236,11 @@ void SDLCALL WindowMain::sdlCallbackOpenFile(void* userdata, const char* const* 
 
 #else
 
-LRESULT WindowMain::w32WndProc(UINT msg, WPARAM wParam, LPARAM lParam)
+LRESULT WindowBorderless::w32WndProc(UINT msg, WPARAM wParam, LPARAM lParam)
 {
     switch (msg) {
         case WM_NCCALCSIZE: {
-            if (wParam == TRUE && _borderlessWindow) {
+            if (wParam == TRUE && _borderless) {
                 auto& params = *reinterpret_cast<NCCALCSIZE_PARAMS*>(lParam);
                 w32AdjustMaximizedClientRect(params.rgrc[0]);
                 return 0;
@@ -238,7 +251,7 @@ LRESULT WindowMain::w32WndProc(UINT msg, WPARAM wParam, LPARAM lParam)
         case WM_NCHITTEST: {
             // When we have no border or title bar, we need to perform our
             // own hit testing to allow resizing and moving.
-            if (_borderlessWindow) {
+            if (_borderless) {
                 LRESULT hitResult = w32HitTest(
                     POINT{
                         GET_X_LPARAM(lParam),
@@ -263,7 +276,7 @@ LRESULT WindowMain::w32WndProc(UINT msg, WPARAM wParam, LPARAM lParam)
         case WM_KEYDOWN:
         case WM_SYSKEYDOWN: {
             switch (wParam) {
-                case VK_F10: { w32SetBorderless(!_borderlessWindow);               return 0; }
+                case VK_F10: { w32SetBorderless(!_borderless);               return 0; }
             }
             break;
         }
@@ -274,9 +287,9 @@ LRESULT WindowMain::w32WndProc(UINT msg, WPARAM wParam, LPARAM lParam)
 
 
 
-DWORD WindowMain::w32Style()
+DWORD WindowBorderless::w32Style()
 {
-    if (_borderlessWindow) {
+    if (_borderless) {
         if (w32CompositionEnabled()) {
             return WS_POPUP | WS_THICKFRAME | WS_CAPTION | WS_SYSMENU | WS_MAXIMIZEBOX | WS_MINIMIZEBOX;
         }
@@ -289,22 +302,24 @@ DWORD WindowMain::w32Style()
     }
 }
 
-
-DWORD WindowMain::dwExStyle()
+bool WindowBorderless::w32CompositionEnabled()
 {
-    return 0;
+    BOOL compositionEnabled = false;
+    const HRESULT queryComposition = ::DwmIsCompositionEnabled(&compositionEnabled);
+
+    return compositionEnabled && (queryComposition == S_OK);
 }
 
-void WindowMain::w32SetBorderless(bool borderless)
+void WindowBorderless::w32SetBorderless(bool borderless)
 {
-    if (borderless != _borderlessWindow) {
-        _borderlessWindow = borderless;
+    if (borderless != _borderless) {
+        _borderless = borderless;
 
         ::SetWindowLongPtrW(_hwnd, GWL_STYLE, static_cast<LONG>(w32Style()));
 
         if (w32CompositionEnabled()) {
             static const MARGINS shadow_state[2]{ { 0,0,0,0 },{ 1,1,1,1 } };
-            ::DwmExtendFrameIntoClientArea(_hwnd, &shadow_state[_borderlessWindow ? 1 : 0]);
+            ::DwmExtendFrameIntoClientArea(_hwnd, &shadow_state[_borderless ? 1 : 0]);
         }
 
         ::SetWindowPos(_hwnd, nullptr, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE);
@@ -314,7 +329,7 @@ void WindowMain::w32SetBorderless(bool borderless)
 }
 
 
-bool WindowMain::w32IsMaximized()
+bool WindowBorderless::w32IsMaximized()
 {
     WINDOWPLACEMENT placement = {};
 
@@ -326,7 +341,7 @@ bool WindowMain::w32IsMaximized()
 }
 
 
-void WindowMain::w32AdjustMaximizedClientRect(RECT& rect)
+void WindowBorderless::w32AdjustMaximizedClientRect(RECT& rect)
 {
     if (!w32IsMaximized()) {
         return;
@@ -349,7 +364,7 @@ void WindowMain::w32AdjustMaximizedClientRect(RECT& rect)
 }
 
 
-LRESULT WindowMain::w32HitTest(POINT cursor) const
+LRESULT WindowBorderless::w32HitTest(POINT cursor) const
 {
     // identify borders and corners to allow resizing the window.
     // Note: On Windows 10, windows behave differently and
@@ -401,7 +416,7 @@ LRESULT WindowMain::w32HitTest(POINT cursor) const
 }
 
 
-std::string WindowMain::w32OpenFileName(const char* title, const char* initialDir, const char* filter, bool multiSelect)
+std::string WindowBorderless::w32OpenFileName(const char* title, const char* initialDir, const char* filter, bool multiSelect)
 {
     OPENFILENAMEA ofn = { 0 };
     char fileBuffer[MAX_PATH * 4] = { 0 };

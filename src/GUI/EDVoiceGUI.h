@@ -4,7 +4,7 @@
 #include <thread>
 
 #include "Window/WindowSystem.h"
-#include "Window/WindowMain.h"
+#include "Window/WindowBorderless.h"
 #include "Window/WindowOverlay.h"
 #include "../EDVoiceApp.h"
 
@@ -39,7 +39,7 @@ private:
     EDVoiceApp _app;
     WindowSystem* _windowSystem;
 
-    WindowMain* _mainWindow;
+    WindowBorderless* _mainWindow;
     //WindowOverlay* _overlayWindow;
 
     bool _hasError = false;

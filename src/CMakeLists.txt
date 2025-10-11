@@ -21,7 +21,7 @@ set(EDVOICE_SOURCES_GUI
 
     GUI/Window/WindowSystem.cpp
     GUI/Window/Window.cpp
-    GUI/Window/WindowMain.cpp
+    GUI/Window/WindowBorderless.cpp
     GUI/Window/WindowOverlay.cpp
 )
 

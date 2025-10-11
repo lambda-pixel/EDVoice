@@ -39,11 +39,8 @@ public:
 
     bool closed() const { return _closed; }
     bool minimized() const { return _minimized; }
-
-    float getMainScale() const { return _mainScale; }
-    bool borderlessWindow() const { return _borderlessWindow; }
-
-    const char* windowTitle() const;
+    float mainScale() const { return _mainScale; }
+    const char* title() const;
 
 #ifdef USE_VULKAN
     void createVkSurfaceKHR(
@@ -61,6 +58,8 @@ protected:
     void onResize(uint32_t width, uint32_t height);
     void refreshResize();
 
+    const std::filesystem::path _configPath;
+
 #ifdef USE_VULKAN
     VkAdapter _gpuAdapter;
 #else
@@ -70,19 +69,13 @@ protected:
 
     WindowSystem* _sys = nullptr;
     ImGuiContext* _imGuiContext = nullptr;
-
     bool _imGuiInitialized = false;
 
-    const std::filesystem::path _configPath;
-
     // GUI properties
-    float _mainScale = 1.f;
-    bool _borderlessWindow = true;
-
-    std::string _title;
-
     bool _closed = false;
     bool _minimized = false;
+    float _mainScale = 1.f;
+    std::string _title;
 
 #ifdef USE_SDL
     virtual void sdlWndProc(SDL_Event& event) = 0;
@@ -90,10 +83,6 @@ protected:
 #else
     static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
     virtual LRESULT w32WndProc(UINT msg, WPARAM wParam, LPARAM lParam);
-    virtual DWORD w32Style() { return WS_POPUP; };
-    virtual DWORD dwExStyle() { return 0; };
-
-    bool w32CompositionEnabled();
 
     HWND _hwnd;
     std::wstring _className;

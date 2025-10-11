@@ -4,16 +4,16 @@
 
 typedef void (*openedFile)(void* userdata, std::string filepath);
 
-class WindowMain : public Window
+class WindowBorderless : public Window
 {
 public:
-    WindowMain(
+    WindowBorderless(
         WindowSystem* sys,
         const std::string& title,
         const std::filesystem::path& config
     );
 
-    virtual ~WindowMain();
+    virtual ~WindowBorderless();
 
     void minimizeWindow();
     void maximizeRestoreWindow();
@@ -21,6 +21,7 @@ public:
 
     float titleBarHeight() const { return _titlebarHeight; }
     float windowButtonWidth() const { return _buttonWidth; }
+    bool borderless() const { return _borderless; }
 
     void openVoicePackFileDialog(void* userdata, openedFile callback);
 
@@ -28,6 +29,7 @@ protected:
     float _titlebarHeight = 32.f;
     float _buttonWidth = 55.f;
     float _totalButtonWidth = 3 * 55.f;
+    bool _borderless = true;
 
 #ifdef USE_SDL
     virtual void sdlWndProc(SDL_Event& event);
@@ -48,7 +50,8 @@ protected:
     virtual LRESULT w32WndProc(UINT msg, WPARAM wParam, LPARAM lParam);
 
     virtual DWORD w32Style();
-    virtual DWORD dwExStyle();
+
+    static bool w32CompositionEnabled();
 
     void w32SetBorderless(bool borderless);
     bool w32IsMaximized();

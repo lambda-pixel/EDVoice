@@ -31,11 +31,12 @@ Window::Window(
 {
 #ifdef USE_SDL
     SDL_WindowFlags window_flags =
-        SDL_WINDOW_VULKAN |
         SDL_WINDOW_RESIZABLE |
-        // SDL_WINDOW_HIDDEN |
-        SDL_WINDOW_HIGH_PIXEL_DENSITY |
-        SDL_WINDOW_BORDERLESS;
+        SDL_WINDOW_HIGH_PIXEL_DENSITY;
+
+    #ifdef USE_VULKAN
+    window_flags |= SDL_WINDOW_VULKAN;
+    #endif
 
     _sdlWindow = SDL_CreateWindow(
         title.c_str(),
@@ -46,7 +47,6 @@ Window::Window(
     _mainScale = SDL_GetWindowPixelDensity(_sdlWindow);
 
     SDL_SetWindowPosition(_sdlWindow, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
-    SDL_ShowWindow(_sdlWindow);
 #else
     _className = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(title);;
 
@@ -68,10 +68,10 @@ Window::Window(
     }
 
     _hwnd = ::CreateWindowExW(
-        dwExStyle(),
+        0,
         wcx.lpszClassName,
         _className.c_str(),
-        w32Style(),
+        WS_POPUP,
         CW_USEDEFAULT, CW_USEDEFAULT,
         (int)(_mainScale * 640), (int)(_mainScale * 700),
         nullptr,
@@ -79,11 +79,6 @@ Window::Window(
         wcx.hInstance,
         this
     );
-
-    if (w32CompositionEnabled()) {
-        static const MARGINS shadow_state[2]{ { 0,0,0,0 },{ 1,1,1,1 } };
-        ::DwmExtendFrameIntoClientArea(_hwnd, &shadow_state[_borderlessWindow ? 1 : 0]);
-    }
 
     // Center window to the screen
     RECT rc;
@@ -98,7 +93,6 @@ Window::Window(
     int y = (screenHeight - winHeight) / 2;
 
     ::SetWindowPos(_hwnd, nullptr, x, y, 0, 0, SWP_FRAMECHANGED | SWP_NOSIZE);
-    ::ShowWindow(_hwnd, _sys->_nShowCmd);
     ::UpdateWindow(_hwnd);
 #endif
 
@@ -131,13 +125,13 @@ Window::Window(
 
     // Scaling
     ImGuiStyle& style = ImGui::GetStyle();
-    style.ScaleAllSizes(getMainScale());
-    style.FontScaleDpi = getMainScale();
+    style.ScaleAllSizes(mainScale());
+    style.FontScaleDpi = mainScale();
 
     ImFont* font = io.Fonts->AddFontFromMemoryCompressedTTF(
         inter_compressed_data,
         inter_compressed_size,
-        getMainScale() * 20.f);
+        mainScale() * 20.f);
 
 #ifdef USE_VULKAN
 #else
@@ -246,7 +240,7 @@ void Window::endFrame()
 }
 
 
-const char* Window::windowTitle() const
+const char* Window::title() const
 {
     return _title.c_str();
 }
@@ -403,13 +397,5 @@ LRESULT Window::w32WndProc(UINT msg, WPARAM wParam, LPARAM lParam)
     return ::DefWindowProcW(_hwnd, msg, wParam, lParam);
 }
 
-
-bool Window::w32CompositionEnabled()
-{
-    BOOL compositionEnabled = false;
-    const HRESULT queryComposition = ::DwmIsCompositionEnabled(&compositionEnabled);
-
-    return compositionEnabled && (queryComposition == S_OK);
-}
 
 #endif // !USE_SDL
