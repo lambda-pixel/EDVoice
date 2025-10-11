@@ -2,6 +2,7 @@
 
 #include <stdexcept>
 #include <chrono>
+#include <thread>
 
 #ifdef USE_SDL
     #include <SDL3/SDL_vulkan.h>
@@ -76,32 +77,22 @@ void WindowSystem::collectEvents()
     //       own events during the rendering loop but this blocks
     //       audio when handled by WIN32
     const int TARGET_FPS = 60;
-    const int FRAME_DELAY_MS = 1000 / TARGET_FPS;
+    const auto FRAME_DELAY = std::chrono::milliseconds(1000 / TARGET_FPS);
 
     auto now = std::chrono::high_resolution_clock::now();
-    auto delta = std::chrono::duration<float, std::milli>(now - _lastTime).count();
+    auto frameTime = now - _lastTime;
     _lastTime = now;
 
-#ifdef USE_SDL
-    Uint64 now = SDL_GetPerformanceCounter();
-    Uint64 last = 0;
-    double deltaTime = 0;
-
-    if (deltaTime < FRAME_DELAY_MS) {
-        SDL_Delay((Uint32)(FRAME_DELAY_MS - delta));
+    if (frameTime < FRAME_DELAY) {
+        std::this_thread::sleep_for(FRAME_DELAY - frameTime);
     }
-#else
+
+#ifndef USE_SDL
     MSG msg;
     while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
     {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
-
-    if (delta < FRAME_DELAY_MS) {
-        Sleep((DWORD)(FRAME_DELAY_MS - delta));
-    }
 #endif
-
-    // 
 }
