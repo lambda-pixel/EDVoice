@@ -5,13 +5,8 @@
 #else
     #include <windowsx.h>
     #include <dwmapi.h>
-    #include <commdlg.h>
-    #include <codecvt>
-
     #include <backends/imgui_impl_win32.h>
 #endif
-
-#include <backends/imgui_impl_vulkan.h>
 
 
 WindowMain::WindowMain(
@@ -240,10 +235,19 @@ LRESULT WindowMain::w32WndProc(UINT msg, WPARAM wParam, LPARAM lParam)
             break;
         }
 
+        case WM_NCHITTEST: {
+            // When we have no border or title bar, we need to perform our
+            // own hit testing to allow resizing and moving.
+            if (_borderlessWindow) {
+                LRESULT hitResult = w32HitTest(
+                    POINT{
+                        GET_X_LPARAM(lParam),
+                        GET_Y_LPARAM(lParam)
+                    });
+
                 if (hitResult) {
                     return hitResult;
                 }
-                break;
             }
             break;
         }
@@ -259,23 +263,15 @@ LRESULT WindowMain::w32WndProc(UINT msg, WPARAM wParam, LPARAM lParam)
         case WM_KEYDOWN:
         case WM_SYSKEYDOWN: {
             switch (wParam) {
-                case VK_F10: { w32SetBorderless(!pWindow->_borderlessWindow);               return 0; }
+                case VK_F10: { w32SetBorderless(!_borderlessWindow);               return 0; }
             }
             break;
         }
     }
 
-    return ::DefWindowProcW(_hWnd, msg, wParam, lParam);
+    return ::DefWindowProcW(_hwnd, msg, wParam, lParam);
 }
 
-
-bool WindowMain::w32CompositionEnabled()
-{
-    BOOL compositionEnabled = false;
-    const HRESULT queryComposition = ::DwmIsCompositionEnabled(&compositionEnabled);
-
-    return compositionEnabled && (queryComposition == S_OK);
-}
 
 
 DWORD WindowMain::w32Style()
@@ -293,6 +289,11 @@ DWORD WindowMain::w32Style()
     }
 }
 
+
+DWORD WindowMain::dwExStyle()
+{
+    return 0;
+}
 
 void WindowMain::w32SetBorderless(bool borderless)
 {

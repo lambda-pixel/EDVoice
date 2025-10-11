@@ -82,6 +82,7 @@ WindowOverlay::WindowOverlay(
     const std::wstring& processName)
     : Window(sys, title, config)
 {
+    /*
     // Look for window for the given process name
     DWORD pid = GetProcessIdByName(processName);
 
@@ -156,8 +157,7 @@ WindowOverlay::WindowOverlay(
     if (!hook) {
         throw std::runtime_error("SetWinEventHook failed");
     }
-
-    postInit();
+    */
 }
 
 
@@ -183,39 +183,21 @@ void CALLBACK WindowOverlay::w32WinEventProc(HWINEVENTHOOK, DWORD event, HWND hw
     }
 }
 
-// Forward declare message handler from imgui_impl_win32.cpp
-extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
-LRESULT CALLBACK WindowOverlay::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+LRESULT WindowOverlay::w32WndProc(UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    auto pWindow = reinterpret_cast<WindowOverlay*>(::GetWindowLongPtrW(hWnd, GWLP_USERDATA));
+    return ::DefWindowProcW(_hwnd, msg, wParam, lParam);
+}
 
-    if (!pWindow) {
-        if (msg == WM_NCCREATE) {
-            auto userdata = reinterpret_cast<CREATESTRUCTW*>(lParam)->lpCreateParams;
-            // store window instance pointer in window user data
-            ::SetWindowLongPtrW(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(userdata));
-        }
 
-        return ::DefWindowProcW(hWnd, msg, wParam, lParam);
-    }
-    else if (pWindow->_hwnd == hWnd) {
-        if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
-            return true;
+DWORD WindowOverlay::w32Style()
+{
+    return WS_POPUP;
+}
 
-        switch (msg)
-        {
-            case WM_SIZE:
-                if (wParam == SIZE_MINIMIZED)
-                    return 0;
-                UINT width = LOWORD(lParam);
-                UINT height = HIWORD(lParam);
-                pWindow->onResize(width, height);
-                return 0;
-        }
-    }
 
-    return ::DefWindowProcW(hWnd, msg, wParam, lParam);
+DWORD WindowOverlay::dwExStyle()
+{
+    return WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TRANSPARENT;
 }
 
 #endif

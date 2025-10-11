@@ -2,6 +2,7 @@
 
 #include "Window.h"
 
+typedef void (*openedFile)(void* userdata, std::string filepath);
 
 class WindowMain : public Window
 {
@@ -23,7 +24,7 @@ public:
 
     void openVoicePackFileDialog(void* userdata, openedFile callback);
 
-private:
+protected:
     float _titlebarHeight = 32.f;
     float _buttonWidth = 55.f;
     float _totalButtonWidth = 3 * 55.f;
@@ -46,8 +47,9 @@ private:
     // see https://github.com/melak47/BorderlessWindow/tree/main
     virtual LRESULT w32WndProc(UINT msg, WPARAM wParam, LPARAM lParam);
 
-    bool w32CompositionEnabled();
     virtual DWORD w32Style();
+    virtual DWORD dwExStyle();
+
     void w32SetBorderless(bool borderless);
     bool w32IsMaximized();
     void w32AdjustMaximizedClientRect(RECT& rect);

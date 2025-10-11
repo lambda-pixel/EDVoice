@@ -22,7 +22,6 @@
 #endif
 
 
-typedef void (*openedFile)(void* userdata, std::string filepath);
 
 class Window
 {
@@ -39,7 +38,7 @@ public:
     virtual void endFrame();
 
     bool closed() const { return _closed; }
-    bool minimized() const { return _minimized;  }
+    bool minimized() const { return _minimized; }
 
     float getMainScale() const { return _mainScale; }
     bool borderlessWindow() const { return _borderlessWindow; }
@@ -59,7 +58,6 @@ public:
 #endif
 
 protected:
-    void postInit();
     void onResize(uint32_t width, uint32_t height);
     void refreshResize();
 
@@ -90,9 +88,12 @@ protected:
     virtual void sdlWndProc(SDL_Event& event) = 0;
     SDL_Window* _sdlWindow;
 #else
-    LRESULT CALLBACK w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-    virtual LRESULT w32WndProc(UINT msg, WPARAM wParam, LPARAM lParam) = 0;
-    virtual DWORD w32Style() = 0;
+    static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+    virtual LRESULT w32WndProc(UINT msg, WPARAM wParam, LPARAM lParam);
+    virtual DWORD w32Style() { return WS_POPUP; };
+    virtual DWORD dwExStyle() { return 0; };
+
+    bool w32CompositionEnabled();
 
     HWND _hwnd;
     std::wstring _className;

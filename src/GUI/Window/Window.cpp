@@ -4,6 +4,10 @@
     #include <SDL3/SDL_vulkan.h>
     #include <backends/imgui_impl_sdl3.h>
 #else
+    #include <windowsx.h>
+    #include <dwmapi.h>
+    #include <commdlg.h>
+    #include <codecvt>
     #include <backends/imgui_impl_win32.h>
 #endif
 
@@ -53,7 +57,7 @@ Window::Window(
     wcx.cbSize = sizeof(wcx);
     wcx.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
     wcx.hInstance = _sys->_hInstance;
-    wcx.lpfnWndProc = Window::w32WndProc;
+    wcx.lpfnWndProc = Window::WndProc;
     wcx.lpszClassName = _className.c_str();
     wcx.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
     wcx.hCursor = ::LoadCursorW(nullptr, IDC_ARROW);
@@ -64,7 +68,7 @@ Window::Window(
     }
 
     _hwnd = ::CreateWindowExW(
-        0,
+        dwExStyle(),
         wcx.lpszClassName,
         _className.c_str(),
         w32Style(),
@@ -337,7 +341,7 @@ void Window::refreshResize()
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-LRESULT CALLBACK Window::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK Window::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     auto pWindow = reinterpret_cast<Window*>(::GetWindowLongPtrW(hWnd, GWLP_USERDATA));
 
@@ -347,6 +351,8 @@ LRESULT CALLBACK Window::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
             // store window instance pointer in window user data
             ::SetWindowLongPtrW(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(userdata));
         }
+
+        return ::DefWindowProcW(hWnd, msg, wParam, lParam);
     }
     else if (pWindow->_hwnd == hWnd) {
         if (pWindow->_imGuiInitialized) {
@@ -384,11 +390,26 @@ LRESULT CALLBACK Window::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
             }
 
             default:
-                return pWindow->w32WndProc(UINT msg, WPARAM wParam, LPARAM lParam);
+                return pWindow->w32WndProc(msg, wParam, lParam);
         }
     }
 
     return ::DefWindowProcW(hWnd, msg, wParam, lParam);
+}
+
+
+LRESULT Window::w32WndProc(UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    return ::DefWindowProcW(_hwnd, msg, wParam, lParam);
+}
+
+
+bool Window::w32CompositionEnabled()
+{
+    BOOL compositionEnabled = false;
+    const HRESULT queryComposition = ::DwmIsCompositionEnabled(&compositionEnabled);
+
+    return compositionEnabled && (queryComposition == S_OK);
 }
 
 #endif // !USE_SDL

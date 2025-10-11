@@ -19,9 +19,11 @@ public:
 
     virtual ~WindowOverlay();
 
-private:
+protected:
     static void CALLBACK w32WinEventProc(HWINEVENTHOOK, DWORD event, HWND hwnd, LONG, LONG, DWORD, DWORD);
-    static LRESULT CALLBACK w32WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+    virtual LRESULT w32WndProc(UINT msg, WPARAM wParam, LPARAM lParam);
+    virtual DWORD w32Style();
+    virtual DWORD dwExStyle();
 
 private:
     HWND _targetWnd;
