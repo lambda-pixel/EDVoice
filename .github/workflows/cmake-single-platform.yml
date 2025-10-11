@@ -36,7 +36,7 @@ jobs:
     #    vulkan-components: Vulkan-Headers, Vulkan-Loader
     #    vulkan-use-cache: true
        
-   # --- STANDARD BUILD ---
+    # --- STANDARD BUILD ---
     - name: Configure CMake (Standard)
       run: cmake -B ${{github.workspace}}/build-standard -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBUILD_MEDICORP=OFF
 
@@ -52,9 +52,12 @@ jobs:
       run: cmake --build . --target package --config ${{env.BUILD_TYPE}}
 
     - name: Rename Standard Package
+      shell: pwsh
       run: |
-        cd build-standard
-        for f in *.zip; do mv "$f" "EDVoice-Standard-${{env.BUILD_TYPE}}.zip"; done
+        Set-Location build-standard
+        Get-ChildItem -Filter *.zip | ForEach-Object {
+          Rename-Item $_.FullName "EDVoice-Standard-${{env.BUILD_TYPE}}.zip"
+        }
 
     # --- MEDICORP BUILD ---
     - name: Configure CMake (MediCorp)
@@ -70,3 +73,22 @@ jobs:
     - name: Package (MediCorp)
       working-directory: ${{github.workspace}}/build-medicorp
       run: cmake --build . --target package --config ${{env.BUILD_TYPE}}
+
+    - name: Rename MediCorp Package
+      shell: pwsh
+      run: |
+        Set-Location build-medicorp
+        Get-ChildItem -Filter *.zip | ForEach-Object {
+          Rename-Item $_.FullName "EDVoice-MediCorp-${{env.BUILD_TYPE}}.zip"
+        }
+
+    # --- UPLOAD TO RELEASE ---
+    - name: Upload Release Assets
+      if: github.event_name == 'release'
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          ${{github.workspace}}/build-standard/EDVoice-Standard-${{env.BUILD_TYPE}}.zip
+          ${{github.workspace}}/build-medicorp/EDVoice-MediCorp-${{env.BUILD_TYPE}}.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.ACTION_UPDATE_RELEASE }}
