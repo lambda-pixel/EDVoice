@@ -1,3 +1,4 @@
 #cmakedefine USE_SDL_MIXER
 #cmakedefine USE_SDL
 #cmakedefine BUILD_MEDICORP
+#cmakedefine USE_VULKAN
