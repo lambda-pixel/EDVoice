@@ -54,11 +54,13 @@ jobs:
     - name: Rename Standard Package
       shell: pwsh
       run: |
+        $version = "${{ github.event.release.tag_name }}"
         Set-Location build-standard
         Get-ChildItem -Filter *.zip | ForEach-Object {
-          Rename-Item $_.FullName "EDVoice-Standard-${{env.BUILD_TYPE}}.zip"
+          $newName = "EDVoice-Standard-$version.zip"
+          Rename-Item $_.FullName $newName
+          Write-Host "Renamed to $newName"
         }
-
     # --- MEDICORP BUILD ---
     - name: Configure CMake (MediCorp)
       run: cmake -B ${{github.workspace}}/build-medicorp -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBUILD_MEDICORP=ON
@@ -77,9 +79,12 @@ jobs:
     - name: Rename MediCorp Package
       shell: pwsh
       run: |
+        $version = "${{ github.event.release.tag_name }}"
         Set-Location build-medicorp
         Get-ChildItem -Filter *.zip | ForEach-Object {
-          Rename-Item $_.FullName "EDVoice-MediCorp-${{env.BUILD_TYPE}}.zip"
+          $newName = "EDVoice-MediCorp-$version.zip"
+          Rename-Item $_.FullName $newName
+          Write-Host "Renamed to $newName"
         }
 
     # --- UPLOAD TO RELEASE ---
@@ -88,7 +93,7 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         files: |
-          ${{github.workspace}}/build-standard/EDVoice-Standard-${{env.BUILD_TYPE}}.zip
-          ${{github.workspace}}/build-medicorp/EDVoice-MediCorp-${{env.BUILD_TYPE}}.zip
+          ${{github.workspace}}/build-standard/EDVoice-Standard-${{ github.event.release.tag_name }}.zip
+          ${{github.workspace}}/build-medicorp/EDVoice-MediCorp-${{ github.event.release.tag_name }}.zip
       env:
         GITHUB_TOKEN: ${{ secrets.ACTION_UPDATE_RELEASE }}
