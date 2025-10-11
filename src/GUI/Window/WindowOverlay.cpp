@@ -82,14 +82,13 @@ WindowOverlay::WindowOverlay(
     const std::wstring& processName)
     : Window(sys, title, config)
 {
-    /*
     // Look for window for the given process name
     DWORD pid = GetProcessIdByName(processName);
 
     if (pid == 0) {
         throw std::runtime_error("Could not find process");
     }
-    
+
     auto windows = GetWindowsForPID(pid);
 
     if (windows.empty()) {
@@ -98,55 +97,7 @@ WindowOverlay::WindowOverlay(
 
     _targetWnd = windows[0];
     g_targetWnd = windows[0];
-
-    _className = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(title);;
-
-    WNDCLASSEXW wcx{};
-    wcx.cbSize = sizeof(wcx);
-    wcx.hInstance = _sys->_hInstance;
-    wcx.lpfnWndProc = WindowOverlay::w32WndProc;
-    wcx.lpszClassName = _className.c_str();
-    //wcx.hbrBackground = (HBRUSH)CreateSolidBrush(RGB(0, 0, 0));
-    //wcx.hCursor = ::LoadCursorW(nullptr, IDC_ARROW);
-    wcx.style = CS_VREDRAW | CS_HREDRAW;
-    const ATOM result = ::RegisterClassExW(&wcx);
-
-    if (!result) {
-        throw std::runtime_error("failed to register window class");
-    }
-
-    DWORD exStyle = WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TRANSPARENT;
-    DWORD exStyle2 = WS_POPUP;
-
-    RECT targetRect;
-    GetWindowRect(_targetWnd, &targetRect);
-    int width = targetRect.right - targetRect.left;
-    int height = targetRect.bottom - targetRect.top;
-
-    _hwnd = ::CreateWindowExW(
-        WS_EX_TOPMOST | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_LAYERED,
-        wcx.lpszClassName,
-        L"Dear ImGui DirectX11 Example",
-        WS_POPUP,
-        targetRect.left, targetRect.top,
-        width, height,
-        nullptr, nullptr,
-        wcx.hInstance,
-        nullptr);
-
     g_overlayWnd = _hwnd;
-
-    SetLayeredWindowAttributes(_hwnd, 0, 255, LWA_ALPHA);
-    const MARGINS margin = { -1, 0, 0, 0 };
-    DwmExtendFrameIntoClientArea(_hwnd, &margin);
-
-    if (!_hwnd) {
-        throw std::runtime_error("Could not create overlay");
-    }
-
-    ::ShowWindow(_hwnd, SW_SHOW);
-    ::UpdateWindow(_hwnd);
-    PositionOverlayOnTarget();
 
     HWINEVENTHOOK hook = SetWinEventHook(
         EVENT_OBJECT_CREATE, EVENT_OBJECT_LOCATIONCHANGE,
@@ -157,19 +108,30 @@ WindowOverlay::WindowOverlay(
     if (!hook) {
         throw std::runtime_error("SetWinEventHook failed");
     }
-    */
+
+    PositionOverlayOnTarget();
+
+    LONG_PTR exStyle = WS_EX_TOPMOST | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_LAYERED;
+    SetWindowLongPtr(_hwnd, GWL_EXSTYLE, exStyle);
+
+    LONG_PTR styleWin = WS_POPUP;
+    SetWindowLongPtr(_hwnd, GWL_STYLE, styleWin);
+
+
+    SetLayeredWindowAttributes(_hwnd, 0, 255, LWA_ALPHA);
+    const MARGINS margin = { -1, 0, 0, 0 };
+    DwmExtendFrameIntoClientArea(_hwnd, &margin);
+
+    SetWindowPos(_hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+        SWP_NOMOVE | SWP_NOSIZE | SWP_FRAMECHANGED | SWP_SHOWWINDOW);
+
+    ::ShowWindow(_hwnd, SW_SHOW);
+    ::UpdateWindow(_hwnd);
 }
 
 
 WindowOverlay::~WindowOverlay()
-{
-#ifdef USE_SDL
-    SDL_DestroyWindow(_sdlWindow);
-#else
-    DestroyWindow(_hwnd);
-    UnregisterClassW(_className.c_str(), _sys->_hInstance);
-#endif
-}
+{}
 
 
 

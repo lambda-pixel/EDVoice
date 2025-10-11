@@ -59,7 +59,7 @@ Window::Window(
     wcx.hInstance = _sys->_hInstance;
     wcx.lpfnWndProc = Window::WndProc;
     wcx.lpszClassName = _className.c_str();
-    wcx.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
+    wcx.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW);
     wcx.hCursor = ::LoadCursorW(nullptr, IDC_ARROW);
     const ATOM result = ::RegisterClassExW(&wcx);
 

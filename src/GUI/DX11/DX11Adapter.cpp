@@ -28,28 +28,30 @@ DX11Adapter::~DX11Adapter()
 
 void DX11Adapter::initDevice(Window* window)
 {
+
+    HWND hwnd;
+#ifdef USE_SDL
+    SDL_PropertiesID props = SDL_GetWindowProperties(window->handle());
+    hwnd = (HWND)SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
+#else
+    hwnd = window->handle();
+#endif
+
     // Setup swap chain
     DXGI_SWAP_CHAIN_DESC sd;
-    ZeroMemory(&sd, sizeof(sd));
     sd.BufferCount = 2;
     sd.BufferDesc.Width = 0;
     sd.BufferDesc.Height = 0;
-    sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    sd.BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
     sd.BufferDesc.RefreshRate.Numerator = 60;
     sd.BufferDesc.RefreshRate.Denominator = 1;
     sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
     sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-#ifdef USE_SDL
-    SDL_PropertiesID props = SDL_GetWindowProperties(window->handle());
-    HWND hwnd = (HWND)SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
     sd.OutputWindow = hwnd;
-#else
-    sd.OutputWindow = window->handle();
-#endif
     sd.SampleDesc.Count = 1;
     sd.SampleDesc.Quality = 0;
     sd.Windowed = TRUE;
-    sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+    sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;//// DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
 
     UINT createDeviceFlags = 0;
     //createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
@@ -57,7 +59,7 @@ void DX11Adapter::initDevice(Window* window)
     D3D_FEATURE_LEVEL featureLevel;
     const D3D_FEATURE_LEVEL featureLevelArray[2] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0, };
     HRESULT res = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, createDeviceFlags, featureLevelArray, 2, D3D11_SDK_VERSION, &sd, &_pSwapchain, &_pDevice, &featureLevel, &_pDeviceContext);
-    
+
     if (res == DXGI_ERROR_UNSUPPORTED) {
         // Try high-performance WARP software driver if hardware is not available.
         res = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_WARP, nullptr, createDeviceFlags, featureLevelArray, 2, D3D11_SDK_VERSION, &sd, &_pSwapchain, &_pDevice, &featureLevel, &_pDeviceContext);
@@ -78,11 +80,9 @@ void DX11Adapter::initDevice(Window* window)
 
 void DX11Adapter::startNewFrame()
 {
-    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 0.00f);
-    const float clear_color_with_alpha[4] = { clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w };
-
+    float clear_color[4] = { 0.f, 0.f, 0.f, 0.f };
     _pDeviceContext->OMSetRenderTargets(1, &_pMainRenderTargetView, nullptr);
-    _pDeviceContext->ClearRenderTargetView(_pMainRenderTargetView, clear_color_with_alpha);
+    _pDeviceContext->ClearRenderTargetView(_pMainRenderTargetView, clear_color);
 }
 
 
