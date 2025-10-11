@@ -24,7 +24,10 @@ private:
     void beginMainWindow();
     void endMainWindow();
 
-    void voicePackGUI();
+    void beginOverlayWindow();
+    void endOverlayWindow();
+
+    void voicePackGUI(bool allowOpenFile = false);
 
     void voicePackStatusGUI();
     void voicePackJourmalEventGUI();
@@ -40,7 +43,7 @@ private:
     WindowSystem* _windowSystem;
 
     WindowBorderless* _mainWindow;
-    //WindowOverlay* _overlayWindow;
+    WindowOverlay* _overlayWindow;
 
     bool _hasError = false;
     std::string _logErrStr;

@@ -49,7 +49,7 @@ void EDVoiceGUI::run()
             _mainWindow->beginFrame();
 
             beginMainWindow();
-            voicePackGUI();
+            voicePackGUI(true);
             endMainWindow();
 
             if (_hasError) {
@@ -67,9 +67,14 @@ void EDVoiceGUI::run()
 
             _mainWindow->endFrame();
         }
-        //_overlayWindow->beginFrame();
-        //ImGui::ShowDemoWindow();
-        //_overlayWindow->endFrame();
+
+        //if (_overlayWindow->active()) {
+        //    _overlayWindow->beginFrame();
+        //    beginOverlayWindow();
+        //    voicePackGUI(false);
+        //    endOverlayWindow();
+        //    _overlayWindow->endFrame();
+        //}
 
         _windowSystem->collectEvents();
     }
@@ -164,7 +169,20 @@ void EDVoiceGUI::endMainWindow()
 }
 
 
-void EDVoiceGUI::voicePackGUI()
+void EDVoiceGUI::beginOverlayWindow()
+{
+    ImGui::SetNextWindowSizeConstraints(ImVec2(600, 500), ImVec2(800, 500));
+    ImGui::Begin("EDVoice", nullptr, ImGuiWindowFlags_NoCollapse);
+}
+
+
+void EDVoiceGUI::endOverlayWindow()
+{
+    ImGui::End();
+}
+
+
+void EDVoiceGUI::voicePackGUI(bool allowOpenFile)
 {
     VoicePackManager& voicepack = _app.getVoicepack();
 
@@ -202,10 +220,12 @@ void EDVoiceGUI::voicePackGUI()
         ImGui::EndCombo();
     }
 
-    ImGui::SameLine();
+    if (allowOpenFile) {
+        ImGui::SameLine();
 
-    if (ImGui::Button("Add")) {
-        _mainWindow->openVoicePackFileDialog(this, EDVoiceGUI::loadVoicePack);
+        if (ImGui::Button("Add")) {
+            _mainWindow->openVoicePackFileDialog(this, EDVoiceGUI::loadVoicePack);
+        }
     }
 
     float volume = voicepack.getVolume();

@@ -4,6 +4,9 @@
 
 #include <config.h>
 
+#include <thread>
+#include <atomic>
+
 // The overlay feature is currently Windows specific
 #ifndef USE_SDL
 
@@ -19,15 +22,31 @@ public:
 
     virtual ~WindowOverlay();
 
+    bool active() { return _active && _shown; }
+
+    void setShown(bool shown);
+
+    void startOverlay(DWORD pid);
+    void stopOverlay();
+
+    void processWatch(const std::wstring& processName);
+
 protected:
     static void CALLBACK w32WinEventProc(HWINEVENTHOOK, DWORD event, HWND hwnd, LONG, LONG, DWORD, DWORD);
     virtual LRESULT w32WndProc(UINT msg, WPARAM wParam, LPARAM lParam);
-    virtual DWORD w32Style();
-    virtual DWORD dwExStyle();
+
+    static DWORD getProcessIdByName(const std::wstring& exeName);
+    static bool isRealWindow(HWND hwnd);
+    static std::vector<HWND> getWindowsForPID(DWORD pid);
+    static void positionOverlayOnTarget();
 
 private:
-    HWND _targetWnd;
     std::wstring _className;
+    bool _active = false;
+    bool _shown = true;
+
+    std::thread _processWatcher;
+    std::atomic<bool> _stopWatch = false;
 };
 
 #endif // !USE_SDL
