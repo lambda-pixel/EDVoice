@@ -4,8 +4,6 @@
 
 #include <config.h>
 
-#include "../DX11/DX11Adapter.h"
-
 // The overlay feature is currently Windows specific
 #ifndef USE_SDL
 
