@@ -1,6 +1,7 @@
 #include "WindowSystem.h"
 
 #include <stdexcept>
+#include <chrono>
 
 #ifdef USE_SDL
     #include <SDL3/SDL_vulkan.h>
@@ -74,12 +75,33 @@ void WindowSystem::collectEvents()
     // TODO: make it cleaner, right now, each window collect their
     //       own events during the rendering loop but this blocks
     //       audio when handled by WIN32
-#ifndef USE_SDL
+    const int TARGET_FPS = 60;
+    const int FRAME_DELAY_MS = 1000 / TARGET_FPS;
+
+    auto now = std::chrono::high_resolution_clock::now();
+    auto delta = std::chrono::duration<float, std::milli>(now - _lastTime).count();
+    _lastTime = now;
+
+#ifdef USE_SDL
+    Uint64 now = SDL_GetPerformanceCounter();
+    Uint64 last = 0;
+    double deltaTime = 0;
+
+    if (deltaTime < FRAME_DELAY_MS) {
+        SDL_Delay((Uint32)(FRAME_DELAY_MS - delta));
+    }
+#else
     MSG msg;
     while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
     {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
+
+    if (delta < FRAME_DELAY_MS) {
+        Sleep((DWORD)(FRAME_DELAY_MS - delta));
+    }
 #endif
+
+    // 
 }

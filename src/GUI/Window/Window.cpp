@@ -57,17 +57,6 @@ void Window::beginFrame()
     ImGui::SetCurrentContext(_imGuiContext);
 
 #ifdef USE_SDL
-    const int TARGET_FPS = 60;
-    const int FRAME_DELAY_MS = 1000 / TARGET_FPS;
-
-    Uint64 now = SDL_GetPerformanceCounter();
-    Uint64 last = 0;
-    double deltaTime = 0;
-
-    if (deltaTime < FRAME_DELAY_MS) {
-        SDL_Delay((Uint32)(FRAME_DELAY_MS - deltaTime));
-    }
-
     SDL_Event event;
 
     while (SDL_PollEvent(&event)) {

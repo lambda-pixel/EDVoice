@@ -3,6 +3,7 @@
 #include <config.h>
 
 #include <vector>
+#include <chrono>
 
 #if defined(USE_SDL) || defined(USE_SDL_MIXER)
     #include <SDL3/SDL.h>
@@ -33,4 +34,6 @@ public:
     HINSTANCE _hInstance;
     int _nShowCmd;
 #endif
+
+    std::chrono::time_point<std::chrono::high_resolution_clock> _lastTime = std::chrono::high_resolution_clock::now();
 };

@@ -39,6 +39,7 @@ public:
     virtual void endFrame();
 
     bool closed() const { return _closed; }
+    bool minimized() const { return _minimized;  }
 
     float getMainScale() const { return _mainScale; }
     bool borderlessWindow() const { return _borderlessWindow; }
@@ -83,6 +84,7 @@ protected:
     std::string _title;
 
     bool _closed = false;
+    bool _minimized = false;
 
 #ifdef USE_SDL
     virtual void sdlWndProc(SDL_Event& event) = 0;

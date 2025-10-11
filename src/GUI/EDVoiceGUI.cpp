@@ -45,27 +45,28 @@ void EDVoiceGUI::run()
 {
     while (!_mainWindow->closed())
     {
-        _mainWindow->beginFrame();
+        if (!_mainWindow->minimized()) {
+            _mainWindow->beginFrame();
 
-        beginMainWindow();
-        voicePackGUI();
-        endMainWindow();
+            beginMainWindow();
+            voicePackGUI();
+            endMainWindow();
 
-        if (_hasError) {
-            ImGui::OpenPopup("Error");
-        }
-
-        if (ImGui::BeginPopupModal("Error")) {
-            ImGui::Text("Changing voicepack failed, index is out of bounds");
-            if (ImGui::Button("OK")) {
-                _hasError = false;
-                ImGui::CloseCurrentPopup();
+            if (_hasError) {
+                ImGui::OpenPopup("Error");
             }
-            ImGui::EndPopup();
+
+            if (ImGui::BeginPopupModal("Error")) {
+                ImGui::Text("Changing voicepack failed, index is out of bounds");
+                if (ImGui::Button("OK")) {
+                    _hasError = false;
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
+            }
+
+            _mainWindow->endFrame();
         }
-
-        _mainWindow->endFrame();
-
         //_overlayWindow->beginFrame();
         //ImGui::ShowDemoWindow();
         //_overlayWindow->endFrame();

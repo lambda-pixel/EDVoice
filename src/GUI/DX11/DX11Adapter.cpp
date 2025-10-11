@@ -49,7 +49,7 @@ void DX11Adapter::initDevice(Window* window)
     sd.SampleDesc.Count = 1;
     sd.SampleDesc.Quality = 0;
     sd.Windowed = TRUE;
-    sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+    sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 
     UINT createDeviceFlags = 0;
     //createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
@@ -66,6 +66,11 @@ void DX11Adapter::initDevice(Window* window)
     if (res != S_OK) {
         throw std::runtime_error("[DX11  ] Could not initialize device");
     }
+
+    IDXGIDevice1* dxgiDevice = nullptr;
+    _pDevice->QueryInterface(__uuidof(IDXGIDevice1), (void**)&dxgiDevice);
+    dxgiDevice->SetMaximumFrameLatency(1);
+    dxgiDevice->Release();
 
     createRenderTarget();
 }
@@ -90,7 +95,7 @@ void DX11Adapter::renderFrame()
 void DX11Adapter::presentFrame()
 {
     //HRESULT hr = _pSwapchain->Present(1, 0); // Present with vsync
-    HRESULT hr = _pSwapchain->Present(0, 0);
+    HRESULT hr = _pSwapchain->Present(1, 0);
     //(hr == DXGI_STATUS_OCCLUDED);
 }
 

@@ -194,17 +194,27 @@ void WindowMain::openVoicePackFileDialog(void* userdata, openedFile callback)
 
 void WindowMain::sdlWndProc(SDL_Event& event)
 {
+    if (event.window.windowID != SDL_GetWindowID(_sdlWindow)) {
+        return;
+    }
+
     ImGui_ImplSDL3_ProcessEvent(&event);
 
     switch (event.type) {
+        case SDL_EVENT_WINDOW_MINIMIZED:
+            _minimized = true;
+            break;
+
+        case SDL_EVENT_WINDOW_RESTORED:
+            _minimized = false;
+            break;
+
         case SDL_EVENT_QUIT:
             _closed = true;
             break;
 
         case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
-            if (event.window.windowID == SDL_GetWindowID(_sdlWindow)) {
-                _closed = true;
-            }
+            _closed = true;
             break;
 
         case SDL_EVENT_WINDOW_RESIZED:
@@ -341,6 +351,16 @@ LRESULT CALLBACK WindowMain::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPAR
                 UINT width = LOWORD(lParam);
                 UINT height = HIWORD(lParam);
                 pWindow->onResize(width, height);
+
+                switch (wParam) {
+                    case SIZE_MINIMIZED:
+                        pWindow->_minimized = true;
+                        break;
+                    case SIZE_MAXIMIZED:
+                    case SIZE_RESTORED:
+                        pWindow->_minimized = false;
+                        break;
+                }
                 break;
             }
 
