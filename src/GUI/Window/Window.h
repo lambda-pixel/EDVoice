@@ -88,9 +88,13 @@ protected:
 
 #ifdef USE_SDL
     virtual void sdlWndProc(SDL_Event& event) = 0;
-
     SDL_Window* _sdlWindow;
 #else
+    LRESULT CALLBACK w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+    virtual LRESULT w32WndProc(UINT msg, WPARAM wParam, LPARAM lParam) = 0;
+    virtual DWORD w32Style() = 0;
+
     HWND _hwnd;
+    std::wstring _className;
 #endif
 };

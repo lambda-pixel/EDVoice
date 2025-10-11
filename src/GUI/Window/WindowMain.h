@@ -44,15 +44,14 @@ private:
 #else
     // WIN32 stuff for working with borderless windows
     // see https://github.com/melak47/BorderlessWindow/tree/main
-    static LRESULT CALLBACK w32WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+    virtual LRESULT w32WndProc(UINT msg, WPARAM wParam, LPARAM lParam);
+
     bool w32CompositionEnabled();
-    DWORD w32Style();
+    virtual DWORD w32Style();
     void w32SetBorderless(bool borderless);
     bool w32IsMaximized();
     void w32AdjustMaximizedClientRect(RECT& rect);
     LRESULT w32HitTest(POINT cursor) const;
     std::string w32OpenFileName(const char* title, const char* initialDir, const char* filter, bool multiSelect);
-
-    std::wstring _className;
 #endif
 };

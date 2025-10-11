@@ -25,6 +25,122 @@ Window::Window(
     , _configPath(config)
     , _title(title)
 {
+#ifdef USE_SDL
+    SDL_WindowFlags window_flags =
+        SDL_WINDOW_VULKAN |
+        SDL_WINDOW_RESIZABLE |
+        // SDL_WINDOW_HIDDEN |
+        SDL_WINDOW_HIGH_PIXEL_DENSITY |
+        SDL_WINDOW_BORDERLESS;
+
+    _sdlWindow = SDL_CreateWindow(
+        title.c_str(),
+        640, 700,
+        window_flags
+    );
+
+    _mainScale = SDL_GetWindowPixelDensity(_sdlWindow);
+
+    SDL_SetWindowPosition(_sdlWindow, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+    SDL_ShowWindow(_sdlWindow);
+#else
+    _className = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(title);;
+
+    ImGui_ImplWin32_EnableDpiAwareness();
+    _mainScale = ImGui_ImplWin32_GetDpiScaleForMonitor(MonitorFromPoint(POINT{ 0, 0 }, MONITOR_DEFAULTTOPRIMARY));
+
+    WNDCLASSEXW wcx{};
+    wcx.cbSize = sizeof(wcx);
+    wcx.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
+    wcx.hInstance = _sys->_hInstance;
+    wcx.lpfnWndProc = Window::w32WndProc;
+    wcx.lpszClassName = _className.c_str();
+    wcx.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
+    wcx.hCursor = ::LoadCursorW(nullptr, IDC_ARROW);
+    const ATOM result = ::RegisterClassExW(&wcx);
+
+    if (!result) {
+        throw std::runtime_error("failed to register window class");
+    }
+
+    _hwnd = ::CreateWindowExW(
+        0,
+        wcx.lpszClassName,
+        _className.c_str(),
+        w32Style(),
+        CW_USEDEFAULT, CW_USEDEFAULT,
+        (int)(_mainScale * 640), (int)(_mainScale * 700),
+        nullptr,
+        nullptr,
+        wcx.hInstance,
+        this
+    );
+
+    if (w32CompositionEnabled()) {
+        static const MARGINS shadow_state[2]{ { 0,0,0,0 },{ 1,1,1,1 } };
+        ::DwmExtendFrameIntoClientArea(_hwnd, &shadow_state[_borderlessWindow ? 1 : 0]);
+    }
+
+    // Center window to the screen
+    RECT rc;
+    GetWindowRect(_hwnd, &rc);
+    int winWidth = rc.right - rc.left;
+    int winHeight = rc.bottom - rc.top;
+
+    int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+    int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+
+    int x = (screenWidth - winWidth) / 2;
+    int y = (screenHeight - winHeight) / 2;
+
+    ::SetWindowPos(_hwnd, nullptr, x, y, 0, 0, SWP_FRAMECHANGED | SWP_NOSIZE);
+    ::ShowWindow(_hwnd, _sys->_nShowCmd);
+    ::UpdateWindow(_hwnd);
+#endif
+
+    _gpuAdapter.initDevice(this);
+    _gpuInitialized = true;
+
+    IMGUI_CHECKVERSION();
+    _imGuiContext = ImGui::CreateContext();
+    ImGui::SetCurrentContext(_imGuiContext);
+
+#ifdef USE_SDL
+    #ifdef USE_VULKAN
+    ImGui_ImplSDL3_InitForVulkan(_sdlWindow);
+    #else
+    ImGui_ImplSDL3_InitForD3D(_sdlWindow);
+    #endif
+#else
+    ImGui_ImplWin32_Init(_hwnd);
+#endif
+
+    // Final ImGui setup
+    ImGuiIO& io = ImGui::GetIO();
+    io.IniFilename = NULL;
+    ImGui::LoadIniSettingsFromDisk(_configPath.string().c_str());
+
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+    ImGui::StyleColorsDark();
+
+    // Scaling
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.ScaleAllSizes(getMainScale());
+    style.FontScaleDpi = getMainScale();
+
+    ImFont* font = io.Fonts->AddFontFromMemoryCompressedTTF(
+        inter_compressed_data,
+        inter_compressed_size,
+        getMainScale() * 20.f);
+
+#ifdef USE_VULKAN
+#else
+    ImGui_ImplDX11_Init(_gpuAdapter.device(), _gpuAdapter.deviceContext());
+#endif
+
+    refreshResize();
 }
 
 
@@ -42,8 +158,11 @@ Window::~Window()
 
 #ifdef USE_SDL
     ImGui_ImplSDL3_Shutdown();
+    SDL_DestroyWindow(_sdlWindow);
 #else
     ImGui_ImplWin32_Shutdown();
+    DestroyWindow(_hwnd);
+    UnregisterClassW(_className.c_str(), _sys->_hInstance);
 #endif
 
     ImGui::DestroyContext(_imGuiContext);
@@ -126,54 +245,6 @@ void Window::endFrame()
 const char* Window::windowTitle() const
 {
     return _title.c_str();
-}
-
-void Window::postInit()
-{
-    // TODO figure out something cleaner
-    _gpuAdapter.initDevice(this);
-    _gpuInitialized = true;
-
-    IMGUI_CHECKVERSION();
-    _imGuiContext = ImGui::CreateContext();
-    ImGui::SetCurrentContext(_imGuiContext);
-
-#ifdef USE_SDL
-    #ifdef USE_VULKAN
-    ImGui_ImplSDL3_InitForVulkan(_sdlWindow);
-    #else
-    ImGui_ImplSDL3_InitForD3D(_sdlWindow);
-    #endif
-#else
-    ImGui_ImplWin32_Init(_hwnd);
-#endif
-
-    // Final ImGui setup
-    ImGuiIO& io = ImGui::GetIO();
-    io.IniFilename = NULL;
-    ImGui::LoadIniSettingsFromDisk(_configPath.string().c_str());
-
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-
-    ImGui::StyleColorsDark();
-
-    // Scaling
-    ImGuiStyle& style = ImGui::GetStyle();
-    style.ScaleAllSizes(getMainScale());
-    style.FontScaleDpi = getMainScale();
-
-    ImFont* font = io.Fonts->AddFontFromMemoryCompressedTTF(
-        inter_compressed_data,
-        inter_compressed_size,
-        getMainScale() * 20.f);
-
-#ifdef USE_VULKAN
-#else
-    ImGui_ImplDX11_Init(_gpuAdapter.device(), _gpuAdapter.deviceContext());
-#endif
-
-    refreshResize();
 }
 
 
@@ -260,3 +331,64 @@ void Window::refreshResize()
 
     _imGuiInitialized = true;
 }
+
+
+#ifndef USE_SDL
+
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+LRESULT CALLBACK Window::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    auto pWindow = reinterpret_cast<Window*>(::GetWindowLongPtrW(hWnd, GWLP_USERDATA));
+
+    if (!pWindow) {
+        if (msg == WM_NCCREATE) {
+            auto userdata = reinterpret_cast<CREATESTRUCTW*>(lParam)->lpCreateParams;
+            // store window instance pointer in window user data
+            ::SetWindowLongPtrW(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(userdata));
+        }
+    }
+    else if (pWindow->_hwnd == hWnd) {
+        if (pWindow->_imGuiInitialized) {
+            ImGuiContext* prevContex = ImGui::GetCurrentContext();
+            ImGui::SetCurrentContext(pWindow->_imGuiContext);
+            LRESULT imGuiRes = ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam);
+            ImGui::SetCurrentContext(prevContex);
+
+            if (imGuiRes) {
+                return 0;
+            }
+        }
+
+        switch (msg) {
+            case WM_MOUSEACTIVATE:
+                return MA_ACTIVATE;
+
+            case WM_SIZE: {
+                UINT width = LOWORD(lParam);
+                UINT height = HIWORD(lParam);
+                pWindow->onResize(width, height);
+                break;
+            }
+
+            case WM_CLOSE: {
+                ::DestroyWindow(hWnd);
+                pWindow->_closed = true;
+                return 0;
+            }
+
+            case WM_DESTROY: {
+                ::PostQuitMessage(0);
+                pWindow->_closed = true;
+                return 0;
+            }
+
+            default:
+                return pWindow->w32WndProc(UINT msg, WPARAM wParam, LPARAM lParam);
+        }
+    }
+
+    return ::DefWindowProcW(hWnd, msg, wParam, lParam);
+}
+
+#endif // !USE_SDL

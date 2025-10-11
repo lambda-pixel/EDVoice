@@ -21,96 +21,17 @@ WindowMain::WindowMain(
     : Window(sys, title, config)
 {
 #ifdef USE_SDL
-    SDL_WindowFlags window_flags =
-        SDL_WINDOW_VULKAN |
-        SDL_WINDOW_RESIZABLE |
-        // SDL_WINDOW_HIDDEN |
-        SDL_WINDOW_HIGH_PIXEL_DENSITY |
-        SDL_WINDOW_BORDERLESS;
-
-    _sdlWindow = SDL_CreateWindow(
-        title.c_str(),
-        640, 700,
-        window_flags
-    );
-
-    _mainScale = SDL_GetWindowPixelDensity(_sdlWindow);
-
-    SDL_SetWindowPosition(_sdlWindow, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     SDL_SetWindowHitTest(_sdlWindow, sdlHitTest, this);
-    SDL_ShowWindow(_sdlWindow);
-#else
-    ImGui_ImplWin32_EnableDpiAwareness();
-    _mainScale = ImGui_ImplWin32_GetDpiScaleForMonitor(MonitorFromPoint(POINT{ 0, 0 }, MONITOR_DEFAULTTOPRIMARY));
-
-    _className = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(title);;
-
-    WNDCLASSEXW wcx{};
-    wcx.cbSize = sizeof(wcx);
-    wcx.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
-    wcx.hInstance = _sys->_hInstance;
-    wcx.lpfnWndProc = WindowMain::w32WndProc;
-    wcx.lpszClassName = _className.c_str();
-    wcx.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
-    wcx.hCursor = ::LoadCursorW(nullptr, IDC_ARROW);
-    const ATOM result = ::RegisterClassExW(&wcx);
-
-    if (!result) {
-        throw std::runtime_error("failed to register window class");
-    }
-
-    _hwnd = ::CreateWindowExW(
-        0,
-        wcx.lpszClassName,
-        _className.c_str(),
-        w32Style(),
-        CW_USEDEFAULT, CW_USEDEFAULT,
-        (int)(_mainScale * 640), (int)(_mainScale * 700),
-        nullptr,
-        nullptr,
-        wcx.hInstance,
-        this
-    );
-
-    if (w32CompositionEnabled()) {
-        static const MARGINS shadow_state[2]{ { 0,0,0,0 },{ 1,1,1,1 } };
-        ::DwmExtendFrameIntoClientArea(_hwnd, &shadow_state[_borderlessWindow ? 1 : 0]);
-    }
-
-    // Center window to the screen
-    RECT rc;
-    GetWindowRect(_hwnd, &rc);
-    int winWidth = rc.right - rc.left;
-    int winHeight = rc.bottom - rc.top;
-
-    int screenWidth = GetSystemMetrics(SM_CXSCREEN);
-    int screenHeight = GetSystemMetrics(SM_CYSCREEN);
-
-    int x = (screenWidth - winWidth) / 2;
-    int y = (screenHeight - winHeight) / 2;
-
-    ::SetWindowPos(_hwnd, nullptr, x, y, 0, 0, SWP_FRAMECHANGED | SWP_NOSIZE);
-    ::ShowWindow(_hwnd, _sys->_nShowCmd);
-    ::UpdateWindow(_hwnd);
 #endif
     // Apply scale
     _titlebarHeight = _mainScale * 32.f;
     _buttonWidth = _mainScale * 55.f;
     _totalButtonWidth = 3.f * _buttonWidth;
-
-    postInit();
 }
 
 
 WindowMain::~WindowMain()
-{
-#ifdef USE_SDL
-    SDL_DestroyWindow(_sdlWindow);
-#else
-    DestroyWindow(_hwnd);
-    UnregisterClassW(_className.c_str(), _sys->_hInstance);
-#endif
-}
+{}
 
 
 void WindowMain::minimizeWindow()
@@ -194,27 +115,17 @@ void WindowMain::openVoicePackFileDialog(void* userdata, openedFile callback)
 
 void WindowMain::sdlWndProc(SDL_Event& event)
 {
-    if (event.window.windowID != SDL_GetWindowID(_sdlWindow)) {
-        return;
-    }
-
     ImGui_ImplSDL3_ProcessEvent(&event);
 
     switch (event.type) {
-        case SDL_EVENT_WINDOW_MINIMIZED:
-            _minimized = true;
-            break;
-
-        case SDL_EVENT_WINDOW_RESTORED:
-            _minimized = false;
-            break;
-
         case SDL_EVENT_QUIT:
             _closed = true;
             break;
 
         case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
-            _closed = true;
+            if (event.window.windowID == SDL_GetWindowID(_sdlWindow)) {
+                _closed = true;
+            }
             break;
 
         case SDL_EVENT_WINDOW_RESIZED:
@@ -317,112 +228,44 @@ void SDLCALL WindowMain::sdlCallbackOpenFile(void* userdata, const char* const* 
 
 #else
 
-#include <iostream>
-extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
-LRESULT CALLBACK WindowMain::w32WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+LRESULT WindowMain::w32WndProc(UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    auto pWindow = reinterpret_cast<WindowMain*>(::GetWindowLongPtrW(hWnd, GWLP_USERDATA));
-
-    if (!pWindow) {
-        if (msg == WM_NCCREATE) {
-            auto userdata = reinterpret_cast<CREATESTRUCTW*>(lParam)->lpCreateParams;
-            // store window instance pointer in window user data
-            ::SetWindowLongPtrW(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(userdata));
-        }
-    }
-    else if (pWindow->_hwnd == hWnd) {
-        if (pWindow->_imGuiInitialized) {
-            ImGuiContext* prevContex = ImGui::GetCurrentContext();
-            ImGui::SetCurrentContext(pWindow->_imGuiContext);
-            LRESULT imGuiRes = ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam);
-            ImGui::SetCurrentContext(prevContex);
-
-            if (imGuiRes) {
+    switch (msg) {
+        case WM_NCCALCSIZE: {
+            if (wParam == TRUE && _borderlessWindow) {
+                auto& params = *reinterpret_cast<NCCALCSIZE_PARAMS*>(lParam);
+                w32AdjustMaximizedClientRect(params.rgrc[0]);
                 return 0;
             }
+            break;
         }
 
-        switch (msg) {
-            case WM_MOUSEACTIVATE:
-                return MA_ACTIVATE;
-
-            case WM_SIZE: {
-                UINT width = LOWORD(lParam);
-                UINT height = HIWORD(lParam);
-                pWindow->onResize(width, height);
-
-                switch (wParam) {
-                    case SIZE_MINIMIZED:
-                        pWindow->_minimized = true;
-                        break;
-                    case SIZE_MAXIMIZED:
-                    case SIZE_RESTORED:
-                        pWindow->_minimized = false;
-                        break;
+                if (hitResult) {
+                    return hitResult;
                 }
                 break;
             }
+            break;
+        }
+        case WM_NCACTIVATE: {
+            if (!w32CompositionEnabled()) {
+                // Prevents window frame reappearing on window activation
+                // in "basic" theme, where no aero shadow is present.
+                return 1;
+            }
+            break;
+        }
 
-            case WM_NCCALCSIZE: {
-                if (wParam == TRUE && pWindow->_borderlessWindow) {
-                    auto& params = *reinterpret_cast<NCCALCSIZE_PARAMS*>(lParam);
-                    pWindow->w32AdjustMaximizedClientRect(params.rgrc[0]);
-                    return 0;
-                }
-                break;
+        case WM_KEYDOWN:
+        case WM_SYSKEYDOWN: {
+            switch (wParam) {
+                case VK_F10: { w32SetBorderless(!pWindow->_borderlessWindow);               return 0; }
             }
-            case WM_NCHITTEST: {
-                // When we have no border or title bar, we need to perform our
-                // own hit testing to allow resizing and moving.
-                if (pWindow->_borderlessWindow) {
-                    LRESULT hitResult = pWindow->w32HitTest(POINT{
-                        GET_X_LPARAM(lParam),
-                        GET_Y_LPARAM(lParam)
-                        });
-
-                    if (hitResult) {
-                        return hitResult;
-                    }
-                }
-                break;
-            }
-            case WM_NCACTIVATE: {
-                if (!pWindow->w32CompositionEnabled()) {
-                    // Prevents window frame reappearing on window activation
-                    // in "basic" theme, where no aero shadow is present.
-                    return 1;
-                }
-                break;
-            }
-
-            case WM_CLOSE: {
-                ::DestroyWindow(hWnd);
-                pWindow->_closed = true;
-                return 0;
-            }
-
-            case WM_DESTROY: {
-                ::PostQuitMessage(0);
-                pWindow->_closed = true;
-                return 0;
-            }
-
-            case WM_KEYDOWN:
-            case WM_SYSKEYDOWN: {
-                switch (wParam) {
-                    //case VK_F8: { window.borderless_drag = !window.borderless_drag;        return 0; }
-                    //case VK_F9: { window.borderless_resize = !window.borderless_resize;    return 0; }
-                    //case VK_F10: { window.set_borderless(!window._borderlessWindow);               return 0; }
-                    case VK_F10: { pWindow->w32SetBorderless(!pWindow->_borderlessWindow);               return 0; }
-                    //case VK_F11: { window.set_borderless_shadow(!window.borderless_shadow); return 0; }
-                }
-                break;
-            }
+            break;
         }
     }
 
-    return ::DefWindowProcW(hWnd, msg, wParam, lParam);
+    return ::DefWindowProcW(_hWnd, msg, wParam, lParam);
 }
 
 
