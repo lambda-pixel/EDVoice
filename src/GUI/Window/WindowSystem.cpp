@@ -4,6 +4,10 @@
 #include <chrono>
 #include <thread>
 
+#ifdef USE_VULKAN
+    #include <vulkan/vulkan.h>
+#endif
+
 #ifdef USE_SDL
     #include <SDL3/SDL_vulkan.h>
 
@@ -16,8 +20,6 @@
 
     #include <backends/imgui_impl_win32.h>
 #endif
-
-#include <backends/imgui_impl_vulkan.h>
 
 
 WindowSystem::WindowSystem(
@@ -55,6 +57,7 @@ WindowSystem::~WindowSystem()
 }
 
 
+#ifdef USE_VULKAN
 void WindowSystem::getVkInstanceExtensions(std::vector<const char*>& extensions) const
 {
 #ifdef USE_SDL
@@ -69,6 +72,7 @@ void WindowSystem::getVkInstanceExtensions(std::vector<const char*>& extensions)
     extensions.push_back("VK_KHR_win32_surface");
 #endif
 }
+#endif
 
 
 void WindowSystem::collectEvents()

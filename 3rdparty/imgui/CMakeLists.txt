@@ -1,5 +1,3 @@
-find_package(Vulkan REQUIRED)
-
 set(IMGUI_SRC
     imgui/imgui.cpp
     imgui/imgui_draw.cpp
@@ -32,8 +30,11 @@ endif()
 add_library(imgui ${IMGUI_SRC})
 target_include_directories(imgui PUBLIC imgui)
 
-target_link_libraries(imgui PUBLIC Vulkan::Vulkan)
-
 if (USE_SDL)
     target_link_libraries(imgui PUBLIC SDL3::SDL3)
+endif()
+
+if (USE_VULKAN)
+    find_package(Vulkan REQUIRED)
+    target_link_libraries(imgui PUBLIC Vulkan::Vulkan)
 endif()
