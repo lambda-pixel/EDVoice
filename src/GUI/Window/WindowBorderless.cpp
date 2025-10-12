@@ -121,7 +121,7 @@ void WindowBorderless::openVoicePackFileDialog(void* userdata, openedFile callba
 
 #ifdef USE_SDL
 
-void WindowMain::sdlWndProc(SDL_Event& event)
+void WindowBorderless::sdlWndProc(SDL_Event& event)
 {
     ImGui_ImplSDL3_ProcessEvent(&event);
 
@@ -158,9 +158,9 @@ void WindowMain::sdlWndProc(SDL_Event& event)
 }
 
 
-SDL_HitTestResult SDLCALL WindowMain::sdlHitTest(SDL_Window* win, const SDL_Point* area, void* data)
+SDL_HitTestResult SDLCALL WindowBorderless::sdlHitTest(SDL_Window* win, const SDL_Point* area, void* data)
 {
-    WindowMain* obj = (WindowMain*)data;
+    WindowBorderless* obj = (WindowBorderless*)data;
     assert(win == obj->_sdlWindow);
 
     int width, height;
@@ -209,7 +209,7 @@ SDL_HitTestResult SDLCALL WindowMain::sdlHitTest(SDL_Window* win, const SDL_Poin
 }
 
 
-void SDLCALL WindowMain::sdlCallbackOpenFile(void* userdata, const char* const* filelist, int filter)
+void SDLCALL WindowBorderless::sdlCallbackOpenFile(void* userdata, const char* const* filelist, int filter)
 {
     OpenFileCbData* obj = (OpenFileCbData*)userdata;
 
