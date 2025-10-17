@@ -9,6 +9,13 @@ Use at your own risk! I am not responsible for any game crashes, FSD explosions,
 
 > Seriously, if your PC spontaneously combusts or your Commander’s ship jumps into a star… that’s on you 😜.
 
+## 📦 Download and Install
+
+1. Go to the [Releases page](https://github.com/lambda-pixel/EDVoice/releases/latest)
+2. Download the latest release zip file, e.g., `EDVoice-v0.1.0.zip`.
+3. Extract the zip file to a folder of your choice.
+4. Run EDVoice.exe from that folder.
+
 ## Features
 - Real-time monitoring of:
   - `Journal.*.log` files
@@ -20,13 +27,6 @@ Use at your own risk! I am not responsible for any game crashes, FSD explosions,
   - And more...
 - Playback of custom audio alerts
 - Extensible design: add new events and alerts easily
-
-## 📦 Download and Install
-
-1. Go to the [Releases page](https://github.com/lambda-pixel/EDVoice/releases/latest)
-2. Download the latest release zip file, e.g., `EDVoice-v0.1.0.zip`.
-3. Extract the zip file to a folder of your choice.
-4. Run EDVoice.exe from that folder.
 
 > Optional: you can drag & drop a custom voicepack JSON onto the executable, or pass the path to the JSON as the first argument.
 
@@ -57,3 +57,11 @@ This page explains how to define custom voice actions using a JSON file, with co
 - GUI for event selection and testing alerts
 - TTS playback support (e.g., ingame chat messages)
 - Improved preference settings (e.g., volume, voicepack selection)
+
+## Licence
+- Source code: BSD 3-Clause License
+- Voicepacks and audio assets: CC BY-NC-ND 4.0 (NonCommercial, NoDerivatives)
+
+For full license texts, see:
+- LICENSE.txt (code)
+- assets/LICENSE.txt (voicepacks)
