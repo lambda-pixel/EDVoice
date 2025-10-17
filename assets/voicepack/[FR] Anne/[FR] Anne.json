@@ -1,0 +1,81 @@
+{
+    "status": {
+        "Over_Heating": {
+            "true": "sounds/HeatWarning.mp3"
+        },
+        "Low_Fuel": {
+            "true": "sounds/FuelTankAlert.mp3"
+        },
+        "Cargo_Scoop_Deployed": {
+            "true": "sounds/Cargo_Scoop_Deployed.mp3",
+            "false": "sounds/Cargo_Scoop_Retracted.mp3"
+        },
+        "In_Wing": {
+            "true": "sounds/In_Wing_True.mp3",
+            "false": "sounds/In_Wing_False.mp3"
+        },
+        "Ship": {
+            "Shields_Up": {
+                "true": "sounds/Shields_Online.mp3",
+                "false": "sounds/Shields_Offline.mp3"
+            },
+            "Silent_Running": {
+                "true": "sounds/Silent_Running_On.mp3",
+                "false": "sounds/Silent_Running_Off.mp3"
+            },
+            "FlightAssist_Off": {
+                "true": "sounds/FlightAssist_Off.mp3",
+                "false": "sounds/FlightAssist_On.mp3"
+            },
+            "Fsd_Charging": {
+                "true": "sounds/Fsd_Charging.mp3"
+            },
+            "Scooping_Fuel": {
+                "true": "sounds/Scooping_Fuel_On.mp3",
+                "false": "sounds/Scooping_Fuel_Off.mp3"
+            },
+            "LandingGear_Down": {
+                "true": "sounds/LandingGear_Down.mp3",
+                "false": "sounds/LandingGear_Up.mp3"
+            }
+        },
+        "SRV": {
+            "Shields_Up": {
+                "true": "sounds/Shields_Online.mp3",
+                "false": "sounds/Shields_Offline.mp3"
+            },
+            "Srv_DriveAssist": {
+                "true": "sounds/Srv_DriveAssist_On.mp3",
+                "false": "sounds/Srv_DriveAssist_Off.mp3"                
+            },
+            "Srv_Handbrake": {
+                "true": {
+                    "files": [ "sounds/Srv_Handbrake_On.mp3" ],
+                    "cooldown": 10000
+                }
+            }
+        }
+    },
+    "event": {
+        "UnderAttack": "sounds/UnderAttack.mp3",
+        "HeatDamage": "sounds/HeatDamage.mp3",
+        "StartJump": "sounds/StartJump.mp3",
+        "ApproachBody": "sounds/ApproachBody.mp3",
+        "JetConeBoost": "sounds/JetConeBoost.mp3",
+        "DockingGranted": "sounds/DockingGranted.mp3",
+        "DockingDenied": "sounds/DockingDenied.mp3",
+        "LaunchDrone": "sounds/LaunchDrone.mp3",
+        "Scanned": "sounds/Scanned.mp3",
+        "SelfDestruct": "sounds/SelfDestruct.mp3",
+        "SAAScanComplete": "sounds/SAAScanComplete.mp3",
+        "Embark": "sounds/Boarding.mp3"
+    },
+    "special": {
+        "HullIntegrity_Compromised": "sounds/HullIntegrity_Compromised.mp3",
+        "HullIntegrity_Critical": "sounds/HullIntegrity_Critical.mp3",
+        "CargoFull": "sounds/Cargo.mp3",
+        "FuelScoopFinished": "sounds/FuelScoopFinished.mp3",
+        "AutoPilot_Liftoff": "sounds/Liftoff.mp3",
+        "AutoPilot_Touchdown": "sounds/Touchdown.mp3"
+    }
+}

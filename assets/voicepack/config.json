@@ -1,7 +1,8 @@
 {
     "voicepacks": {
         "ALTA": "ALTA/ALTA.json",
-        "Aria": "Aria/Aria.json"
+        "[FR] Anne": "[FR] Anne/[FR] Anne.json",
+        "[FR] Aria": "[FR] Aria/[FR] Aria.json"
     },
     "defaultVoicePack": "Aria",
     "medicVoicePack": "ALTA",
